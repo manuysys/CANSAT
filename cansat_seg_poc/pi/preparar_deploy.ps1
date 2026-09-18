@@ -30,17 +30,18 @@ Write-Host "  proyecto : $Root"
 Write-Host "  destino  : $Dist"
 
 # ── 1. Modelos autocontenidos ────────────────────────────────────────────────
-# Por defecto van el de terreno (vuelo) y el flood re-entrenado (pasa la
-# auditoría IMX500 y es liviano). Con -Todos se agregan daño/two-stage/siamés
-# (sólo útiles si la placa mide bien; ver pi/guia_pi.md paso 6).
+# Por defecto van los de VUELO: terreno a 224 px (mitad de cómputo que 320) y
+# flood a 224. Con -Todos se agregan el terreno de 320, el tiny (NPU) y los
+# modelos de daño/siamés (sólo útiles si la placa mide bien; ver guia_pi.md §6).
 # El two-stage de vuelo es el adaptado a UAV con RescueNet (F2 2026-09-18).
-$Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist_224.onnx")
+$Modelos = @("cansat_seg_terrain_v2_224.onnx", "cansat_flood_specialist_224.onnx")
 if ($Todos) {
     $Modelos += @(
-        "cansat_seg_terrain_v2_224.onnx",
+        "cansat_seg_terrain_v2.onnx",
         "cansat_seg_terrain_tiny_224.onnx",
         "cansat_damage3_mobilenetv2.onnx",
         "cansat_damage_v3_bal.onnx",
+        "cansat_fire_smoke.onnx",
         "cansat_siamese_damage.onnx"
     )
 }

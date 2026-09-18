@@ -116,6 +116,10 @@ Usar unas pocas imágenes (tiles de LoveDA o cualquier JPG/PNG):
 cd ~/cansat_seg_poc && source venv/bin/activate
 time python mission_pipeline.py --folder ~/tiles --frames 3 --interval 0 \
      --no-detect --no-damage --overwrite
+# Y la variante rápida (la que vuela, F1 2026-09-18):
+time python mission_pipeline.py --folder ~/tiles --frames 3 --interval 0 \
+     --no-detect --no-damage --overwrite \
+     --onnx outputs/cansat_seg_terrain_v2_224.onnx --img-size 224
 ```
 
 Anotar **segundos por frame** (el `time` total dividido 3):
@@ -154,11 +158,14 @@ validado en hardware todavía**: es lo primero a probar en la Pi.
 # --frames 1000 = grabar hasta que se corte la energía; ajustar tras medir
 python mission_pipeline.py --camera --frames 1000 --interval 0 \
     --no-detect --no-damage --enhance \
+    --onnx outputs/cansat_seg_terrain_v2_224.onnx --img-size 224 \
     --det-backend imx500 \
     --pop-density 1500 \
     --out-dir /home/pi/vuelos/$(date +%Y%m%d_%H%M%S)
 ```
 
+- `--onnx ..._224.onnx --img-size 224`: terreno a 224 px (mIoU 0.4996 y la
+  mitad de cómputo que 320). Si el frame sobra tiempo, volver al de 320.
 - `--det-backend imx500` reemplaza a YOLO por el NPU del AI Camera (si la
   cámara no es la AI Camera, usar `--no-detect`).
 - `--enhance` ayuda con la nitidez (denoise + unsharp) y cuesta poco.
