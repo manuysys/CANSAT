@@ -1,20 +1,25 @@
 # LoveDA Segmentation Pipeline - CanSat
 
-> ## 📌 Estado del proyecto (2026-09-17)
+> ## 📌 Estado del proyecto (2026-09-18)
 > Este README describe **sólo la fase 1** (dataset LoveDA). El proyecto completo
 > es un pipeline de misión con 60+ scripts; la documentación viva está en:
 >
 > | Documento | Qué contiene |
 > |---|---|
+> | [`../INFORME-IA-Y-ESTACION.md`](../INFORME-IA-Y-ESTACION.md) | **Informe completo con evidencias** (IA + estación): datasets, modelos, técnicas, lo que NO funcionó |
 > | [`docs/ALINEACION-DPD.md`](docs/ALINEACION-DPD.md) | Cada requisito del DPD → implementación → estado |
-> | [`docs/DATASETS-Y-TECNICAS.md`](docs/DATASETS-Y-TECNICAS.md) | Datasets (BRIGHT, RescueNet…) y técnicas de mejora |
+> | [`docs/DATASETS-Y-TECNICAS.md`](docs/DATASETS-Y-TECNICAS.md) | Datasets (RescueNet, FLAME…) y técnicas de mejora |
 > | [`MODELS.yaml`](MODELS.yaml) | **Qué modelo vuela**, con métricas medidas y hash |
 > | [`docs/decisiones.yaml`](docs/decisiones.yaml) | Decisiones de diseño (fuente del informe) |
 > | [`docs/reporte_pruebas.md`](docs/reporte_pruebas.md) | Informe generado con números medidos |
+> | [`docs/CONVERSION-IMX500.md`](docs/CONVERSION-IMX500.md) | Conversión a `.rpk` (F4, PC Linux con Edge-MDT) |
 > | [`pi/guia_pi.md`](pi/guia_pi.md) | Puesta a punto de la Raspberry + AI Camera |
 >
-> **Modelo de vuelo**: `outputs/cansat_seg_terrain_v2.onnx` (DeepLabV3+
-> MobileNetV2, 5 clases, **mIoU 52.19 %** en el Val completo).
+> **Modelo de vuelo (terreno)**: `outputs/cansat_seg_terrain_v2_224.onnx`
+> (mIoU **0.4996** y la mitad de cómputo que 320; el de 320, `cansat_seg_terrain_v2.onnx`,
+> da 0.5219 si sobra tiempo de frame).
+> **Daño two-stage de vuelo**: `outputs/cansat_damage_v3_bal.onnx`
+> (IoU de dañado **0.735** en el dominio UAV).
 > **Entrada**: `python mission_pipeline.py --camera --no-damage --det-backend imx500`.
 >
 > ### Datasets y licencias
@@ -22,7 +27,9 @@
 > |---|---|---|---|
 > | LoveDA (Zenodo 5706578) | Segmentación de terreno (5 clases) | **CC BY 4.0** | Atribución |
 > | xBD / xView2 | Modelos de daño estructural | **CC BY-NC-SA 4.0** | **No comercial + ShareAlike**: los pesos de daño son obra derivada |
+> | RescueNet | Daño/severidad en el dominio UAV (el de vuelo) | investigación | Uso académico |
 > | FloodNet (Kaggle) | Especialista de inundación | sin declarar en la ficha | Verificar antes de distribuir |
+> | fire-smoke-seg (FLAME) | Fuego/humo (extensión) | **CC BY 4.0** | Atribución |
 > | VisDrone | Fine-tune del detector de personas | términos del challenge | Verificar |
 > | Esri World Imagery | `baseline.png` del siamés | términos de ArcGIS Online | Verificar |
 > | EDSR (`models/EDSR_x2.pb`) | Super-resolución post-vuelo | ver repo de origen (Saafke/EDSR_Tensorflow) | Verificar |
