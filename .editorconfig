@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Estilo común para los dos proyectos (Python + TypeScript + Markdown).
+# ═══════════════════════════════════════════════════════════════════════════
+#  No existía, y el resultado era visible: el proyecto Python tenía CRLF en
+#  casi todos los archivos y el frontend LF; mission_pipeline.py tenía
+#  indentación rota (16 espacios de más en un comentario) y anotaciones
+#  "← NUEVO" inline que ningún formatter habría dejado pasar.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{ts,tsx,js,mjs,cjs,jsx,json,yml,yaml,css,html}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

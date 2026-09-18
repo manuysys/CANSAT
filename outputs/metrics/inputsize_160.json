@@ -1,0 +1,63 @@
+{
+  "generado": "2026-09-18T03:33:52.807551+00:00",
+  "script": "evaluate.py",
+  "tipo": "checkpoint_pytorch",
+  "modelo": "outputs/best_terrain_v2.pth",
+  "modelo_sha256_16": "81c54355bbcf0a19",
+  "arquitectura": "deeplabv3plus",
+  "num_clases": 5,
+  "dataset_root": "dataset",
+  "splits": [
+    "Rural",
+    "Urban"
+  ],
+  "n_disponibles": 1669,
+  "n_images": 1669,
+  "img_size": 160,
+  "seed": 42,
+  "segundos": 90.44,
+  "metrics": {
+    "miou": 0.403972,
+    "pixel_acc": 0.579346,
+    "n_pixels": 41611390,
+    "por_clase": {
+      "vegetation": {
+        "iou": 0.511139,
+        "precision": 0.595973,
+        "recall": 0.782175,
+        "f1": 0.676495,
+        "soporte_px": 14959216
+      },
+      "building": {
+        "iou": 0.354867,
+        "precision": 0.42258,
+        "recall": 0.688924,
+        "f1": 0.52384,
+        "soporte_px": 2999157
+      },
+      "water": {
+        "iou": 0.561521,
+        "precision": 0.672413,
+        "recall": 0.772979,
+        "f1": 0.719197,
+        "soporte_px": 4871718
+      },
+      "bare_ground": {
+        "iou": 0.330572,
+        "precision": 0.520089,
+        "recall": 0.475666,
+        "f1": 0.496887,
+        "soporte_px": 3759917
+      },
+      "other": {
+        "iou": 0.261761,
+        "precision": 0.594581,
+        "recall": 0.318632,
+        "f1": 0.414914,
+        "soporte_px": 15021382
+      }
+    }
+  },
+  "mascaras": "remapeadas",
+  "nota": "Muestra completa."
+}

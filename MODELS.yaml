@@ -1,0 +1,439 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  REGISTRO DE MODELOS — CanSat LB135
+# ═══════════════════════════════════════════════════════════════════════════
+#  Responde la pregunta más importante del proyecto y que antes NO estaba
+#  escrita en ningún lado:
+#
+#      ¿CUÁL ES EL MODELO QUE VUELA, de dónde salió y cómo se reproduce?
+#
+#  El repo tenía 12 scripts de entrenamiento, 14 checkpoints .pth, 15 ONNX
+#  (más dos "_BACKUP" y dos "_BACKUP2") y 6 exportadores, sin ninguna
+#  trazabilidad entre ellos. No había forma de saber qué produjo qué.
+#
+#  REGLAS
+#   1. Todo artefacto que se use en vuelo o en la entrega TIENE que estar acá.
+#   2. `metricas` se cita desde outputs/metrics/*.json, nunca de memoria. En el
+#      repo convivían cuatro mIoU distintos para el mismo modelo (46.36% en el
+#      informe, 52.44% en un print de evaluate_val.py, 0.5317 en un print de
+#      train_qat.py y "~0.5317" en un comentario de eval_onnx_gap.py).
+#   3. `estado` es uno de: VUELA | POST-VUELO | EXPERIMENTAL | ROTO | ABANDONADO.
+#   4. Si un checkpoint no está listado, no se usa.
+#
+#  ⚠ Los campos marcados con `PENDIENTE` hay que completarlos con datos reales.
+#    No se inventaron números para rellenar: un registro con métricas falsas es
+#    peor que tener registro.
+#
+#  ── EMPAQUETADO PARA LA PI ────────────────────────────────────────────────
+#  Varios exportadores escribieron los modelos con PESOS EXTERNOS: el `.onnx`
+#  de ~0.3 MB NO es autónomo, necesita su `<modelo>.onnx.data` (48-52 MB) al
+#  lado. ONNX Runtime (PC) los resuelve; OpenCV DNN (backend de respaldo de la
+#  Pi Zero v1, ver cansat/onnxio.py) NO los lee.
+#  Para la Pi hay que empotrar los datos:
+#      python tools/onnx_inline.py outputs/<modelo>.onnx --out-dir dist_pi/outputs
+#  `pi/preparar_deploy.ps1` hace esto automáticamente junto con el copiado.
+# ═══════════════════════════════════════════════════════════════════════════
+
+vuelo:
+  segmentacion_terreno:
+    onnx: "outputs/cansat_seg_terrain_v2.onnx"
+    checkpoint: "outputs/best_terrain_v2.pth"
+    entrenado_por: "train_terrain_v2.py"
+    exportado_por: "python export_onnx.py --arch deeplabv3plus --checkpoint outputs/best_terrain_v2.pth --output outputs/cansat_seg_terrain_v2.onnx --num-classes 5 --img-size 320"
+    arquitectura: "DeepLabV3+ MobileNetV2, output stride 8"
+    clases: 5
+    entrada: "[1, 3, 320, 320]"
+    dataset: "LoveDA remapeado (CC BY 4.0)"
+    precision: "FP32"
+    estado: "VUELA"
+    metricas:
+      miou: 0.5219
+      fuente: "outputs/metrics/val_20260917_192612.json (Val completo, 1669 imgs, seed 42)"
+      sha256_16: "7a49d457fa157b19"
+      pixel_accuracy: 0.6862
+    notas: |
+      ⚠ RESUELTO (2026-09-17): el archivo `cansat_seg_terrain_v2.onnx` que volaba
+      era, byte a byte, el export del modelo CBAM experimental (mismo MD5 que
+      `cansat_seg_terrain_v2_cbam.onnx`, tensores idénticos a
+      `best_terrain_cbam.pth`). MODELS.yaml declaraba `best_terrain_v2.pth` pero
+      el archivo no correspondía: el modelo que volaba no era el registrado.
+      Re-exportado con el exportador canónico y medido en el Val completo:
+        52.19 % mIoU (v2 real)  vs  50.34 % (CBAM)  vs  45.76 % (best_model).
+      El v2 real es el mejor de los tres: es el que vuela y está registrado.
+      Autocontenido (sin .onnx.data), carga en cv2.dnn y en ORT.
+
+    matriz_tamano_entrada:
+      # F1.1 (2026-09-18): el v2 entrenado a 320 evaluado a tamaños menores,
+      # SIN re-entrenar. Mide cuánto cuesta bajar la resolución de entrada.
+      fuente: "outputs/metrics/input_matrix.json (tools/bench_input_sizes.py)"
+      modelo_evaluado: "outputs/best_terrain_v2.pth (sha256_16 81c54355bbcf0a19)"
+      val: "LoveDA remapeado, 1669 imgs (el mismo de la métrica 0.5219)"
+      filas:
+        - { size: 320, miou: 0.5220, segundos: 99.3 }
+        - { size: 256, miou: 0.4941, segundos: 85.3 }
+        - { size: 224, miou: 0.4718, segundos: 91.4 }
+        - { size: 192, miou: 0.4400, segundos: 91.5 }
+        - { size: 160, miou: 0.4040, segundos: 90.4 }
+      notas: |
+        La caída a 224 (-5.0 pts) es por DESAJUSTE de escala: el modelo nunca
+        vio 224. Los re-entrenos a 224 (F1.2, train_terrain_tiny.py) recuperan
+        la mayor parte; el control DeepLabV3+MV2@224 cuantifica cuánto.
+        Los segundos son de la RTX 5060 (no de la Pi Zero W): sirven solo para
+        ver que el costo de inferencia no depende del tamaño en GPU; en la Pi
+        el tiempo escala con el área (320→224 = 2.04× menos píxeles).
+
+  segmentacion_terreno_224:
+    # F1.2 (2026-09-18): el mismo backbone del v2 re-entrenado a 224 px.
+    # Elimina el desajuste de escala de la matriz (0.4718 era el v2@320 a 224).
+    onnx: "outputs/cansat_seg_terrain_v2_224.onnx"
+    checkpoint: "outputs/best_terrain_v2_224.pth"
+    entrenado_por: "train_terrain_tiny.py --arch deeplabv3plus --size 224 --epochs 30 (2026-09-18)"
+    exportado_por: "python export_onnx.py --arch deeplabv3plus --checkpoint outputs/best_terrain_v2_224.pth --output outputs/cansat_seg_terrain_v2_224.onnx --img-size 224"
+    arquitectura: "DeepLabV3+ MobileNetV2, output stride 8"
+    clases: 5
+    entrada: "[1, 3, 224, 224]"
+    dataset: "LoveDA remapeado (CC BY 4.0)"
+    precision: "FP32 (51.0 MB)"
+    estado: "CANDIDATO DE VUELO cv2.dnn (2.04x menos cómputo que el v2@320)"
+    metricas:
+      miou: 0.4996
+      pixel_accuracy: 0.6691
+      fuente: "outputs/metrics/v2_224_val.json (Val completo, 1669 imgs, seed 42)"
+      comparacion: "v2@320 0.5219 · v2@224 re-entrenado 0.4996 · v2@320 evaluado a 224 0.4718"
+    notas: |
+      Entrenar a 224 recupera +2.8 pts sobre evaluar el v2@320 a 224 (0.4718).
+      Pierde 2.2 pts contra el v2@320 pero cuesta la mitad de cómputo por frame
+      (224² = 0.49 × 320²). Pasa auditoría IMX500 a 224 y carga en cv2.dnn.
+      Si la medición en la Pi confirma que 320 es muy lento (estimado ~8 s/f),
+      éste es el reemplazo directo sin tocar el pipeline (mismo contrato).
+
+  segmentacion_terreno_tiny:
+    # F1.2 (2026-09-18): MobileNetV3-Small + LR-ASPP, el candidato NPU.
+    onnx: "outputs/cansat_seg_terrain_tiny_224.onnx"
+    checkpoint: "outputs/best_terrain_tiny.pth"
+    entrenado_por: "train_terrain_tiny.py --arch lraspp-mv3s --size 224 --epochs 30 (2026-09-18)"
+    exportado_por: "python export_onnx.py --arch lraspp --checkpoint outputs/best_terrain_tiny.pth --output outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224"
+    arquitectura: "MobileNetV3-Small + LR-ASPP (1.08M params)"
+    clases: 5
+    entrada: "[1, 3, 224, 224]"
+    dataset: "LoveDA remapeado (CC BY 4.0)"
+    precision: "FP32 (4.3 MB; ~1.1 MB INT8)"
+    estado: "CANDIDATO NPU (IMX500) — no cumple el mIoU objetivo en CPU"
+    metricas:
+      miou: 0.4397
+      pixel_accuracy: 0.6241
+      fuente: "outputs/metrics/tiny_224_val.json (Val completo, 1669 imgs, seed 42)"
+      comparacion: "MV3-S@224 0.4397 · MV2@224 0.4996 · v2@320 0.5219"
+    notas: |
+      ⚠ NO alcanza el criterio F1 de 0.48 mIoU a 224 (queda en 0.44, -6 pts
+      contra el control MV2@224). Su valor es el tamaño: 4.3 MB FP32 / ~1.1 MB
+      INT8 entra holgado en el límite de <8 MB del IMX500, y el régimen de ops
+      (Conv/HardSwish/HardSigmoid/GlobalAveragePool/Mul/Resize) es el que el
+      plan declaró convertible. Falta la verificación real en Edge-MDT (F4).
+      Para cv2.dnn en CPU conviene el MV2@224. Si el NPU lo corre a <50 ms, la
+      caída de 6 pts puede ser aceptable para cobertura en vuelo.
+      Ops verificadas con audit_imx500.py --size 224: pasa.
+
+  alternativas_terreno:
+    - nombre: "best_terrain_v2_distilled.pth"
+      onnx: "outputs/cansat_seg_terrain_v2_distilled.onnx"
+      entrenado_por: "distill_terrain.py (KD de SegFormer-B5)"
+      estado: "ALTERNATIVA (no vuela; a 0.23 pts del v2)"
+      metricas:
+        miou: 0.5196
+        fuente: "medido 2026-09-17 sobre el Val completo (mismo split/seed)"
+      notas: |
+        Empatado estadísticamente con el v2 (52.19 vs 51.96). Se puede volar
+        indistintamente; el v2 tiene más historial. El export actual es
+        autocontenido y con dynamo=False (antes generaba .onnx.data).
+    - nombre: "best_terrain_cbam.pth"
+      onnx: "outputs/cansat_seg_terrain_v2_cbam.onnx"
+      estado: "EXPERIMENTAL"
+      metricas:
+        miou: 0.5034
+        fuente: "medido 2026-09-17, Val completo"
+      notas: "CBAM arranca como identidad (+17k params) pero quedó 1.85 pts abajo."
+    - nombre: "best_model.pth"
+      onnx: "outputs/cansat_seg_deeplabv3plus_mobilenetv2.onnx"
+      estado: "EXPERIMENTAL (base del v2)"
+      metricas:
+        miou: 0.4576
+        fuente: "medido 2026-09-17, Val completo"
+      notas: "Es el 46.36 % que citaba el informe viejo: no es el modelo de vuelo."
+
+  dano_principal:
+    onnx: "outputs/cansat_damage3_mobilenetv2.onnx"
+    checkpoint: "outputs/best_damage3.pth"
+    entrenado_por: "train_damage_v2.py --epochs 12 (2026-09-17, split por desastre)"
+    exportado_por: "python export_onnx.py --arch damage --num-classes 3 --checkpoint outputs/best_damage3.pth --output outputs/cansat_damage3_mobilenetv2.onnx"
+    clases: 3
+    nombres_clases: [other, intacto, danado]
+    entrada: "[1, 3, 320, 320]"
+    dataset: "xBD / xView2"
+    licencia: "CC BY-NC-SA 4.0 — obra derivada: NO comercial + compartir igual"
+    estado: "VUELA (re-entrenado 2026-09-17; pasa auditoría IMX500)"
+    metricas:
+      iou_dano_edificios_val_desastres_nuevos: 0.107   # crops nativos 320
+      iou_dano_edificios_tile_completo: 0.215          # frame entero → 320 (régimen del vuelo)
+      iou_dano_en_script: 0.173                        # 334 tiles de val, crops centrados
+      fuente: "A/B 2026-09-17 sobre 40 tiles de hurricane-matthew + palu-tsunami (nunca vistos)"
+      comparacion_modelo_viejo: "crops 0.053 · tile completo 0.381 (este último INFLADO por fuga)"
+    notas: |
+      ⚠ RE-ENTRENADO 2026-09-17 con split POR DESASTRE (`cansat/xbd.py`), 12
+      épocas y selección por IoU de daño sobre edificios (la métrica de la
+      misión). El modelo anterior entrenaba con 90/10 por FILA: veía ~90 % de
+      cada desastre, así que su "0.32 de val" no tenía nada de val. En el A/B
+      sobre desastres nunca vistos el nuevo es 2× mejor en crops nativos
+      (0.107 vs 0.053); la ventaja del viejo en tile completo (0.381) es
+      memorización de esos eventos.
+      Honestamente: la generalización a desastres nuevos es MODESTA (~0.1-0.2
+      de IoU de daño sobre edificios). El plan para mejorarla está en
+      docs/DATASETS-Y-TECNICAS.md (BRIGHT cross-event, más épocas, pérdida
+      de RescueNet en el two-stage).
+
+  dano_two_stage:
+    onnx: "outputs/cansat_damage_v3.onnx"
+    checkpoint: "outputs/best_damage_v3.pth"
+    entrenado_por: "train_damage_v3.py --epochs 12 --loss rescue (2026-09-17)"
+    clases: 3
+    entrada: "[1, 3, 320, 320]"
+    dataset: "xBD / xView2"
+    licencia: "CC BY-NC-SA 4.0"
+    estado: "VUELA (re-entrenado 2026-09-17; pasa auditoría IMX500)"
+    metricas:
+      iou_dano_two_stage_val_desastres_nuevos: 0.472
+      fuente: "mejor época del entrenamiento (val = hurricane-matthew + palu-tsunami, nunca vistos)"
+      comparacion_modelo_viejo: "0.436 con edificios GT pero con FUGA (split por fila) · 0.025 con máscara de terreno en val honesto"
+    notas: |
+      ⚠ RE-ENTRENADO 2026-09-17 con:
+        · split POR DESASTRE (`cansat/xbd.py`),
+        · **loss de RescueNet** (`--loss rescue`): BCE de localización
+          edificio/fondo + CE selectiva en foreground, adaptada a una sola
+          cabeza de 3 clases,
+        · selección por IoU de daño sobre edificios (la métrica de la misión),
+        · 12 épocas, semilla fija.
+      0.472 sobre desastres NUNCA vistos es el mejor número honesto del
+      proyecto para daño y triplica el del modelo viejo en el mismo protocolo.
+      El two-stage sigue dependiendo de la máscara de edificios: en vuelo se
+      enmascara con el modelo de terreno (recall de edificios 84 %).
+
+  dano_f2_rescuenet:
+    # F2 (2026-09-18): mezcla con RescueNet (UAV óptico, GSD ≈0.05-0.08 m/px,
+    # el régimen del vuelo: 7.7 cm/px a 250 m) vs el modelo xBD-only.
+    preparacion: |
+      RescueNet (4494 imgs UAV 3000×4000, Hurricane Michael) → 3 clases con
+      `prepare_rescuenet.py`: 17 560 tiles de train + 2 093 de val a 640²,
+      remapeo other={fondo,agua,vehículo,rutas,árbol,pileta}, intacto={sin
+      daño}, dañado={menor,mayor,destrucción total}. El entrenamiento acepta
+      manifests extra: `train_damage_v3.py --extra-manifest ... --xbd-repeat N`.
+    resultados:
+      - nombre: "xBD-only (el que vuela hoy)"
+        checkpoint: "outputs/best_damage_v3.pth"
+        onnx: "outputs/cansat_damage_v3.onnx"
+        iou_dano_xbd_heldout: 0.472
+        iou_dano_rescuenet_val: 0.497
+        fuente: "metadata del checkpoint (xBD) + tools/eval_damage_manifests.py (RescueNet)"
+      - nombre: "Mezcla 82 % RescueNet (especialista UAV)"
+        checkpoint: "outputs/best_damage_v3_uav.pth"
+        iou_dano_xbd_heldout: 0.004
+        iou_dano_rescuenet_val: 0.686
+        nota: "olvida por completo el dominio satelital (xBD)"
+      - nombre: "Balanceado xBD×4 + 4k RescueNet"
+        checkpoint: "outputs/best_damage_v3_bal.pth"
+        onnx: "outputs/cansat_damage_v3_bal.onnx"
+        iou_dano_xbd_heldout: 0.096
+        iou_dano_rescuenet_val: 0.735
+        nota: "mejor modelo para el dominio de vuelo (UAV); NO alcanza el 0.20
+               cross-event del plan F2 sobre xBD"
+    interpretacion: |
+      Los dominios satelital (0.3 m/px) y UAV (0.05-0.08 m/px) compiten:
+      agregar RescueNet sube el daño en UAV de 0.497 → 0.735 pero hunde xBD de
+      0.472 → 0.096 (olvido catastrófico con 82 % de RescueNet; solo parcial
+      con el balanceo ×4). Para la misión (GSD 7.7 cm/px) el balanceado es el
+      mejor candidato; el xBD-only queda como referencia cross-event del
+      informe. Decisión de vuelo: pendiente de medir con frames reales en la Pi.
+      El balanceado pasa la auditoría IMX500 (opset 17, 51 MB, autocontenido).
+    caveat: |
+      El 0.735 de RescueNet val puede estar inflado por proximidad geográfica
+      entre train y val del propio dataset (mismos vuelos post-Michael). El
+      número cross-dataset honesto es el de xBD held-out.
+
+  dano_siames:
+    onnx: "outputs/cansat_siamese_damage.onnx"
+    checkpoint: "outputs/best_siamese_damage.pth"
+    entrenado_por: "train_siamese_damage.py --epochs 10 --neg-frac 0.3 --export"
+    entrada: "dos tensores [1,3,320,320]: 'pre' y 'post'"
+    dataset: "xBD / xView2 (pares pre/post)"
+    licencia: "CC BY-NC-SA 4.0"
+    estado: "RE-ENTRENADO 2026-09-17 — opcional, desactivado por defecto"
+    metricas:
+      iou_dano_two_stage: 0.601
+      dano_con_pre_igual_post: 0.0123   # media de píxeles 'dañado' con pares idénticos
+      dano_max_pre_igual_post: 0.0651
+      fuente: "autochequeo del propio script + Val (mismo split por fila)"
+    notas: |
+      Los pesos viejos alucinaban daño sin cambio (5.5 % medio, máx 63.6 %) y
+      se usaban en el consenso: el 27.1 % de daño del frame 4191 de la
+      telemetría guardada salía de ahí. Re-entrenado con pares NEGATIVOS
+      sintéticos (--neg-frac 0.3: pre==post ⇒ edificios intactos) y el
+      autochequeo bajó a 1.23 % medio / 6.5 % máx.
+      Aun así el pipeline lo mantiene DESACTIVADO por defecto (--siamese-onnx
+      para activarlo): 1.2 % de falsos positivos por frame sigue ensuciando un
+      consenso que trabaja con umbrales de ~10 %, y el "pre" de vuelo es un
+      tile satelital nadir contra frames oblicuos (cambio de dominio fuerte).
+      Backup de los pesos ROTO: outputs/_roto_backup/.
+
+  flood_specialist:
+    onnx: "outputs/cansat_flood_specialist.onnx"
+    checkpoint: "outputs/best_flood_specialist.pth"
+    entrenado_por: "train_flood_specialist.py --epochs 12 (dataset remapeado corregido)"
+    dataset: "FloodNet (Kaggle) + LoveDA"
+    licencia: "FloodNet sin licencia declarada en la ficha — verificar"
+    estado: "VUELA (opcional; se desactiva solo si falta)"
+    metricas:
+      iou_flood: 0.483
+      iou_agua_normal: 0.555
+      iou_other: 0.881
+      fuente: "mejor época del entrenamiento (Val, split 80/20 del remapeo)"
+    notas: |
+      ⚠ RE-ENTRENADO Y RE-EXPORTADO 2026-09-17. El modelo anterior era
+      INSERVIBLE: prepare_floodnet.py aplicaba un `shift` heurístico que
+      desplazaba todas las clases, así que "flood" era Building-NON-flooded
+      (2.98 %) y "agua normal" era Tree (16.55 %). Además sólo mapeaba
+      Road-flooded y confundía Vehicle con Pool. Ahora el remapeo sigue el
+      class_mapping.csv oficial: flood = {Building-flooded, Road-flooded},
+      agua = {Water}. Es el primer modelo del repo que PASA la auditoría
+      IMX500 (opset 17, autocontenido, 1 entrada).
+
+  deteccion_personas:
+    pesos: "models/yolov8n_visdrone.pt"
+    framework: "ultralytics"
+    conf: 0.25
+    imgsz: 1280
+    clases_persona: [0, 1]        # pedestrian, people (VisDrone)
+    clases_vehiculo: [2, 3, 4, 5, 6, 7, 8]
+    estado: "VUELA en PC/post-vuelo (desactivable con --no-detect)"
+    metricas:
+      comparacion_modelos: "2026-09-17 sobre dataset/pruebas/PERSONAS_AUTOS.png @1280: VisDrone 254 personas / COCO yolov8s 42 personas"
+      precision_recall: "NO MEDIDO formalmente (no hay set etiquetado de personas)"
+    notas: |
+      ⚠ CAMBIO 2026-09-17: el detector por defecto pasó de `yolov8s.pt` (COCO)
+      al fine-tune de **VisDrone** (`yolov8n_visdrone.pt`, 5.9 MB). Medición
+      directa: en una imagen aérea de prueba el VisDrone detecta 254 personas
+      contra 42 del COCO — los modelos COCO pierden personas sub-píxel, que es
+      exactamente el caso del CanSat (a 250 m, 1 persona ≈ 6 px).
+      `yolo11n_visdrone.pt` da casi lo mismo (251) y queda como alternativa.
+      En la Pi Zero v1 (ARMv6, sin torch) la detección va por el NPU del
+      AI Camera (--det-backend imx500); el SSD COCO on-sensor tiene la misma
+      limitación de personas chicas y hay que medirlo en la placa.
+      En tiles satelitales (0.3 m/px) las personas siguen siendo sub-píxel: los
+      conteos de simulacros sobre LoveDA NO son significativos.
+
+post_vuelo:
+  segformer_b5:
+    onnx_preferido: "outputs/cansat_seg_terrain_segformer_b5_512.onnx"
+    onnx_alternativo: "outputs/cansat_seg_terrain_segformer_b5_320.onnx"
+    checkpoint: "outputs/best_terrain_segformer_b5.pth"
+    entrenado_por: "train_segformer_b5.py (2 etapas: 320px y luego 512px)"
+    exportado_por: "python export_onnx.py --arch segformer --checkpoint outputs/best_terrain_segformer_b5.pth --img-size 512 --output outputs/cansat_seg_terrain_segformer_b5_512.onnx"
+    entrada: "[1, 3, 512, 512]"
+    dataset: "LoveDA remapeado (CC BY 4.0)"
+    estado: "POST-VUELO"
+    metricas:
+      miou: "PENDIENTE"
+    notas: |
+      ⚠ post_flight.py apuntaba a cansat_seg_terrain_segformer_b5_640.onnx, que
+      NO existe, y por eso TODA la segunda pasada se salteaba en silencio sin
+      ningún warning. Ahora resuelve el primero disponible entre 512/320/640 y
+      lee el tamaño de entrada del propio ONNX.
+      El _640 no existe porque export_b5_640.py estaba roto: cargaba
+      best_terrain_b5.pth (no existe; el real es best_terrain_segformer_b5.pth)
+      e instanciaba SegformerTerrain (clase inexistente). Si se quiere el 640,
+      usar el export_onnx.py unificado.
+      El .onnx viene con pesos externos (.onnx.data de 338 MB): audit_imx500.py
+      lo marca como problema para el conversor IMX500.
+
+  super_resolucion:
+    modelo: "models/EDSR_x2.pb"
+    algoritmo: "edsr (cv2.dnn_superres)"
+    factor: 2
+    origen: "https://github.com/Saafke/EDSR_Tensorflow"
+    licencia: "ver el repo de origen"
+    estado: "POST-VUELO"
+    notas: |
+      Requiere OpenCV CONTRIB (cv2.dnn_superres), que NO estaba declarado en
+      requirements.txt. enhance_image.py ya no lo descarga en runtime: sin red
+      en vuelo eso rompía el post-vuelo justo en el paso que genera las imágenes
+      "mejoradas con IA" que pide el DPD. Precargar en models/ antes de viajar.
+
+# ── Validación INT8 (umbrales que publica el informe) ──────────────────────
+# Los usa validate_int8_mission.py; antes el docstring decía que "los publica
+# MODELS.yaml" pero no estaban en ningún lado.
+validacion_int8:
+  umbrales:
+    acuerdo_pixel: 0.95
+    acuerdo_veredicto: 0.95
+    acuerdo_alerta: 1.00
+  estado_2026_09_17: "NO DEPLOYABLE en la Pi objetivo"
+  mediciones:
+    acuerdo_pixel_medio: 0.905
+    acuerdo_pixel_min: 0.665
+    miou_fp32: 0.4595
+    miou_int8: 0.4315
+    fuente: "medición read-only del 2026-09-17 (20 frames Val, indicativa)"
+  notas: |
+    Los `*_int8.onnx` que existen son cuantización DINÁMICA (quantize_all.py):
+    · OpenCV DNN NO los carga (opcode DynamicQuantizeLinear no soportado, ni en
+      OpenCV 5.0) → inútiles para la Pi Zero v1.
+    · Con ORT son 23-26× MÁS LENTOS que FP32 en CPU (ConvInteger sin kernels
+      optimizados) y el acuerdo no llega al 95 %.
+    · El único camino INT8 viable es QDQ estático (quantize_onnx.py, nunca
+      ejecutado) verificado en la placa. Hasta entonces: FP32.
+
+experimentales:
+  - nombre: "best_terrain_cbam.pth"
+    entrenado_por: "train_cbam.py"
+    estado: "EXPERIMENTAL"
+    notas: "DeepLabV3+ con CBAM. validate_int8_mission.py lo usaba como FP32 de referencia contra un INT8 de OTRO modelo: comparación inválida."
+  - nombre: "best_terrain_v3.pth / best_terrain_v4.pth"
+    entrenado_por: "train_v3.py / train_v4.py"
+    estado: "EXPERIMENTAL"
+    notas: "train_v3.py y train_v4.py son forks (169 líneas distintas sobre ~160), no versiones. Sus ONNX declarados (cansat_seg_terrain_v3/v4.onnx) NO existen en el repo."
+  - nombre: "best_terrain_v2_distilled.pth"
+    entrenado_por: "distill_terrain.py"
+    estado: "EXPERIMENTAL"
+  - nombre: "best_model.pth"
+    entrenado_por: "train.py"
+    estado: "EXPERIMENTAL"
+    notas: "Único checkpoint con formato dict + metadata. export_onnx.py por default apunta acá."
+  - nombre: "best_damage.pth / best_damage_v2.pth"
+    estado: "ABANDONADO"
+    notas: "Iteraciones previas de daño. Sus ONNX no están en outputs/."
+  - nombre: "mae_mobilenetv2_encoder.pth"
+    entrenado_por: "mae_pretrain.py + mae_finetune_terrain.py"
+    estado: "ABANDONADO"
+    notas: "Preentrenamiento MAE. Quedó en la raíz del repo en vez de outputs/."
+
+# ── Artefactos que NO deberían estar en el repo ────────────────────────────
+basura_detectada:
+  - path: "outputs/_roto_backup/"
+    motivo: |
+      Backup de los pesos viejos del siamés (los que alucinaban daño sin
+      cambio: 5.5 % medio, máx 63.6 %). Se guardan sólo como evidencia para el
+      informe; NO deben usarse ni distribuirse. Borrar cuando el informe esté
+      cerrado.
+  - path: "outputs/cansat_seg_terrain_v2_BACKUP.onnx"
+    motivo: "Versionado manual de archivos. Para eso está Git."
+  - path: "outputs/cansat_seg_terrain_v2_BACKUP2.onnx"
+    motivo: "Ídem."
+  - path: ".git/objects/a7/tmp_obj_vPbRoy"
+    motivo: "Objeto temporal de un gc/fetch abortado. 617 MB. El .git entero está corrupto (sin refs/ ni logs/)."
+  - path: ".git/index.lock"
+    motivo: "Lock de 0 bytes de una operación Git interrumpida."
+  - path: "class_weights.npy"
+    motivo: "Caché derivado del dataset, commiteado en la raíz. Ahora va a outputs/ con la huella del dataset en el nombre."
+  - path: "srcs.txt"
+    motivo: "12 líneas de datos sueltos con BOM+CRLF, sin contexto ni consumidor. Fixture huérfano o basura."
+  - path: "__pycache__/"
+    motivo: "Bytecode compilado."
+  - path: "runs/"
+    motivo: "Logs de ultralytics (37 MB)."

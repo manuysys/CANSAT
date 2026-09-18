@@ -1,0 +1,55 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CanSat LB135 — dependencias de VUELO (Raspberry Pi, SIN torch)
+# ═══════════════════════════════════════════════════════════════════════════
+#  Esto es lo ÚNICO que hace falta para que mission_pipeline.py corra a bordo.
+#  torch/torchvision/transformers/matplotlib quedan en la PC.
+#
+#  HAY DOS PLACAS SOPORTADAS:
+#
+#  ▸ Pi Zero 2 W / Pi 4 / Pi 5 (recomendado): Raspberry Pi OS 64-bit.
+#      python3 -m venv venv && source venv/bin/activate
+#      pip install -r requirements-flight.txt
+#    Instala numpy, opencv-headless, onnxruntime y ultralytics (YOLO).
+#
+#  ▸ Pi Zero W v1 (ARMv6, 32-bit): NO existen wheels de onnxruntime ni de
+#    torch para ARMv6. El pipeline funciona igual porque cansat/onnxio.py cae
+#    al backend cv2.dnn, pero:
+#      · NO instalar onnxruntime ni ultralytics (los marcadores de abajo ya
+#        los saltean solos en armv6l);
+#      · OpenCV se instala por APT (no por pip): sudo apt install python3-opencv
+#      · hay que crear el venv con --system-site-packages para ver picamera2
+#        y el cv2 del sistema;
+#      · los modelos deben ser AUTOCONTENIDOS (sin .onnx.data): generarlos en
+#        la PC con  python tools/onnx_inline.py ...  y copiarlos a la Pi;
+#      · usar --no-detect (YOLO no existe en ARMv6; para detección, el NPU
+#        del AI Camera puede correr redes on-sensor).
+#    Detalle completo: pi/guia_pi.md.
+#
+#  Verificación (debe imprimir OK sin traceback):
+#      python -c "import cv2, numpy; print('OK')"
+#      python mission_pipeline.py --help
+# ═══════════════════════════════════════════════════════════════════════════
+
+numpy>=1.24.0
+
+# headless: sin dependencias de GUI/X11, que en la Pi Lite no existen.
+# ⚠ En la Pi Zero v1 (ARMv6) no hay wheels de pip: usar el paquete del sistema
+#   (sudo apt install python3-opencv) y crear el venv con --system-site-packages.
+# ⚠ Si vas a correr EDSR en la Pi (post-vuelo a bordo) necesitás el flavour
+#   CONTRIB por cv2.dnn_superres:
+#       pip install opencv-contrib-python-headless
+#   En su lugar reemplaza al de abajo (no instalar los dos).
+opencv-python-headless>=4.8.0; platform_machine != "armv6l"
+
+# Motor de inferencia principal de la PC y de las Pi de 64 bits.
+# En ARMv6 no hay wheels: cansat/onnxio.py usa cv2.dnn automáticamente.
+onnxruntime>=1.17.0; platform_machine != "armv6l"
+
+# Detección YOLO (torch). Imposible en ARMv6: el marcador lo saltea.
+ultralytics>=8.2.0; platform_machine != "armv6l"
+
+# Telemetría por UART desde la ESP32. NO estaba declarado en ningún lado.
+pyserial>=3.5
+
+# Config del informe (opcional a bordo, pero barato).
+PyYAML>=6.0

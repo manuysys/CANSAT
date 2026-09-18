@@ -1,0 +1,58 @@
+{
+  "script": "tools/bench_input_sizes.py",
+  "modelo": "outputs/best_terrain_v2.pth",
+  "modelo_sha256_16": "81c54355bbcf0a19",
+  "nota": "mIoU medida con evaluate.py sobre LoveDA Val completo; los segundos son de la RTX 5060, NO de la Pi Zero W.",
+  "filas": [
+    {
+      "img_size": 160,
+      "miou": 0.403972,
+      "pixel_accuracy": 0.0,
+      "segundos": 90.44,
+      "img_s": 18.5,
+      "n_images": 1669,
+      "modelo_sha256_16": "81c54355bbcf0a19",
+      "iou_por_clase": null
+    },
+    {
+      "img_size": 192,
+      "miou": 0.439993,
+      "pixel_accuracy": 0.0,
+      "segundos": 91.5,
+      "img_s": 18.2,
+      "n_images": 1669,
+      "modelo_sha256_16": "81c54355bbcf0a19",
+      "iou_por_clase": null
+    },
+    {
+      "img_size": 224,
+      "miou": 0.471778,
+      "pixel_accuracy": 0.0,
+      "segundos": 91.39,
+      "img_s": 18.3,
+      "n_images": 1669,
+      "modelo_sha256_16": "81c54355bbcf0a19",
+      "iou_por_clase": null
+    },
+    {
+      "img_size": 256,
+      "miou": 0.494107,
+      "pixel_accuracy": 0.0,
+      "segundos": 85.31,
+      "img_s": 19.6,
+      "n_images": 1669,
+      "modelo_sha256_16": "81c54355bbcf0a19",
+      "iou_por_clase": null
+    },
+    {
+      "img_size": 320,
+      "miou": 0.521953,
+      "pixel_accuracy": 0.0,
+      "segundos": 99.34,
+      "img_s": 16.8,
+      "n_images": 1669,
+      "modelo_sha256_16": "81c54355bbcf0a19",
+      "iou_por_clase": null
+    }
+  ]
+}

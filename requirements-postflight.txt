@@ -1,0 +1,14 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CanSat LB135 — dependencias de POST-VUELO (estación terrena, PC)
+# ═══════════════════════════════════════════════════════════════════════════
+#  Para post_flight.py: segunda pasada SegFormer B5, ensemble, CRF y EDSR.
+#  No hace falta torch (todo corre por ONNX Runtime), pero sí OpenCV CONTRIB.
+# ═══════════════════════════════════════════════════════════════════════════
+
+-r requirements-flight.txt
+
+# CONTRIB reemplaza al headless: cv2.dnn_superres (EDSR) y cv2.ximgproc
+# (guided filter) viven ahí.
+opencv-contrib-python-headless>=4.8.0
+
+Pillow>=10.0.0

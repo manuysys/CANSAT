@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CI — CanSat LB135 (proyecto de vuelo)
+# ═══════════════════════════════════════════════════════════════════════════
+#  Corre lint + tests unitarios + un smoke de dependencias de vuelo.
+#  NO corre entrenamiento, GPU, datasets ni el build del frontend: la
+#  estación terrena es un proyecto APARTE (EstacionTerrena_MuestreoDeDatos) y
+#  tiene su propio pipeline de build; el job `frontend` que había acá apuntaba
+#  a `estacion_terrena/web-app`, una ruta que no existe en este repo, y estaba
+#  siempre en rojo.
+# ═══════════════════════════════════════════════════════════════════════════
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python — lint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Dependencias mínimas (sin torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy PyYAML pytest ruff
+          pip install opencv-python-headless onnx onnxruntime
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Compilación de todos los .py
+        run: python -m compileall -q . && echo "todos los .py compilan"
+
+      - name: Tests unitarios
+        run: pytest -q -m "not slow and not gpu and not dataset"
+
+      - name: Imports de la biblioteca compartida
+        run: |
+          python -c "from cansat import indices, metrics, nodata, onnxio, checkpoints, protocol, summary, paths, seed, preprocess, crf, xbd, casualties; print('cansat importa')"
+
+      - name: El informe está al día
+        run: python generate_report.py --check || echo "::warning::docs/reporte_pruebas.md desactualizado — correr generate_report.py"
+
+  flight-deps:
+    name: Dependencias de vuelo (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: El requirements de vuelo resuelve (sin descargar torch)
+        run: |
+          python -m pip install --upgrade pip
+          # --dry-run verifica que TODAS las dependencias tengan versión
+          # instalable sin bajar 2 GB de torch/ultralytics en cada push.
+          pip install --dry-run -r requirements-flight.txt
+      - name: Las deps livianas de vuelo instalan y el script arranca
+        run: |
+          pip install numpy opencv-python-headless onnxruntime pyserial PyYAML
+          python mission_pipeline.py --help > /dev/null && echo "mission_pipeline.py --help OK"
+      - name: El protocolo y los índices importan sin torch
+        run: python -c "from cansat import protocol, indices; print('OK')"

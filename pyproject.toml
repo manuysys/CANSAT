@@ -1,0 +1,118 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CanSat LB135 — empaquetado, linting y tests
+# ═══════════════════════════════════════════════════════════════════════════
+#  ANTES NO EXISTÍA. Consecuencias:
+#   · No había linting ni formatter de Python (cero ruff/flake8/black/pre-commit).
+#     Resultado visible: indentación rota en mission_pipeline.py, imports en el
+#     medio del archivo, "← NUEVO" inline, CRLF mezclado con LF, `import sys`
+#     sin usar, variables calculadas y descartadas.
+#   · No era instalable ni importable: los 64 scripts asumen CWD = raíz.
+#   · No había dónde configurar pytest.
+# ═══════════════════════════════════════════════════════════════════════════
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cansat-lb135"
+version = "1.0.0"
+description = "Pipeline de segmentación y telemetría del CanSat La Base (CONAE 135)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Ver sección 'Licencias' del README (mezcla de CC BY 4.0 y CC BY-NC-SA 4.0 según el dataset)" }
+authors = [{ name = "Equipo CanSat La Base" }]
+
+# Dependencias mínimas para importar `cansat` y correr los tests unitarios.
+# Las de entrenamiento/vuelo están en requirements*.txt porque son pesadas y
+# específicas de plataforma (torch+CUDA no va en una Raspberry Pi).
+dependencies = [
+    "numpy>=1.24.0",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+vision = ["opencv-contrib-python>=4.8.0"]
+onnx = ["onnx>=1.16.0", "onnxruntime>=1.17.0"]
+dev = ["ruff>=0.5.0", "pytest>=8.0.0", "pytest-cov>=5.0.0"]
+
+[tool.setuptools]
+# Sólo el paquete compartido. Los 64 scripts de la raíz siguen siendo scripts:
+# moverlos a un paquete es una migración grande y está documentada como
+# propuesta en docs/MIGRACION.md, no hecha a las apuradas.
+packages = ["cansat"]
+
+# ─────────────────────────── Ruff ───────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# La raíz tiene 64 scripts históricos; excluirlos del check de complejidad no
+# tiene sentido, pero sí excluir lo generado.
+extend-exclude = [
+    "outputs", "runs", "models", "dataset", "__pycache__",
+    "venv", ".venv", "entrega", "node_modules",
+    # Código histórico congelado (ver legacy/README.md): no se toca su lógica
+    # ni su estilo. Queda fuera del lint a propósito.
+    "legacy",
+]
+
+[tool.ruff.lint]
+# Reglas elegidas para que la primera corrida sea útil y no 900 falsos positivos:
+# las que detectan bugs reales (F, E9, B, SIM, RET, PL) antes que las de estilo.
+select = [
+    "E", "W",       # pycodestyle
+    "F",            # pyflakes: imports sin usar, nombres indefinidos
+    "B",            # bugbear: bugs probables (mutable default, except amplio)
+    "C4",           # comprehensions
+    "SIM",          # simplificables
+    "RET",          # return innecesarios
+    "PL",           # pylint
+    "UP",           # pyupgrade
+    "RUF",          # ruff-specific
+]
+ignore = [
+    "E501",     # línea larga: la formatea ruff format, no el linter
+    "PLR0913",  # muchos argumentos en funciones CLI (argparse)
+    "PLR0917",  # ídem, posicionales
+    "PLR2004",  # números mágicos: el proyecto está lleno de umbrales físicos
+    "B008",     # llamada a función en default de argumento (argparse)
+    "PLW0603",  # global statement: web_server.py --root lo necesita
+    "SIM108",   # ternario: a veces el if/else es más legible
+    # ── Falsos positivos en un proyecto escrito en español ──────────────
+    "RUF001", "RUF002", "RUF003",   # "ambiguous unicode": son á/é/í/ó/ú/ñ y —
+    # ── Patrones deliberados de este proyecto ───────────────────────────
+    "PLC0415",  # imports dentro de funciones: son opcionales (torch, serial,
+                # transformers, ultralytics) y se importan tarde a propósito para
+                # que un script que no los usa pueda correr sin ellos.
+    "PLR0915", "PLR0912", "PLR0911",  # funciones largas: mission_pipeline.main()
+                # es un pipeline de vuelo lineal; partirlo en 12 funciones no lo
+                # hace más legible. Se documenta, no se ignora para siempre.
+    # ── Estilo del data pipeline (ruido, no bugs) ───────────────────────
+    "B007",     # variable de loop sin usar: los os.walk y los DataLoaders
+                # tienen firmas fijas (dirpath, dirnames, filenames).
+    "PLW2901",  # reasignar la variable del loop: patrón estándar de PyTorch
+                # (`for x, y in dl: x, y = x.to(device), y.to(device)`).
+    "SIM115",   # abrir archivos sin `with`: hay handles que se cierran en un
+                # `finally` que abarca todo el try del loop (mission_pipeline) y
+                # lecturas cortas de scripts de datos.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Los scripts de entrenamiento históricos tienen mucho print() de progreso.
+"train*.py" = ["T201"]
+"tests/*" = ["PLR2004", "B011"]
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "lf"
+
+# ─────────────────────────── pytest ───────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: tardan más de ~5 s (requieren modelos ONNX reales)",
+    "gpu: requieren CUDA",
+    "dataset: requieren el dataset LoveDA descargado",
+]

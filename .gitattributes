@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Normalización de finales de línea.
+# ═══════════════════════════════════════════════════════════════════════════
+#  El proyecto Python tenía CRLF mezclado con LF (casi todos los .py eran CRLF,
+#  algunos LF), lo que hace que cada diff de una sola línea marque el archivo
+#  entero como modificado. Con esto el repo guarda siempre LF y cada plataforma
+#  hace checkout con lo que le corresponde.
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.sh    text eol=lf
+
+# Los .bat/.cmd de Windows necesitan CRLF para funcionar.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binarios: nunca tocar.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.pb    binary
+*.pth   binary
+*.pt    binary
+*.onnx  binary
+*.npy   binary
+*.zip   binary
+*.woff2 binary

@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "mision": "LB135",
+  "n_frames": 3,
+  "alt_max_m": 250.0,
+  "alt_min_m": 244.0,
+  "veredictos": {
+    "ZONA SALUDABLE": 2,
+    "ALTO ESTRÉS URBANO": 1
+  },
+  "personas_total": 0,
+  "vehiculos_total": 0,
+  "alertas": [],
+  "danado_pct_por_frame": {
+    "4191": 27.1,
+    "4192": 0.3,
+    "4193": 6.5
+  },
+  "danado_pct_prom": 11.3,
+  "terrain_b5_por_frame": {
+    "4191": {
+      "veg": 62.0,
+      "bui": 0.2,
+      "wat": 30.0,
+      "bare": 1.0,
+      "oth": 6.9
+    },
+    "4192": {
+      "veg": 3.5,
+      "bui": 34.1,
+      "wat": 0.0,
+      "bare": 15.8,
+      "oth": 46.5
+    },
+    "4193": {
+      "veg": 39.5,
+      "bui": 1.6,
+      "wat": 23.7,
+      "bare": 3.0,
+      "oth": 32.2
+    }
+  },
+  "archivos": {
+    "rutas": {
+      "corridor_map": "entrega/corridor_map.jpg",
+      "telemetry": "outputs/mission/telemetry.csv",
+      "enhanced": null,
+      "evidencias": "outputs/mission/vis",
+      "ens_seg": "entrega/b5_seg"
+    },
+    "conteos": {
+      "vis": 38,
+      "high_res": 15,
+      "full_res": 11,
+      "thumb": 2,
+      "enhanced": 0,
+      "ens_seg": 3
+    }
+  },
+  "generado": "2026-09-17T22:06:59.395371+00:00",
+  "nota": "Post-vuelo generado por post_flight.py · ensemble B5"
+}

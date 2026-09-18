@@ -1,0 +1,70 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CanSat LB135 — dependencias de ENTRENAMIENTO (PC con GPU NVIDIA)
+# ═══════════════════════════════════════════════════════════════════════════
+#  Para la Raspberry Pi de vuelo usar requirements-flight.txt (mucho más chico
+#  y sin torch). Para el post-vuelo, requirements-postflight.txt.
+#
+#  ⚠ EL ARCHIVO ANTERIOR ESTABA MAL: decía ser "Dependencias para LoveDA
+#    segmentation pipeline" y declaraba numpy/Pillow/matplotlib/requests/tqdm/
+#    torch/torchvision/torchaudio/onnx/onnxruntime/onnxscript.
+#    Faltaban las que el código REALMENTE importa:
+#        ultralytics · opencv-python · pyserial · shapely · transformers
+#    y sobraba torchaudio, que no se usa en ningún archivo.
+#    Ver el escaneo de imports en el informe de auditoría.
+#
+#  Instalación:
+#      pip install -r requirements.txt
+#      pip install -e .            # opcional, para importar cansat desde cualquier CWD
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Núcleo numérico ────────────────────────────────────────────────────────
+numpy>=1.24.0
+Pillow>=10.0.0
+matplotlib>=3.7.0
+scipy>=1.10.0
+
+# ── Imagen ─────────────────────────────────────────────────────────────────
+# El flavour CONTRIB es obligatorio: cv2.dnn_superres (EDSR) y cv2.ximgproc
+# (guided filter del CRF-lite) NO están en opencv-python común.
+opencv-contrib-python>=4.8.0
+
+# ── Descargas de datasets ──────────────────────────────────────────────────
+requests>=2.31.0
+tqdm>=4.65.0
+
+# ── PyTorch (CUDA 12.8) ────────────────────────────────────────────────────
+# Se fija la rueda con CUDA porque las ruedas por defecto de PyPI en Linux
+# vienen sin CUDA. En una PC sin NVIDIA usar:
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+# torchaudio QUITADO: no se importa en ningún archivo del proyecto.
+
+# ── Segmentación / transformers ────────────────────────────────────────────
+# Usado por train_segformer_b5.py, export_onnx.py --arch segformer y
+# distill_terrain.py. NO estaba declarado.
+transformers>=4.40.0
+
+# ── Detección ──────────────────────────────────────────────────────────────
+# Usado por mission_pipeline.py, detect_people.py y visdrone_*.py.
+# NO estaba declarado, y pi/guia_pi.md tampoco lo instalaba en la Pi: por eso
+# el script de vuelo no arrancaba.
+ultralytics>=8.2.0
+
+# ── Geometría (xBD) ────────────────────────────────────────────────────────
+# Usado por inspect_xbd.py y rasterize_xbd.py para parsear WKT. NO estaba declarado.
+shapely>=2.0.0
+
+# ── ONNX ───────────────────────────────────────────────────────────────────
+onnx>=1.16.0
+onnxruntime>=1.17.0
+onnxscript>=0.1.0
+
+# ── Config / calidad ───────────────────────────────────────────────────────
+PyYAML>=6.0            # generate_report.py lee docs/decisiones.yaml
+ruff>=0.5.0            # lint + format (ver pyproject.toml)
+pytest>=8.0.0          # tests/ (antes el proyecto no tenía NINGÚN test)
+
+# ── Opcionales, no declarados antes ────────────────────────────────────────
+# pyserial>=3.5        # uart_listener.py / sim_uart.py — va en requirements-flight.txt

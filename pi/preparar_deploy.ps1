@@ -1,0 +1,92 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  preparar_deploy.ps1 — arma dist_pi/ con lo mínimo para la Raspberry Pi
+# ═══════════════════════════════════════════════════════════════════════════
+#  Corre en la PC (Windows, PowerShell). NO toca los originales de outputs/:
+#   · genera los modelos AUTOCONTENIDOS (sin .onnx.data) con tools/onnx_inline.py
+#     porque OpenCV DNN (backend de la Pi Zero v1) no lee pesos externos;
+#   · copia el paquete cansat/, los scripts de vuelo y pi/;
+#   · deja listo el comando scp para copiar a la Pi.
+#
+#  Uso:
+#     powershell -ExecutionPolicy Bypass -File pi\preparar_deploy.ps1
+#     powershell -ExecutionPolicy Bypass -File pi\preparar_deploy.ps1 -Todos
+#     powershell -ExecutionPolicy Bypass -File pi\preparar_deploy.ps1 -Destino C:\temp\pi
+# ═══════════════════════════════════════════════════════════════════════════
+param(
+    [switch]$Todos,                # incluir TODOS los modelos (daño, flood, siamés)
+    [string]$Destino = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+$Root = Split-Path -Parent $PSScriptRoot          # raíz del proyecto
+if (-not (Test-Path (Join-Path $Root "mission_pipeline.py"))) {
+    throw "No encuentro mission_pipeline.py en $Root. Corré el script desde el repo."
+}
+$Dist = if ($Destino) { $Destino } else { Join-Path $Root "dist_pi" }
+
+Write-Host "══ Deploy para Raspberry Pi ══" -ForegroundColor Cyan
+Write-Host "  proyecto : $Root"
+Write-Host "  destino  : $Dist"
+
+# ── 1. Modelos autocontenidos ────────────────────────────────────────────────
+# Por defecto van el de terreno (vuelo) y el flood re-entrenado (pasa la
+# auditoría IMX500 y es liviano). Con -Todos se agregan daño/two-stage/siamés
+# (sólo útiles si la placa mide bien; ver pi/guia_pi.md paso 6).
+$Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist.onnx")
+if ($Todos) {
+    $Modelos += @(
+        "cansat_damage3_mobilenetv2.onnx",
+        "cansat_damage_v3.onnx",
+        "cansat_siamese_damage.onnx"
+    )
+}
+$ModelosExistentes = @()
+foreach ($m in $Modelos) {
+    if (Test-Path (Join-Path $Root "outputs\$m")) { $ModelosExistentes += "outputs\$m" }
+    else { Write-Host "  [WARN] no existe outputs\$m (se saltea)" -ForegroundColor Yellow }
+}
+if (-not $ModelosExistentes) { throw "No hay ningún modelo para empaquetar en outputs/." }
+
+Write-Host "`n── Empotrando pesos externos ──" -ForegroundColor Cyan
+$OutModelos = Join-Path $Dist "outputs"
+New-Item -ItemType Directory -Force -Path $OutModelos | Out-Null
+Push-Location $Root
+try {
+    & python tools\onnx_inline.py @ModelosExistentes --out-dir $OutModelos
+    if ($LASTEXITCODE -ne 0) { throw "onnx_inline.py falló (exit $LASTEXITCODE)" }
+} finally { Pop-Location }
+
+# ── 2. Código ────────────────────────────────────────────────────────────────
+Write-Host "`n── Copiando código ──" -ForegroundColor Cyan
+$Archivos = @(
+    "mission_pipeline.py", "adaptive_sampler.py", "inference.py",
+    "uart_listener.py", "sim_uart.py", "requirements-flight.txt"
+)
+foreach ($f in $Archivos) {
+    Copy-Item (Join-Path $Root $f) -Destination $Dist -Force
+}
+Copy-Item (Join-Path $Root "cansat") -Destination $Dist -Recurse -Force
+Copy-Item (Join-Path $Root "pi")     -Destination $Dist -Recurse -Force
+# Limpiar cachés de Python que se cuelan con -Recurse.
+Get-ChildItem -Path $Dist -Recurse -Directory -Filter "__pycache__" |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+# ── 3. Baseline (opcional, para el siamés) ───────────────────────────────────
+$Baseline = Join-Path $Root "outputs\baseline.png"
+if (Test-Path $Baseline) {
+    Copy-Item $Baseline -Destination $OutModelos -Force
+    Write-Host "  baseline.png copiado (siamés habilitado)"
+} else {
+    Write-Host "  [i] sin outputs/baseline.png: el siamés no se usará" -ForegroundColor DarkGray
+}
+
+# ── 4. Resumen ───────────────────────────────────────────────────────────────
+$Peso = (Get-ChildItem $Dist -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB
+Write-Host "`n✔ dist_pi listo: $([math]::Round($Peso,1)) MB en $Dist" -ForegroundColor Green
+Write-Host "  Contenido:"
+Get-ChildItem $Dist | ForEach-Object { Write-Host "    $($_.Name)" }
+Write-Host "`nCopiar a la Pi (ajustá usuario/IP):" -ForegroundColor Cyan
+Write-Host "  scp -r `"$Dist\*`" pi@cansat.local:/home/pi/cansat_seg_poc/"
+Write-Host "`nEn la Pi, después de copiar:"
+Write-Host "  cd ~/cansat_seg_poc && bash pi/instalar_en_pi.sh"
