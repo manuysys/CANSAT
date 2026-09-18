@@ -1,4 +1,4 @@
-# ═══════════════════════════════════════════════════════════════════════════
+﻿# ═══════════════════════════════════════════════════════════════════════════
 #  preparar_deploy.ps1 — arma dist_pi/ con lo mínimo para la Raspberry Pi
 # ═══════════════════════════════════════════════════════════════════════════
 #  Corre en la PC (Windows, PowerShell). NO toca los originales de outputs/:
@@ -37,6 +37,8 @@ Write-Host "  destino  : $Dist"
 $Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist_224.onnx")
 if ($Todos) {
     $Modelos += @(
+        "cansat_seg_terrain_v2_224.onnx",
+        "cansat_seg_terrain_tiny_224.onnx",
         "cansat_damage3_mobilenetv2.onnx",
         "cansat_damage_v3_bal.onnx",
         "cansat_siamese_damage.onnx"

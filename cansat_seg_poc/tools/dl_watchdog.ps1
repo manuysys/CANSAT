@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$IdleSeconds = 300,
     [int]$EverySeconds = 60
 )
