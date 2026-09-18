@@ -362,6 +362,35 @@ vuelo:
       INCENDIO/HUMO EXTENSO en el diagnóstico. La estación las lee
       (web_server CSV_COLUMNS + types.ts) y el demo las simula.
 
+  severidad:
+    # F2b (2026-09-18): 5 niveles para medir la fracción de colapso (el
+    # "según su magnitud" del DPD) y reemplazar el supuesto 0.3 de casualties.
+    onnx: "outputs/cansat_severity.onnx"
+    checkpoint: "outputs/best_severity.pth"
+    entrenado_por: "train_severity.py --epochs 10 (cortado en la época 4 por tiempo; el mejor checkpoint quedó)"
+    exportado_por: "python export_onnx.py --arch damage --num-classes 5 --checkpoint outputs/best_severity.pth --output outputs/cansat_severity.onnx --img-size 320"
+    arquitectura: "DeepLabV3+ MobileNetV2, 5 clases"
+    clases: 5
+    nombres_clases: [other, intacto, menor, mayor, destruido]
+    entrada: "[1, 3, 320, 320]"
+    dataset: "RescueNet (máscaras originales de severidad, recortadas por las coordenadas del nombre del tile)"
+    licencia: "RescueNet: investigación"
+    estado: "VUELA (opcional; si está, el colapso de casualties es MEDIDO)"
+    metricas:
+      iou_colapso_edificios: 0.575    # (mayor + destruido) sobre edificios — la métrica que alimenta casualties
+      iou_intacto: 0.550
+      iou_menor: 0.381
+      iou_mayor: 0.303
+      iou_destruido: 0.481
+      fuente: "mejor época (4) del val de RescueNet (2093 tiles)"
+    notas: |
+      La fracción de colapso medida es (mayor+destruido)/(cualquier edificio)
+      del frame; el pipeline la pasa a `casualties.estimar(..., 
+      collapse_frac_medido=...)` y la telemetría registra `colapso_pct` +
+      `colapso_fuente` ("medido"/"supuesto"). Entrenamiento cortado en la época
+      4 (cada época tarda ~10 min porque decodifica las imágenes originales
+      3000×4000); el ONNX pasa la auditoría IMX500.
+
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"
     framework: "ultralytics"

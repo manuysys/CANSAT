@@ -72,6 +72,8 @@ CSV_COLUMNS = [
     "fire_pct", "smoke_pct",
     # Estrés ambiental (2026-09-18): bruma por imagen + calor por sensores
     "haze_pct", "humidex", "stress_idx",
+    # Severidad (2026-09-18): fracción de colapso medida (vacío = supuesto)
+    "colapso_pct",
 ]
 
 # Campos numéricos -> float. El resto se deja como string.
@@ -81,6 +83,7 @@ FLOAT_FIELDS = {
     "usi", "ndvi", "danado_pct", "aff_m2", "sharp", "sample_score",
     "lat", "lon", "hum_pct", "personas_afectadas", "perdidas_est",
     "fire_pct", "smoke_pct", "haze_pct", "humidex", "stress_idx",
+    "colapso_pct",
 }
 INT_FIELDS = {"people", "vehicles", "alert", "area_m2"}
 

@@ -36,6 +36,28 @@ def test_banda_de_incertidumbre():
     assert e.perdidas_max == pytest.approx(e.perdidas_estimadas * hi, rel=1e-6)
 
 
+def test_colapso_medido_reemplaza_el_supuesto():
+    """F2b: con severidad disponible, la fracción de colapso es medida."""
+    s = Supuestos()
+    e_sup = estimar(danado_pct=50.0, area_m2=10_000.0, supuestos=s)
+    e_med = estimar(danado_pct=50.0, area_m2=10_000.0, supuestos=s,
+                    collapse_frac_medido=0.6)
+    assert e_sup.colapso_fuente == "supuesto"
+    assert e_sup.colapso_usado == pytest.approx(s.collapse_frac)
+    assert e_med.colapso_fuente == "medido"
+    assert e_med.colapso_usado == pytest.approx(0.6)
+    # 0.6 / 0.3 = 2 → el doble de pérdidas con el colapso medido (con redondeo)
+    assert e_med.perdidas_estimadas == pytest.approx(
+        e_sup.perdidas_estimadas * 2.0, abs=0.02)
+
+
+def test_colapso_medido_se_acota_a_0_1():
+    e = estimar(danado_pct=50.0, area_m2=10_000.0, collapse_frac_medido=1.7)
+    assert e.colapso_usado == pytest.approx(1.0)
+    e2 = estimar(danado_pct=50.0, area_m2=10_000.0, collapse_frac_medido=-0.2)
+    assert e2.colapso_usado == pytest.approx(0.0)
+
+
 def test_area_cero_no_divide_ni_explota():
     e = estimar(danado_pct=80.0, area_m2=0.0)
     assert e.personas_afectadas == 0.0 and e.perdidas_estimadas == 0.0

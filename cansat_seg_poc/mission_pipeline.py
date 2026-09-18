@@ -149,6 +149,7 @@ CSV_COLUMNS = [
     "haze_pct",             # bruma/aerosoles por dark channel (estrés ambiental)
     "humidex",              # calor con T y humedad del sensor (estrés térmico)
     "stress_idx",           # índice agregado 0-100 (bruma 50 % + calor 25 % + urbano 25 %)
+    "colapso_pct",          # fracción de colapso MEDIDA (severidad; vacío = supuesto)
 ]
 
 # IDs de clase COCO. Se validan contra ``model.names`` en runtime: antes estaban
@@ -490,6 +491,10 @@ def build_parser():
     mod.add_argument("--fire-onnx", default="outputs/cansat_fire_smoke.onnx",
                      help="detector de fuego/humo (F3 2026-09-18, media IoU "
                           "0.762). Opcional: si falta, no se usa.")
+    mod.add_argument("--severity-onnx", default="outputs/cansat_severity.onnx",
+                     help="severidad del daño (5 clases, F2b 2026-09-18). Si "
+                          "está, la fracción de colapso es MEDIDA y reemplaza "
+                          "el supuesto 0.3 de casualties. Opcional.")
     mod.add_argument("--no-stress", action="store_true",
                      help="apagar el estrés ambiental por imagen (bruma/dark "
                           "channel); el humidex usa igual los sensores")
@@ -673,7 +678,7 @@ def main(argv=None):
         cv2.setNumThreads(1)
 
     damage_on = not args.no_damage
-    sess_d = sess_d2 = sess_siam = sess_f = sess_fire = None
+    sess_d = sess_d2 = sess_siam = sess_f = sess_fire = sess_sev = None
     if damage_on:
         sess_d = onnxio.load_required(args.damage_onnx, "daño principal",
                                       hint="Corré export_damage_onnx.py.")
@@ -685,6 +690,7 @@ def main(argv=None):
             print("  [i] Siamés desactivado (pesos ROTO; ver --siamese-onnx).")
         sess_f = onnxio.load_optional(args.flood_onnx, "flood specialist")
         sess_fire = onnxio.load_optional(args.fire_onnx, "fuego/humo")
+        sess_sev = onnxio.load_optional(args.severity_onnx, "severidad")
 
     # ── Detección: backend ──────────────────────────────────────────────
     det_backend = args.det_backend
@@ -742,7 +748,8 @@ def main(argv=None):
               f"two-stage={Path(args.damage2_onnx).name}")
         print(f"                 siamés={'ON' if sess_siam else 'OFF'} "
               f"flood={'ON' if sess_f else 'OFF'} "
-              f"fuego/humo={'ON' if sess_fire else 'OFF'}")
+              f"fuego/humo={'ON' if sess_fire else 'OFF'} "
+              f"severidad={'ON' if sess_sev else 'OFF'}")
     print(f"  Detección    : {'OFF' if det_backend == 'none' else det_backend}"
           + (f" · {args.det_model}" if det_backend == "yolo" else "")
           + (f" · {Path(args.imx500_model).name}" if det_backend == "imx500" else ""))
@@ -1002,6 +1009,7 @@ def main(argv=None):
             pct_dan2_edif = None
             pct_flood = pct_fw = None
             pct_fire = pct_smoke = None
+            colapso_pct = None
             dan_max = 0.0
             if damage_on:
                 t_dmg = time.perf_counter()
@@ -1060,6 +1068,19 @@ def main(argv=None):
                     pct_fire = float(((pred_fire == 1) & valid_fire).sum()) / n_valid_fire * 100.0
                     pct_smoke = float(((pred_fire == 2) & valid_fire).sum()) / n_valid_fire * 100.0
 
+                # Severidad (F2b): fracción de colapso MEDIDA para casualties.
+                # colapso = (mayor + destruido) / (cualquier edificio) del
+                # modelo de severidad. Reemplaza el supuesto 0.3 cuando existe.
+                if sess_sev:
+                    size_sev = sess_sev.size_px or args.img_size
+                    tensor_sev = (tensor if size_sev == args.img_size
+                                  else PP.preprocess_bgr(bgr, size_sev))
+                    pred_sev = np.argmax(
+                        sess_sev.run({"input": tensor_sev})[0], axis=0)
+                    n_edif_sev = int((pred_sev >= 1).sum())
+                    if n_edif_sev:
+                        colapso_pct = float((pred_sev >= 3).sum()) / n_edif_sev * 100.0
+
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)
                 ms_dmg = (time.perf_counter() - t_dmg) * 1000.0
@@ -1080,7 +1101,10 @@ def main(argv=None):
             # posibles pérdidas humanas resultantes").
             area_frame_m2 = ground_area_m2(alt)
             aff_m2 = area_frame_m2 * dan_max / 100.0
-            est = estimar_perdidas(dan_max, area_frame_m2, supuestos)
+            est = estimar_perdidas(
+                dan_max, area_frame_m2, supuestos,
+                collapse_frac_medido=(colapso_pct / 100.0
+                                      if colapso_pct is not None else None))
 
             # ── Muestreo adaptativo ─────────────────────────────────────
             if sampler is not None:
@@ -1150,6 +1174,8 @@ def main(argv=None):
                 "perdidas_est": est.perdidas_estimadas,
                 "perdidas_min": est.perdidas_min,
                 "perdidas_max": est.perdidas_max,
+                "colapso_pct": _rnum(colapso_pct),
+                "colapso_fuente": est.colapso_fuente,
                 "lat": round(lat_f, 5), "lon": round(lon_f, 5),
                 "diag": diag, "alert": alert,
                 "sharp": round(sharp, 1), "sharp_ok": bool(sharp_ok),
@@ -1185,6 +1211,7 @@ def main(argv=None):
                 (haze["haze_pct"] if haze else ""),
                 (hx if hx is not None else ""),
                 (env.get("stress_idx") if env.get("stress_idx") is not None else ""),
+                (round(colapso_pct, 1) if colapso_pct is not None else ""),
             ])
             csvf.flush()
 

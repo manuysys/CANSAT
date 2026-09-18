@@ -82,6 +82,8 @@ class EstimacionPerdidas:
     perdidas_min: float              # banda inferior
     perdidas_max: float              # banda superior
     supuestos: Supuestos
+    colapso_usado: float = COLLAPSE_FRAC_DEFAULT   # fracción aplicada
+    colapso_fuente: str = "supuesto"               # "medido" | "supuesto"
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -98,6 +100,7 @@ def estimar(
     danado_pct: float,
     area_m2: float,
     supuestos: Supuestos | None = None,
+    collapse_frac_medido: float | None = None,
 ) -> EstimacionPerdidas:
     """
     Estimación para un frame.
@@ -105,17 +108,28 @@ def estimar(
     ``danado_pct`` es el % de superficie dañada (el ``danado_max_pct`` del
     consenso, ya normalizado por píxeles válidos). ``area_m2`` es la huella en
     tierra del frame (``mission_pipeline.ground_area_m2``).
+
+    ``collapse_frac_medido`` (0–1) reemplaza el supuesto fijo 0.3 cuando el
+    modelo de severidad está disponible: es la fracción de edificios dañados
+    que quedaron en colapso (mayor + destrucción total). El DPD pide estimar
+    las pérdidas "según su magnitud" — con esto la magnitud es medida.
     """
     s = supuestos or Supuestos()
     danado_pct = max(0.0, min(100.0, float(danado_pct)))
     area_m2 = max(0.0, float(area_m2))
+
+    if collapse_frac_medido is None:
+        colapso, fuente = s.collapse_frac, "supuesto"
+    else:
+        colapso = max(0.0, min(1.0, float(collapse_frac_medido)))
+        fuente = "medido"
 
     area_km2 = area_m2 / 1e6
     frac = danado_pct / 100.0
 
     expuestas = s.pop_density * area_km2 * s.occupancy
     afectadas = expuestas * frac
-    perdidas = afectadas * s.collapse_frac * s.fatality
+    perdidas = afectadas * colapso * s.fatality
     lo, hi = _banda(perdidas)
     return EstimacionPerdidas(
         area_relevada_m2=round(area_m2, 1),
@@ -126,6 +140,8 @@ def estimar(
         perdidas_min=round(lo, 2),
         perdidas_max=round(hi, 2),
         supuestos=s,
+        colapso_usado=round(colapso, 4),
+        colapso_fuente=fuente,
     )
 
 

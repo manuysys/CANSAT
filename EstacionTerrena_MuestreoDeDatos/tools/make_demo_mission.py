@@ -707,7 +707,10 @@ def main(argv=None) -> int:
                "collapse_frac": 0.3, "fatality": 0.1}
         expuestas = sup["pop_density"] * (area_m2 / 1e6) * sup["occupancy"]
         afectadas = expuestas * (danado / 100.0)
-        perdidas = afectadas * sup["collapse_frac"] * sup["fatality"]
+        # Severidad (misma idea que cansat_severity.onnx): fracción de colapso
+        # medida sobre los edificios dañados; reemplaza el 0.3 fijo.
+        colapso_pct = round(min(95.0, max(0.0, danado * rng.uniform(0.15, 0.45))), 1)
+        perdidas = afectadas * (colapso_pct / 100.0) * sup["fatality"]
 
         # Estrés ambiental (mismas fórmulas que cansat/stress.py): bruma
         # simulada (sube al descender) y humidex real con T y humedad del frame.
@@ -742,6 +745,8 @@ def main(argv=None) -> int:
             "smoke_pct": round(fracs["fire"] * 0.45 + rng.uniform(0.0, 2.0), 1),
             # Estrés ambiental: bruma + humidex + índice agregado
             "haze_pct": haze, "humidex": hx, "stress_idx": stress,
+            # Severidad: colapso medido
+            "colapso_pct": colapso_pct,
             # internos (no van al CSV)
             "_expuestas": round(expuestas, 1),
             "_cls_res": cls_high,
@@ -783,7 +788,9 @@ def main(argv=None) -> int:
             # F3: fuego/humo
             "fire_pct", "smoke_pct",
             # Estrés ambiental
-            "haze_pct", "humidex", "stress_idx"]
+            "haze_pct", "humidex", "stress_idx",
+            # Severidad
+            "colapso_pct"]
     with csv_path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()

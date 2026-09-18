@@ -264,7 +264,10 @@ def export(checkpoint_path: str, output_path: str, arch: str,
     # Los nombres de clase dependen de la tarea: el modelo de daño NO usa las
     # clases de terreno (antes imprimía vegetation/building/water para daño).
     if arch == "damage":
-        nombres = ["other", "intacto", "danado"][:num_classes]
+        # El modelo de daño tiene 3 clases; el de severidad (F2b) usa 5.
+        nombres = (["other", "intacto", "menor", "mayor", "destruido"]
+                   if num_classes == 5
+                   else ["other", "intacto", "danado"][:num_classes])
     else:
         nombres = list(IDX.CLASS_NAMES)[:num_classes]
     print(f"  Clases: {nombres}")

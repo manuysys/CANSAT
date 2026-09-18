@@ -61,6 +61,8 @@ export interface Frame {
   haze_pct?: number | null
   humidex?: number | null
   stress_idx?: number | null
+  /* Severidad: fracción de colapso medida (null = supuesto) */
+  colapso_pct?: number | null
   _idx: number
   files?: FrameFiles
   [extra: string]: unknown
