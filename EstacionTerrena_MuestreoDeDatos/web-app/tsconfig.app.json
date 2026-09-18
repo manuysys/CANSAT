@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "allowArbitraryExtensions": true,
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "paths": { "@/*": ["./src/*"] },
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* ── Type checking ─────────────────────────────────────────────────
+       ARREGLADO: `strict` NO estaba activado en NINGÚN tsconfig del proyecto.
+       Todo el código está escrito como si `strictNullChecks` estuviera on
+       (`number | null` por todos lados, `f.files?.enhanced`, guards de null),
+       pero el compilador no lo verificaba: el tipado de nulos era decorativo.
+       Con `strict: true` el compilador pasa a exigir lo que el código ya
+       aparentaba hacer. */
+    "strict": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}

@@ -1,104 +1,23 @@
 # ============================================================================
-#  CanSat LB135
+#  Repositorio CANSAT — reglas de la RAÍZ
 # ============================================================================
-#  ⚠ ESTE ARCHIVO NO EXISTÍA. Por eso el ZIP de entrega pesaba 2.7 GB de los
-#    cuales ~200 KB eran código fuente: se estaban versionando outputs/ (2.3 GB),
-#    .git/ (617 MB, corrupto), models/ (112 MB), runs/ (37 MB) y __pycache__/.
-#
-#  Los pesos que hacen falta para volar NO van en el working tree: van a Git LFS
-#  o a un release/artefacto, y MODELS.yaml registra de dónde sale cada uno.
+#  Cada proyecto tiene su propio .gitignore con sus reglas (y se respetan):
+#    · cansat_seg_poc/.gitignore
+#    · EstacionTerrena_MuestreoDeDatos/.gitignore
+#  Acá van solo los temporales de sistema/editor del nivel raíz.
 # ============================================================================
 
-# ── Artefactos de entrenamiento e inferencia ────────────────────────────────
-# ⚠ ``outputs/`` a secas NO funciona con la excepción de metrics/: git no
-#   desciende a un directorio ignorado, así que ``!outputs/metrics/*.json``
-#   nunca rescataba nada. Hay que ignorar el contenido (``outputs/*``) y
-#   re-incluir el subdirectorio.
-outputs/*
-!outputs/metrics/
-runs/
-wandb/
-*.pth
-*.pt
-*.onnx
-*.onnx.data
-*.pak
-*.tflite
-*.npy
-*.npz
-
-# Excepciones: lo que SÍ debe viajar en el repo.
-!class_weights_*.npy.example
-
-# ── Modelos preentrenados descargados ───────────────────────────────────────
-models/
-!models/README.md
-
-# ── Datasets (no se versionan; ver download_loveda.py / README) ─────────────
-# ⚠ ``datasets/`` (con s) es VisDrone: 3.6 GB. Faltaba y el dry-run lo quería
-#   commitear (17 260 archivos).
-dataset/
-datasets/
-*.zip
-*.tar
-*.tar.gz
-
-# ── Python ──────────────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-dist/
-*.egg-info/
-.eggs/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
-htmlcov/
-
-# ── Entornos virtuales ──────────────────────────────────────────────────────
-venv/
-.venv/
-env/
-ENV/
-
-# ── Node (estación terrena) ─────────────────────────────────────────────────
-node_modules/
-web-app/dist/
-web-app/dist-ssr/
-*.local
-
-# ── Editor / SO ─────────────────────────────────────────────────────────────
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Sistema / editor
 .DS_Store
 Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/*
+!.vscode/extensions.json
+.idea/
 
-# ── Logs y temporales ───────────────────────────────────────────────────────
-*.log
-logs/
+# Temporales sueltos en la raíz
 *.tmp
-tmp_obj_*
 *.bak
 *_BACKUP*
-*_BACKUP2*
-
-# Deploy armado por pi/preparar_deploy.ps1 (regenerable)
-dist_pi/
-
-# ── Secretos / configuración local ──────────────────────────────────────────
-.env
-.env.*
-!.env.example
-*.pem
-kaggle.json

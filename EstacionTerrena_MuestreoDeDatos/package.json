@@ -1,0 +1,16 @@
+{
+  "name": "lb135-estacion-terrena-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Herramientas de ops de la estación terrena LB135: smoke E2E, simulacro y demo sintética. No es la app (esa vive en web-app/).",
+  "scripts": {
+    "smoke": "node tools/smoke-v4.mjs",
+    "smoke:legacy": "node tools/smoke.mjs",
+    "demo": "python tools/make_demo_mission.py",
+    "sim": "python tools/simulacro.py"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

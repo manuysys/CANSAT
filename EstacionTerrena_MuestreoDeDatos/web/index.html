@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Estación Terrena · CanSat LB135</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SPRITE SVG — iconos monocromos (currentColor), sin emoji ni CDNs
+     ══════════════════════════════════════════════════════════════════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="_base" fill="none" stroke="currentColor" stroke-width="1.7"
+       stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-sat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.2"/>
+    <path d="M2.5 10.2h4.6v3.6H2.5zM16.9 10.2h4.6v3.6h-4.6z"/>
+    <path d="M12 9.2V6.4M12 17.6v-2.8M9.6 6.4h4.8"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 11a8 8 0 1 0-2.5 6.5"/><polyline points="20 4.5 20 11 13.5 11"/>
+  </symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="2.5 12 6.5 12 9.5 5.5 14.5 18.5 17.5 12 21.5 12"/>
+  </symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 2.5h8.5L19 7v14.5H6z"/><polyline points="14.5 2.5 14.5 7 19 7"/>
+    <line x1="9" y1="12" x2="16" y2="12"/><line x1="9" y1="16" x2="16" y2="16"/>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <polygon points="7 4.5 19.5 12 7 19.5"/>
+  </symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9.5 12 15.5 18 9.5"/>
+  </symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5 22 20H2z"/><line x1="12" y1="10" x2="12" y2="14.5"/><line x1="12" y1="17.2" x2="12" y2="17.4"/>
+  </symbol>
+  <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6.5 9 6.5 3 17.5 3 17.5 9"/>
+    <path d="M6.5 18H4.5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h15a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+    <rect x="6.5" y="14" width="11" height="7.5"/>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+    <line x1="5.5" y1="5.5" x2="18.5" y2="18.5"/><line x1="18.5" y1="5.5" x2="5.5" y2="18.5"/>
+  </symbol>
+  <symbol id="i-frames" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.5" y="6.5" width="13" height="10" rx="1.5"/>
+    <path d="M20.5 8.5v7M17.5 5.5h1a2 2 0 0 1 2 2"/>
+  </symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="8" r="3.2"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/>
+    <circle cx="17.2" cy="9.2" r="2.5"/><path d="M16.4 14.6a5.4 5.4 0 0 1 4.8 5.4"/>
+  </symbol>
+  <symbol id="i-descend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="2.5 6.5 9.5 13.5 13.5 9.5 21.5 17.5"/><polyline points="15.5 17.5 21.5 17.5 21.5 11.5"/>
+  </symbol>
+  <symbol id="i-dmg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="13 2.5 4 13.5 11 13.5 10 21.5 20 10.5 13 10.5"/>
+  </symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4.5" y1="12" x2="19" y2="12"/><polyline points="13.5 6.5 19 12 13.5 17.5"/>
+  </symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="19.5" y1="12" x2="5" y2="12"/><polyline points="10.5 6.5 5 12 10.5 17.5"/>
+  </symbol>
+</svg>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     HEADER MÍNIMO — identidad, vistas, estado y tres acciones
+     ══════════════════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" aria-hidden="true"><use href="#i-sat"/></svg>
+    <h1>Estación Terrena</h1>
+    <span class="mission-chip" id="missionId">LB135</span>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Vistas de la misión">
+    <button class="tab is-active" role="tab" id="tab-vuelo" aria-selected="true"
+            aria-controls="view-vuelo" data-view="vuelo">Vuelo</button>
+    <button class="tab" role="tab" id="tab-post" aria-selected="false"
+            aria-controls="view-post" data-view="post">Post-vuelo</button>
+    <button class="tab" role="tab" id="tab-informe" aria-selected="false"
+            aria-controls="view-informe" data-view="informe">Informe</button>
+  </nav>
+
+  <div class="top-actions">
+    <span class="conn" id="connDot" title="Estado del enlace con el servidor"><i></i></span>
+    <span class="clock" id="clock" title="Hora local">--:--:--</span>
+    <button type="button" class="btn" id="btnRefresh" title="Sincronizar ahora (R)">
+      <svg aria-hidden="true"><use href="#i-refresh"/></svg>
+    </button>
+    <button type="button" class="btn is-on" id="btnAuto" title="Auto-refresh cada 3 s (P)" aria-pressed="true">
+      <svg aria-hidden="true"><use href="#i-pulse"/></svg><span>Auto</span>
+    </button>
+    <button type="button" class="btn" id="btnInforme" title="Ir al informe imprimible (I)">
+      <svg aria-hidden="true"><use href="#i-doc"/></svg><span>Informe</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     VISTA 1 · VUELO — la misión en una pantalla
+     ══════════════════════════════════════════════════════════════════════ -->
+<section class="view" id="view-vuelo" role="tabpanel" aria-labelledby="tab-vuelo">
+
+  <!-- KPIs: cinco números, nada más -->
+  <section class="kpis" aria-label="Indicadores clave">
+    <article class="kpi"><svg aria-hidden="true"><use href="#i-frames"/></svg>
+      <span class="kpi-val" id="kpiFrames">—</span><span class="kpi-lbl">frames</span></article>
+    <article class="kpi" id="kpiAlertCard"><svg class="ic-warn" aria-hidden="true"><use href="#i-warn"/></svg>
+      <span class="kpi-val" id="kpiAlerts">—</span><span class="kpi-lbl">alertas</span></article>
+    <article class="kpi"><svg aria-hidden="true"><use href="#i-users"/></svg>
+      <span class="kpi-val" id="kpiDetect">—</span><span class="kpi-lbl">personas / vehículos</span></article>
+    <article class="kpi"><svg aria-hidden="true"><use href="#i-descend"/></svg>
+      <span class="kpi-val" id="kpiAlt">—</span><span class="kpi-lbl">altitud max → min</span></article>
+    <article class="kpi"><svg aria-hidden="true"><use href="#i-dmg"/></svg>
+      <span class="kpi-val" id="kpiDmg">—</span><span class="kpi-lbl">daño promedio</span></article>
+  </section>
+
+  <!-- La historia en una curva: daño vs altitud -->
+  <section class="panel story">
+    <div class="panel-hd">
+      <h2>Daño durante el descenso</h2>
+      <div class="panel-tools">
+        <span class="hint" id="sparkHint">altitud 250 m → 0 m</span>
+        <button type="button" class="btn btn-ghost" id="btnPresent" title="Recorrer la misión en pantalla completa">
+          <svg aria-hidden="true"><use href="#i-play"/></svg><span>Presentar</span>
+        </button>
+      </div>
+    </div>
+    <div class="spark" id="sparkWrap">
+      <svg id="spark" role="img" aria-label="Daño porcentual en función de la altitud"></svg>
+      <div class="spark-tip" id="sparkTip" hidden></div>
+      <p class="empty-line" id="sparkEmpty" hidden>Sin telemetría todavía: la curva aparece con el primer frame.</p>
+    </div>
+  </section>
+
+  <!-- Tres columnas: descenso · detalle protagonista · alertas -->
+  <div class="vgrid">
+
+    <!-- Izquierda: corredor vertical, eje Y = altitud -->
+    <section class="panel col-descenso" aria-label="Corredor de descenso">
+      <div class="panel-hd">
+        <h2>Descenso</h2>
+        <small id="descCount">altitud (m)</small>
+      </div>
+      <div class="descent" id="descentScroll">
+        <div class="descent-canvas" id="descentCanvas"></div>
+        <div class="empty-line" id="descEmpty" hidden>
+          Sin frames cargados. El corredor se dibuja solo cuando llegue telemetría.
+        </div>
+      </div>
+    </section>
+
+    <!-- Centro: el protagonista -->
+    <section class="panel col-detalle" id="detailPanel" aria-label="Detalle del frame">
+      <div class="panel-hd">
+        <h2 id="dtTitle">Ningún frame seleccionado</h2>
+        <div class="panel-tools">
+          <span class="badge" id="dtPri" hidden>—</span>
+          <span class="flag-alert" id="dtAlert" hidden><svg aria-hidden="true"><use href="#i-warn"/></svg>alerta</span>
+          <span class="stepper">
+            <button type="button" class="btn-icon" id="dtPrev" title="Frame anterior (←)"><svg aria-hidden="true"><use href="#i-arrow-l"/></svg></button>
+            <span class="hint" id="dtPos">—</span>
+            <button type="button" class="btn-icon" id="dtNext" title="Frame siguiente (→)"><svg aria-hidden="true"><use href="#i-arrow-r"/></svg></button>
+          </span>
+        </div>
+      </div>
+
+      <!-- Tabs de imagen: solo las que existen -->
+      <div class="imgtabs" id="imgTabs" hidden role="tablist" aria-label="Variantes de imagen"></div>
+
+      <figure class="shot">
+        <img id="dtImg" alt="Frame de la misión" hidden>
+        <div class="shot-empty" id="dtEmpty">
+          <svg aria-hidden="true"><use href="#i-frames"/></svg>
+          <p id="dtEmptyTxt">Seleccioná un frame del corredor, la tabla o las alertas.</p>
+        </div>
+        <figcaption class="shot-cap" id="dtCaption" hidden></figcaption>
+      </figure>
+
+      <div class="metrics" id="dtMetrics" hidden>
+        <section class="m-block">
+          <h3>Terreno</h3>
+          <div class="bars" id="dtTerrain"></div>
+        </section>
+        <section class="m-block">
+          <h3>Ambiente</h3>
+          <div class="kv" id="dtEnv"></div>
+          <div class="verdict" id="dtVerdict">—</div>
+        </section>
+        <section class="m-block">
+          <h3>Daño</h3>
+          <div class="kv" id="dtDamage"></div>
+          <div class="diag" id="dtDiag">—</div>
+        </section>
+        <section class="m-block">
+          <h3>Sampler</h3>
+          <div class="kv" id="dtSampler"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Derecha: alertas, solo si existen -->
+    <aside class="panel col-alertas" id="alertsPanel" hidden aria-label="Alertas de la misión">
+      <div class="panel-hd">
+        <h2>Alertas</h2>
+        <small id="alertCount">0</small>
+        <button type="button" class="btn-icon" id="btnAlertCollapse" title="Colapsar / expandir" aria-expanded="true">
+          <svg aria-hidden="true"><use href="#i-chev"/></svg>
+        </button>
+      </div>
+      <div class="alerts" id="alertsBody"></div>
+    </aside>
+  </div>
+
+  <!-- Tabla colapsable: filtros, orden y búsqueda intactos -->
+  <section class="panel tbl-panel" id="tblPanel" aria-label="Timeline de frames">
+    <div class="panel-hd">
+      <button type="button" class="hd-toggle" id="btnTblToggle" aria-expanded="true" title="Colapsar / expandir la tabla">
+        <svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg>
+        <h2>Timeline de frames</h2>
+        <small id="rowCount"></small>
+      </button>
+      <div class="panel-tools">
+        <button type="button" class="btn btn-ghost" id="btnExport" title="Exportar el filtro activo a CSV (E)">Exportar CSV</button>
+        <button type="button" class="btn btn-ghost" id="btnClearFilters" title="Limpiar todos los filtros">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="tbl-body" id="tblBody">
+      <div class="filters" id="filters">
+        <div class="f-group">
+          <span class="f-lbl">Prioridad</span>
+          <div class="chips" id="priChips">
+            <button type="button" class="chip chip-high" data-pri="HIGH" aria-pressed="false">High</button>
+            <button type="button" class="chip chip-med"  data-pri="MEDIUM" aria-pressed="false">Medium</button>
+            <button type="button" class="chip chip-low"  data-pri="LOW" aria-pressed="false">Low</button>
+          </div>
+        </div>
+        <div class="f-group">
+          <label class="chk" title="Solo frames con alert=1 o diagnóstico de desastre (A)">
+            <input type="checkbox" id="chkAlert"> <span>solo alertas</span>
+          </label>
+        </div>
+        <div class="f-group">
+          <label class="f-lbl" for="selDiag">Diag</label>
+          <select id="selDiag" class="sel"><option value="">todos</option></select>
+        </div>
+        <div class="f-group">
+          <label class="f-lbl" for="selVerdict">Veredicto</label>
+          <select id="selVerdict" class="sel"><option value="">todos</option></select>
+        </div>
+        <div class="f-group f-grow">
+          <label class="f-lbl" for="inpSearch">Src</label>
+          <input type="search" id="inpSearch" class="inp" placeholder="buscar src…  ( / )" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="table-scroll" id="tableScroll">
+        <table class="tbl" id="tbl">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="t_s" title="Ordenar por tiempo">t s <span class="arw"></span></th>
+              <th class="c-src">src</th>
+              <th class="sortable num" data-sort="alt_m" title="Ordenar por altitud">alt m <span class="arw"></span></th>
+              <th>diag</th>
+              <th class="sortable num" data-sort="danado_pct" title="Ordenar por daño">daño <span class="arw"></span></th>
+              <th class="c-pri" title="prioridad del sampler">pri</th>
+              <th class="sortable num" data-sort="sample_score" title="Ordenar por score">score <span class="arw"></span></th>
+              <th class="c-alert" title="alert">!</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty-line" id="tableEmpty" hidden>Sin frames que coincidan con el filtro.</div>
+      </div>
+
+      <div class="panel-ft">
+        <span class="hint" id="tableInfo"></span>
+        <span class="hint keys-hint">↑↓ navegar · Enter seleccionar · A alertas · / buscar · E exportar · 1·2·3 vistas</span>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     VISTA 2 · POST-VUELO — contrato y galerías que abren el detalle
+     ══════════════════════════════════════════════════════════════════════ -->
+<section class="view" id="view-post" role="tabpanel" aria-labelledby="tab-post" hidden>
+  <div class="post-top">
+    <section class="panel post-donut">
+      <div class="panel-hd"><h2>Veredictos ambientales</h2></div>
+      <div class="panel-bd donut-bd">
+        <div class="donut-wrap">
+          <svg class="donut" id="donut" viewBox="0 0 42 42" role="img" aria-label="Distribución de veredictos"></svg>
+          <div class="donut-center"><span id="donutTotal">0</span><small>frames</small></div>
+        </div>
+        <ul class="donut-legend" id="donutLegend"></ul>
+      </div>
+    </section>
+    <section class="panel post-stats">
+      <div class="panel-hd"><h2>Resumen del contrato</h2><small id="postStamp"></small></div>
+      <div class="panel-bd"><div class="stat-grid" id="postStats"></div></div>
+    </section>
+  </div>
+
+  <section class="panel" id="galEnhPanel" hidden>
+    <div class="panel-hd"><h2>Galería mejorada</h2><small>EDSR · click abre el detalle</small></div>
+    <div class="panel-bd"><div class="gal" id="galEnhanced"></div></div>
+  </section>
+  <section class="panel" id="galEnsPanel" hidden>
+    <div class="panel-hd"><h2>Overlays ensemble</h2><small>segmentación post-vuelo · click abre el detalle</small></div>
+    <div class="panel-bd"><div class="gal" id="galEns"></div></div>
+  </section>
+
+  <div class="empty-line" id="postEmpty" hidden>
+    Análisis post-vuelo pendiente: todavía no existe <code>entrega/summary.json</code>
+    ni galerías generadas.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     VISTA 3 · INFORME — documento imprimible con firmas
+     ══════════════════════════════════════════════════════════════════════ -->
+<section class="view" id="view-informe" role="tabpanel" aria-labelledby="tab-informe" hidden>
+  <div class="doc-actions no-print">
+    <button type="button" class="btn" id="btnPrint">
+      <svg aria-hidden="true"><use href="#i-print"/></svg><span>Imprimir / PDF</span>
+    </button>
+    <span class="hint">El informe se imprime en blanco y negro, sin cromatismo de consola.</span>
+  </div>
+  <article class="doc" id="docBody"></article>
+</section>
+
+<footer class="foot no-print">
+  <span class="hint" id="footInfo">Estación Terrena · datos de solo lectura</span>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODO PRESENTACIÓN — recorrido automático para el jurado
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="present" id="present" hidden role="dialog" aria-modal="true" aria-label="Modo presentación">
+  <div class="p-top">
+    <span class="p-src" id="pSrc">—</span>
+    <span class="p-count hint" id="pCount">—</span>
+    <button type="button" class="btn btn-ghost" id="pExit">
+      <svg aria-hidden="true"><use href="#i-close"/></svg><span>Salir (Esc)</span>
+    </button>
+  </div>
+  <figure class="p-shot">
+    <img id="pImg" alt="Frame en presentación">
+  </figure>
+  <div class="p-meta">
+    <div class="p-verdict" id="pVerdict">—</div>
+    <div class="p-diag" id="pDiag">—</div>
+    <div class="p-stats" id="pStats">—</div>
+  </div>
+  <div class="p-progress" id="pProgress"></div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

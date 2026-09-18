@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CanSat LB135 — Estación terrena
+# ═══════════════════════════════════════════════════════════════════════════
+#  ⚠ NO EXISTÍA en la raíz de este proyecto. El ZIP de 120 MB viajaba con
+#    node_modules/ (19 MB raíz + 336 MB en web-app/), web-app/dist/ (17 MB),
+#    tools/shots/ (10 MB de capturas) y __pycache__/ — todo regenerable.
+#    Con esto: el paquete de entrega baja a ~5 MB.
+#
+#  Lo que SÍ se versiona: web_server.py, web-app/src, web/ (fallback), tools/
+#  (scripts), README-web.md, CHECKLIST-SIMULACRO.md.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Node / build ──────────────────────────────────────────────────────────
+node_modules/
+web-app/node_modules/
+web-app/dist/
+web-app/dist-ssr/
+*.local
+
+# ── Datos generados por el pipeline / la demo ─────────────────────────────
+outputs/
+entrega/
+tools/shots/
+uart_log.jsonl
+
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# ── Logs y temporales ─────────────────────────────────────────────────────
+*.log
+logs/
+*.tmp
+*.bak
+
+# ── Secretos / configuración local ────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Editor / SO ───────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
