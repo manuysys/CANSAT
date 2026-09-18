@@ -116,6 +116,7 @@ from cansat import nodata as ND
 from cansat import onnxio
 from cansat import preprocess as PP
 from cansat import protocol as PROTO
+from cansat import stress as ST
 from cansat.casualties import Supuestos, estimar as estimar_perdidas
 from cansat.crf import dense_crf
 
@@ -145,6 +146,9 @@ CSV_COLUMNS = [
     "perdidas_est",         # estimación de pérdidas humanas (con supuestos)
     "fire_pct",             # fuego detectado (F3; vacío si el modelo no está)
     "smoke_pct",            # humo detectado (F3)
+    "haze_pct",             # bruma/aerosoles por dark channel (estrés ambiental)
+    "humidex",              # calor con T y humedad del sensor (estrés térmico)
+    "stress_idx",           # índice agregado 0-100 (bruma 50 % + calor 25 % + urbano 25 %)
 ]
 
 # IDs de clase COCO. Se validan contra ``model.names`` en runtime: antes estaban
@@ -163,6 +167,10 @@ FOV_V_DEG = 26.15
 # vistas). Junto con entropy_uncertainty() deja las dos fuentes de
 # incertidumbre en [0,1] para que --uncert-max aplique a ambas.
 TTA_UNCERT_REF = 0.05
+
+# Lado máximo de la copia donde se calcula la bruma (dark channel): en la Pi
+# Zero v1 el erode a resolución completa costaría segundos por frame.
+STRESS_MAX_SIDE = 320.0
 
 
 def ground_area_m2(alt_m, fov_h_deg=FOV_H_DEG, fov_v_deg=FOV_V_DEG):
@@ -482,6 +490,9 @@ def build_parser():
     mod.add_argument("--fire-onnx", default="outputs/cansat_fire_smoke.onnx",
                      help="detector de fuego/humo (F3 2026-09-18, media IoU "
                           "0.762). Opcional: si falta, no se usa.")
+    mod.add_argument("--no-stress", action="store_true",
+                     help="apagar el estrés ambiental por imagen (bruma/dark "
+                          "channel); el humidex usa igual los sensores")
     mod.add_argument("--siamese-onnx", default="",
                      help="siamés de cambio pre/post. DESACTIVADO por defecto: los "
                           "pesos del repo están marcados ROTO en MODELS.yaml "
@@ -918,11 +929,6 @@ def main(argv=None):
                 valid=valid)
             nodata_pct = 100.0 * (1.0 - valid.mean())
 
-            # Índices y veredicto: FUENTE ÚNICA (cansat.indices).
-            env = IDX.environment(pcts, n_green_patches=_green_patches(seg, valid),
-                                  valid_frac=float(valid.mean()))
-            vcode = env["vcode"]
-
             # ── Detección ───────────────────────────────────────────────
             if boxes is None:
                 if yolo is not None:
@@ -960,6 +966,29 @@ def main(argv=None):
                 hum = None
             else:
                 alt, p, temp, hum = reading
+
+            # ── Estrés ambiental (DPD): bruma por imagen + calor por sensores ──
+            # El DPD pide estudiar el estrés ambiental "junto con la información
+            # de los sensores": acá se combinan la bruma/aerosoles de la imagen
+            # (dark channel prior, cansat/stress.py) con el humidex de
+            # temperatura y humedad. La bruma se calcula sobre una copia chica
+            # (≤320 px) para que en la Pi no cueste.
+            haze = None
+            if not args.no_stress:
+                h, w = bgr.shape[:2]
+                esc = STRESS_MAX_SIDE / max(h, w)
+                small = (cv2.resize(
+                    bgr, (max(1, int(w * esc)), max(1, int(h * esc))),
+                    interpolation=cv2.INTER_AREA) if esc < 1.0 else bgr)
+                haze = ST.haze_metrics(small)
+            hx = ST.humidex(temp, hum) if hum is not None else None
+
+            # Índices y veredicto: FUENTE ÚNICA (cansat.indices).
+            env = IDX.environment(pcts, n_green_patches=_green_patches(seg, valid),
+                                  valid_frac=float(valid.mean()),
+                                  haze_pct=(haze["haze_pct"] if haze else None),
+                                  humidex=hx)
+            vcode = env["vcode"]
 
             # ── Daño: consenso real de modelos ──────────────────────────
             # ``None`` = modelo desactivado: NO vota. Antes se pasaba 0.0 y un
@@ -1107,6 +1136,12 @@ def main(argv=None):
                 "danado_max_pct": round(dan_max, 1),
                 "fire_pct": _rnum(pct_fire),
                 "smoke_pct": _rnum(pct_smoke),
+                "haze_pct": (haze["haze_pct"] if haze else None),
+                "visibility": (haze["visibility"] if haze else None),
+                "humidex": hx,
+                "contam": env.get("contam"),
+                "heat": env.get("heat"),
+                "stress_idx": env.get("stress_idx"),
                 "aff_m2": int(aff_m2),
                 "area_m2": int(area_frame_m2),
                 # Estimación de pérdidas humanas (ver cansat/casualties.py):
@@ -1147,6 +1182,9 @@ def main(argv=None):
                 est.personas_afectadas, est.perdidas_estimadas,
                 (round(pct_fire, 1) if pct_fire is not None else ""),
                 (round(pct_smoke, 1) if pct_smoke is not None else ""),
+                (haze["haze_pct"] if haze else ""),
+                (hx if hx is not None else ""),
+                (env.get("stress_idx") if env.get("stress_idx") is not None else ""),
             ])
             csvf.flush()
 

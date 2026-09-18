@@ -428,18 +428,25 @@ def environment(
     pcts: Sequence[float],
     n_green_patches: int = 0,
     valid_frac: float = 1.0,
+    haze_pct: float | None = None,
+    humidex: float | None = None,
 ) -> dict[str, object]:
     """
     Diccionario ambiental completo, con las mismas claves que devolvía
     ``analyze_stress.analyze()`` para no romper consumidores existentes.
 
     ``pcts`` son porcentajes ya calculados sobre píxeles válidos.
+    ``haze_pct`` (bruma por dark channel, ``cansat/stress.py``) y ``humidex``
+    (calor con T y humedad del sensor) agregan el bloque de estrés ambiental
+    por contaminación que pide el DPD; si son ``None`` no aparecen.
     """
+    from . import stress as ST
+
     p = pct_by_key(pcts)
     by_name = pct_by_name(pcts)
     v = verdict(pcts, valid_frac=valid_frac)
     veg_frac = p["veg"] / max(1e-9, sum(pcts)) if sum(pcts) > 0 else 0.0
-    return {
+    out: dict[str, object] = {
         "pcts": by_name,
         "usi": usi(pcts),
         "usi_norm": usi_norm(pcts),
@@ -454,3 +461,15 @@ def environment(
         "vcode": verdict_code(v),
         "_veg_frac": veg_frac,
     }
+    if haze_pct is not None:
+        out["haze_pct"] = round(float(haze_pct), 2)
+        out["contam"] = ST.contam_verdict(float(haze_pct))
+    if humidex is not None:
+        out["humidex"] = round(float(humidex), 1)
+        out["heat"] = ST.heat_verdict(float(humidex))
+    if haze_pct is not None or humidex is not None:
+        out["stress_idx"] = ST.stress_score(
+            haze_pct if haze_pct is not None else 0.0,
+            humidex if humidex is not None else 25.0,
+            usi_norm(pcts))
+    return out

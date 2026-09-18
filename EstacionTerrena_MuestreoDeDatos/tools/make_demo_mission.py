@@ -709,6 +709,19 @@ def main(argv=None) -> int:
         afectadas = expuestas * (danado / 100.0)
         perdidas = afectadas * sup["collapse_frac"] * sup["fatality"]
 
+        # Estrés ambiental (mismas fórmulas que cansat/stress.py): bruma
+        # simulada (sube al descender) y humidex real con T y humedad del frame.
+        hum_val = round(min(98.0, 48.0 + 16.0 * frac_desc
+                            + (10.0 if diag == INUND_SEV else 0.0)
+                            + rng.uniform(-2.0, 2.0)), 1)
+        e_vap = 6.11 * 10 ** (7.5 * temp_c / (237.7 + temp_c)) * hum_val / 100.0
+        hx = round(temp_c + 0.5555 * (e_vap - 10.0), 1)
+        haze = round(min(45.0, max(1.0, 5.0 + 20.0 * frac_desc
+                                   + rng.uniform(-3.0, 6.0))), 1)
+        stress = round(100.0 * (0.5 * min(1.0, haze / 50.0)
+                                + 0.25 * min(1.0, max(0.0, (hx - 25.0) / 25.0))
+                                + 0.25 * min(1.0, usi / 300.0)), 1)
+
         row = {
             "t_s": step["t_s"], "alt_m": alt, "p_hpa": p_hpa, "temp_c": temp_c,
             "veg": pct["veg"], "bui": pct["bui"], "wat": pct["wat"],
@@ -719,9 +732,7 @@ def main(argv=None) -> int:
             "sharp": round(sharp, 1), "src": src,
             "sample_pri": pri, "sample_score": score,
             "lat": lat, "lon": lon,
-            "hum_pct": round(min(98.0, 48.0 + 16.0 * frac_desc
-                                 + (10.0 if diag == INUND_SEV else 0.0)
-                                 + rng.uniform(-2.0, 2.0)), 1),
+            "hum_pct": hum_val,
             "area_m2": int(area_m2),
             "personas_afectadas": round(afectadas, 1),
             "perdidas_est": round(perdidas, 2),
@@ -729,6 +740,8 @@ def main(argv=None) -> int:
             # quemada al este; fracs["fire"] es su fracción en el frame).
             "fire_pct": round(fracs["fire"] * 0.30, 1),
             "smoke_pct": round(fracs["fire"] * 0.45 + rng.uniform(0.0, 2.0), 1),
+            # Estrés ambiental: bruma + humidex + índice agregado
+            "haze_pct": haze, "humidex": hx, "stress_idx": stress,
             # internos (no van al CSV)
             "_expuestas": round(expuestas, 1),
             "_cls_res": cls_high,
@@ -768,7 +781,9 @@ def main(argv=None) -> int:
             # Extensiones DPD (mismo orden que CSV_COLUMNS del pipeline)
             "lat", "lon", "hum_pct", "area_m2", "personas_afectadas", "perdidas_est",
             # F3: fuego/humo
-            "fire_pct", "smoke_pct"]
+            "fire_pct", "smoke_pct",
+            # Estrés ambiental
+            "haze_pct", "humidex", "stress_idx"]
     with csv_path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()

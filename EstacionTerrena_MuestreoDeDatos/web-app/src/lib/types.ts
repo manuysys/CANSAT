@@ -57,6 +57,10 @@ export interface Frame {
   /* F3: fuego/humo */
   fire_pct?: number | null
   smoke_pct?: number | null
+  /* Estrés ambiental: bruma por imagen + calor por sensores */
+  haze_pct?: number | null
+  humidex?: number | null
+  stress_idx?: number | null
   _idx: number
   files?: FrameFiles
   [extra: string]: unknown

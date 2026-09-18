@@ -22,7 +22,7 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
 | **Personas** | Detección con el fine-tune de **VisDrone** en PC/post-vuelo (medido: 254 vs 42 personas del COCO en imagen aérea) y **NPU del AI Camera (IMX500)** on-sensor en vuelo (`cansat/imx500.py`, `--det-backend imx500`) | 🟡 el modo IMX500 necesita validarse en la Pi |
 | Imágenes mejoradas con IA | EDSR x2 (`enhance_image.py`) en post-vuelo + `--enhance` (denoise+unsharp) a bordo | ✅ |
 | Mapa del terreno | `corridor_map.py` (corredor apilado) + **trayectoria GPS** en la estación (`GpsTrack.tsx`) + overlays de segmentación | ✅ |
-| Estrés ambiental por contaminación | USI (edificios/vegetación), GVI, densidad urbana, `flood_risk`, veredicto en `cansat/indices.py` | ✅ |
+| Estrés ambiental por contaminación | USI (edificios/vegetación), GVI, densidad urbana, `flood_risk` y veredicto (`cansat/indices.py`) **+ bruma/aerosoles por imagen** (dark channel prior, `cansat/stress.py`) y **humidex** con temperatura+humedad del sensor; `haze_pct`/`humidex`/`stress_idx` (0-100) en la telemetría. Cubre el "junto con la información de los sensores" del DPD | ✅ |
 | Detección de daños materiales | Consenso de 2-3 modelos (principal + two-stage adaptado a UAV + siamés opcional) con `cansat.indices.diagnose`; two-stage de vuelo = `cansat_damage_v3_bal.onnx` (F2 2026-09-18, IoU dañado 0.735 en el dominio UAV, umbral calibrado 10.2 %) | ✅ |
 | **Estimación de pérdidas humanas** | `cansat/casualties.py`: modelo de exposición con supuestos declarados (densidad, ocupación, colapso, letalidad) + banda de incertidumbre; KPI en la estación | ✅ |
 
