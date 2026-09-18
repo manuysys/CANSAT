@@ -219,3 +219,20 @@ etiquetados del dominio UAV, o un modelo por dominio según la GSD del frame).
   independientes del daño estructural.
 - Supera el objetivo del plan (fire IoU ≥0.40) por 2×. Es extensión: el DPD
   pide vegetación/personas/edificios/agua + estrés + daños + pérdidas, no fuego.
+
+### F2b — Severidad del daño (2026-09-18): el colapso medido
+
+| Clase | IoU (val RescueNet, 2 093 tiles) |
+|---|---|
+| intacto | 0.550 |
+| menor | 0.381 |
+| mayor | 0.303 |
+| destruido | 0.481 |
+| **colapso (mayor+destruido sobre edificios)** | **0.575** |
+
+- `train_severity.py` reconstruye el recorte desde la máscara **original** de
+  RescueNet (el nombre del tile guarda `y0`/`x0`), sin regenerar 17 560 tiles.
+- En vuelo, `colapso_pct` medido reemplaza el `collapse_frac=0.3` de
+  `casualties.py`; la telemetría declara `colapso_fuente` (medido/supuesto).
+- Es la pieza que cierra el *"según su magnitud, estimar las posibles pérdidas
+  humanas"* del DPD con un número medido y no un supuesto fijo.

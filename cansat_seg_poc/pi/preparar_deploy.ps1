@@ -42,6 +42,7 @@ if ($Todos) {
         "cansat_damage3_mobilenetv2.onnx",
         "cansat_damage_v3_bal.onnx",
         "cansat_fire_smoke.onnx",
+        "cansat_severity.onnx",
         "cansat_siamese_damage.onnx"
     )
 }

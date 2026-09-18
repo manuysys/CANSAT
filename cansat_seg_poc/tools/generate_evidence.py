@@ -134,10 +134,34 @@ def ev_bruma():
     fila([(t1, img), (t2, bruma)], OUT / "05_bruma_metrica.png")
 
 
+def ev_severidad():
+    """Tile de RescueNet: GT de severidad (máscara original) vs predicción."""
+    import csv
+    from train_severity import REMAP, TILE, parsear_nombre
+    man = ROOT / "dataset/rescuenet_tiles/manifest_val.csv"
+    row = next(csv.DictReader(man.open(encoding="utf-8")))
+    split, sid, y0, x0 = parsear_nombre(row["name"])
+    img = cv2.imread(str(ROOT / row["image"]))
+    lab = cv2.imread(str(ROOT / f"dataset/rescuenet/{split}-label-img/{sid}_lab.png"),
+                     cv2.IMREAD_GRAYSCALE)
+    lab = lab[y0:y0 + TILE, x0:x0 + TILE]
+    gt = np.zeros_like(lab, dtype=np.uint8)
+    for src, dst in REMAP.items():
+        gt[lab == src] = dst
+    gt = cv2.resize(gt, (img.shape[1], img.shape[0]),
+                    interpolation=cv2.INTER_NEAREST)
+    pred = predecir("outputs/cansat_severity.onnx", img)
+    fila([("imagen (UAV RescueNet)", img),
+          ("GT severidad (menor/amarillo · mayor/naranja · destruido/rojo)",
+           colorizar(gt, PAL_SEV)),
+          ("predicción (cansat_severity)", colorizar(pred, PAL_SEV))],
+         OUT / "06_severidad_gt_vs_pred.png", escala=0.8)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     print(f"Evidencia en {OUT}")
-    for fn in (ev_terreno, ev_dano, ev_flood, ev_fuego, ev_bruma):
+    for fn in (ev_terreno, ev_dano, ev_flood, ev_fuego, ev_bruma, ev_severidad):
         try:
             fn()
         except Exception as e:

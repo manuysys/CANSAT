@@ -75,6 +75,8 @@ DAMAGE2 = "outputs/cansat_damage_v3_bal.onnx"
 # ROTO en MODELS.yaml (alucinaban daño sin cambio). Se activa con --siamese-onnx.
 SIAMESE = ""
 FLOOD_ONNX = "outputs/cansat_flood_specialist_224.onnx"   # F3: 224 px, IoU 0.489
+FIRE_ONNX = "outputs/cansat_fire_smoke.onnx"              # F3: fuego/humo
+SEVERITY_ONNX = "outputs/cansat_severity.onnx"            # F2b: colapso medido
 TERRAIN_V2 = "outputs/cansat_seg_terrain_v2.onnx"
 
 # Candidatos de SegFormer B5 en orden de preferencia. El anterior hardcodeaba
@@ -337,6 +339,8 @@ def main(argv=None) -> int:
     sess_d2 = onnxio.load_optional(DAMAGE2, "daño two-stage")
     sess_siam = onnxio.load_optional(args.siamese_onnx, "siamés") if args.siamese_onnx else None
     sess_f = onnxio.load_optional(FLOOD_ONNX, "flood specialist")
+    sess_fire = onnxio.load_optional(FIRE_ONNX, "fuego/humo")
+    sess_sev = onnxio.load_optional(SEVERITY_ONNX, "severidad")
     sess_terr = onnxio.load_optional(TERRAIN_V2, "terreno (para máscaras)")
     if not sess_terr:
         print("  [WARN] sin el modelo de terreno: el daño se calcula sin máscara "
@@ -354,6 +358,9 @@ def main(argv=None) -> int:
 
     dan: dict[str, float] = {}
     diag_por_frame: dict[str, str] = {}
+    fuego: dict[str, float] = {}
+    humo: dict[str, float] = {}
+    colapso: dict[str, float] = {}
     for r in rows:
         src = str(r.get("src"))
         fp = frame_path(frames_dir, src)
@@ -391,14 +398,41 @@ def main(argv=None) -> int:
             pct_flood = float(((pf == 1) & valid).sum()) / n_valid * 100.0
             pct_fw = float(((pf == 2) & valid).sum()) / n_valid * 100.0
 
+        # F3/F2b: fuego/humo y severidad (cada modelo con su propio tamaño).
+        pct_fire = pct_smoke = colapso_pct = None
+        if sess_fire:
+            sz = sess_fire.size_px or 320
+            t_f = tensor if sz == 320 else PP.preprocess_bgr(img, sz)
+            pfr = np.argmax(sess_fire.run({"input": t_f})[0], axis=0)
+            pct_fire = float((pfr == 1).mean() * 100.0)
+            pct_smoke = float((pfr == 2).mean() * 100.0)
+        if sess_sev:
+            sz = sess_sev.size_px or 320
+            t_s = tensor if sz == 320 else PP.preprocess_bgr(img, sz)
+            psv = np.argmax(sess_sev.run({"input": t_s})[0], axis=0)
+            n_ed = int((psv >= 1).sum())
+            if n_ed:
+                colapso_pct = float((psv >= 3).sum()) / n_ed * 100.0
+        if pct_fire is not None:
+            fuego[src] = round(pct_fire, 1)
+            humo[src] = round(pct_smoke, 1)
+        if colapso_pct is not None:
+            colapso[src] = round(colapso_pct, 1)
+
         dan[src] = round(max(pct_dan, pct_dan2, pct_siam), 1)
         pcts = [float(r.get(k) or 0.0) for k in ("veg", "bui", "wat", "bare", "oth")]
         d, _a = IDX.diagnose(pcts, pct_dan, pct_dan2, pct_siam,
                              pct_flood=pct_flood, pct_flood_water=pct_fw,
-                             flood_available=bool(sess_f))
+                             flood_available=bool(sess_f),
+                             pct_fire=pct_fire, pct_smoke=pct_smoke)
         diag_por_frame[src] = d
     print(f"      {len(dan)} frames · daño medio "
           f"{(sum(dan.values()) / len(dan)) if dan else 0.0:.1f}%")
+    if fuego:
+        print(f"      fuego medio {sum(fuego.values()) / len(fuego):.2f}% · "
+              f"humo medio {sum(humo.values()) / len(humo):.2f}%")
+    if colapso:
+        print(f"      colapso medido medio {sum(colapso.values()) / len(colapso):.1f}%")
 
     # ── [5/5] Segunda pasada SegFormer B5 ───────────────────────────────
     b5_pct: dict[str, dict[str, float]] = {}

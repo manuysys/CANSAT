@@ -149,6 +149,8 @@ def main() -> int:
     ap.add_argument("--out", default="outputs/best_severity.pth")
     ap.add_argument("--onnx-out", default="outputs/cansat_severity.onnx")
     ap.add_argument("--init", default="outputs/best_damage_v3_bal.pth")
+    ap.add_argument("--resume", action="store_true",
+                    help="continuar desde --out si ya existe (más épocas)")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
@@ -160,10 +162,12 @@ def main() -> int:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DeepLabV3PlusMobileNetV2(5)
-    if args.init and Path(args.init).is_file():
-        _, frac = load_into(model, args.init, strict=False,
+    init_path = (args.out if (args.resume and Path(args.out).is_file())
+                 else args.init)
+    if init_path and Path(init_path).is_file():
+        _, frac = load_into(model, init_path, strict=False,
                             min_loaded_frac=0.3, verbose=False)
-        print(f"Init desde {args.init}: {frac:.0%} de las capas (dominio daño)")
+        print(f"Init desde {init_path}: {frac:.0%} de las capas")
     model = model.to(device)
 
     w, freq = compute_weights(train_ds)

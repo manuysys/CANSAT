@@ -318,6 +318,7 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `03_flood_gt_vs_pred.png` | FloodNet \| GT \| predicción del flood 224 |
 | `04_fuego_humo_gt_vs_pred.png` | FLAME \| GT fuego/humo \| predicción |
 | `05_bruma_metrica.png` | imagen clara vs bruma sintética con las métricas del dark channel |
+| `06_severidad_gt_vs_pred.png` | tile UAV \| GT de severidad (menor/mayor/destruido) \| predicción |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -337,6 +338,7 @@ Otras evidencias ya existentes en `cansat_seg_poc/`:
 | `06_jurado_portada.png` | modo Jurado (portada) |
 | `07_jurado_criticos.png` | modo Jurado (frames críticos) |
 | `08_post_toast.png` | vista Post con notificación |
+| `09_detalle_frame.png` | detalle de frame con fuego/humo, bruma, humidex, estrés y colapso |
 
 Para regenerarlas: `python tools/generate_evidence.py` (IA) y
 `node tools/shots-r4.mjs` con el servidor arriba (estación).

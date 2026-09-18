@@ -192,6 +192,11 @@ export function Detail() {
             <Kv k="Temp." v={num(f.temp_c, 1)} u="°C" />
             {/* Humedad del BME280 (DPD): 0/ausente = sin sensor */}
             {Number(f.hum_pct) > 0 && <Kv k="Humedad" v={num(f.hum_pct, 0)} u="%" />}
+            {/* Estrés ambiental (2026-09-18): humidex de sensores + bruma */}
+            {Number(f.humidex) > 0 && <Kv k="Humidex" v={num(f.humidex, 1)} />}
+            {Number(f.haze_pct) > 0 && <Kv k="Bruma" v={num(f.haze_pct, 1)} u="%"
+              tone={Number(f.haze_pct) >= 45 ? 'text-[#ff4d5e]' : Number(f.haze_pct) >= 20 ? 'text-[#ffb020]' : ''} />}
+            {Number(f.stress_idx) > 0 && <Kv k="Estrés" v={num(f.stress_idx, 0)} />}
             <Kv k="USI" v={num(f.usi, 3)} gloss="usi" />
             <Kv k="NDVI" v={num(f.ndvi, 3)} gloss="ndvi" />
             <Kv k="t misión" v={num(f.t_s, 1)} u="s" />
@@ -208,6 +213,10 @@ export function Detail() {
           <div className="grid grid-cols-2 gap-1.5">
             <Kv k="Daño" v={num(f.danado_pct, 1)} u="%" gloss="danado"
               tone={Number(f.danado_pct) >= 40 ? 'text-[#ff4d5e]' : Number(f.danado_pct) >= 15 ? 'text-[#ffb020]' : 'text-[#3ddc84]'} />
+            {/* F3/F2b: fuego/humo y colapso medido (solo si el modelo corrió) */}
+            {Number(f.fire_pct) > 0 && <Kv k="Fuego" v={num(f.fire_pct, 1)} u="%" tone="text-[#ff4d5e]" />}
+            {Number(f.smoke_pct) > 0 && <Kv k="Humo" v={num(f.smoke_pct, 1)} u="%" tone="text-[#ffb020]" />}
+            {Number(f.colapso_pct) > 0 && <Kv k="Colapso" v={num(f.colapso_pct, 1)} u="%" />}
             <Kv k="Afectado" v={num(f.aff_m2, 0)} u="m²" />
             <Kv k="Personas" v={String(intOr(f.people))} tone={intOr(f.people) ? 'text-[#ffb020]' : ''} />
             <Kv k="Vehículos" v={String(intOr(f.vehicles))} tone={intOr(f.vehicles) ? 'text-[#ffb020]' : ''} />
