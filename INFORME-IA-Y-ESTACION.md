@@ -385,7 +385,7 @@ npm run smoke
 | Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
 | Severidad → colapso medido en casualties | ✅ hecho (0.575 IoU de colapso) | más épocas opcionales |
 | Densidad poblacional real (WorldPop) por GPS | Medio | diseño pendiente |
-| `model_id`/`quant` en la telemetría | Bajo-medio | pendiente |
+| `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
 | UI de la estación para bruma/calor/fuego | Bajo | los datos ya viajan |
 | Pseudo-labels regenerados + re-destilado | Medio | baja prioridad (v3/v4 en legacy) |
 

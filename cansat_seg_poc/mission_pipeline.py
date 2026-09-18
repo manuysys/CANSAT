@@ -72,6 +72,7 @@ Correcciones de lógica:
 import argparse
 import contextlib
 import csv
+import hashlib
 import importlib
 import importlib.util
 import json
@@ -172,6 +173,22 @@ TTA_UNCERT_REF = 0.05
 # Lado máximo de la copia donde se calcula la bruma (dark channel): en la Pi
 # Zero v1 el erode a resolución completa costaría segundos por frame.
 STRESS_MAX_SIDE = 320.0
+
+
+def _hash8(path: str | Path) -> str:
+    """
+    sha256 corto (primeros 4 MB) de un ONNX: identifica el artefacto exacto.
+
+    Trazabilidad F6: cada frame del JSONL registra con qué modelo (hash) y en
+    qué precisión se infirió, para no citar métricas de otro artefacto.
+    """
+    p = Path(path)
+    if not p.is_file():
+        return "?"
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        h.update(f.read(4 << 20))
+    return h.hexdigest()[:8]
 
 
 def ground_area_m2(alt_m, fov_h_deg=FOV_H_DEG, fov_v_deg=FOV_V_DEG):
@@ -692,6 +709,16 @@ def main(argv=None):
         sess_fire = onnxio.load_optional(args.fire_onnx, "fuego/humo")
         sess_sev = onnxio.load_optional(args.severity_onnx, "severidad")
 
+    # Trazabilidad (F6): hashes de los artefactos que realmente corren.
+    model_ids = {"seg": _hash8(seg_path)}
+    for key, pth in (("damage", args.damage_onnx),
+                     ("damage2", args.damage2_onnx),
+                     ("flood", args.flood_onnx),
+                     ("fire", args.fire_onnx),
+                     ("severity", args.severity_onnx)):
+        if Path(pth).is_file():
+            model_ids[key] = _hash8(pth)
+
     # ── Detección: backend ──────────────────────────────────────────────
     det_backend = args.det_backend
     if args.no_detect:
@@ -1166,6 +1193,8 @@ def main(argv=None):
                 "contam": env.get("contam"),
                 "heat": env.get("heat"),
                 "stress_idx": env.get("stress_idx"),
+                # Trazabilidad F6: modelo exacto (hash) y precisión por frame.
+                "model_ids": model_ids, "quant": "fp32",
                 "aff_m2": int(aff_m2),
                 "area_m2": int(area_frame_m2),
                 # Estimación de pérdidas humanas (ver cansat/casualties.py):
