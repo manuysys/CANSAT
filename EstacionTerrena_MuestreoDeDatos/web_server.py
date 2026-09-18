@@ -68,6 +68,8 @@ CSV_COLUMNS = [
     "sharp", "src", "sample_pri", "sample_score",
     # Extensiones DPD (GPS + humedad + estimación de pérdidas humanas)
     "lat", "lon", "hum_pct", "area_m2", "personas_afectadas", "perdidas_est",
+    # F3 (2026-09-18): fuego/humo (vacío si el modelo no corrió)
+    "fire_pct", "smoke_pct",
 ]
 
 # Campos numéricos -> float. El resto se deja como string.
@@ -76,6 +78,7 @@ FLOAT_FIELDS = {
     "veg", "bui", "wat", "bare", "oth",
     "usi", "ndvi", "danado_pct", "aff_m2", "sharp", "sample_score",
     "lat", "lon", "hum_pct", "personas_afectadas", "perdidas_est",
+    "fire_pct", "smoke_pct",
 }
 INT_FIELDS = {"people", "vehicles", "alert", "area_m2"}
 

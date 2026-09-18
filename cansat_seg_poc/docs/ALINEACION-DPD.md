@@ -75,3 +75,10 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
    entrenamiento (el evaluador ya lo hace).
 6. **Personas en vuelo**: validar cuántas detecta realmente el SSD del IMX500 a
    la GSD del descenso (7.7 cm/px a 250 m ⇒ una persona ≈ 6 px).
+
+## 6. Extensión (no exigida por el DPD)
+
+- **Fuego/humo** (F3 2026-09-18): modelo `cansat_fire_smoke.onnx` (3 clases,
+  256 px, media IoU 0.782 en test) + alertas INCENDIO/HUMO EXTENSO en
+  `cansat/indices.py` y columnas `fire_pct`/`smoke_pct` en la telemetría.
+  El DPD no lo pide: se reporta como valor agregado.

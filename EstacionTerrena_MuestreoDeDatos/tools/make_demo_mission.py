@@ -725,6 +725,10 @@ def main(argv=None) -> int:
             "area_m2": int(area_m2),
             "personas_afectadas": round(afectadas, 1),
             "perdidas_est": round(perdidas, 2),
+            # F3: fuego/humo del frame (el mundo del demo tiene una zona
+            # quemada al este; fracs["fire"] es su fracción en el frame).
+            "fire_pct": round(fracs["fire"] * 0.30, 1),
+            "smoke_pct": round(fracs["fire"] * 0.45 + rng.uniform(0.0, 2.0), 1),
             # internos (no van al CSV)
             "_expuestas": round(expuestas, 1),
             "_cls_res": cls_high,
@@ -762,7 +766,9 @@ def main(argv=None) -> int:
             "usi", "ndvi", "verdict", "people", "vehicles", "danado_pct", "aff_m2",
             "diag", "alert", "sharp", "src", "sample_pri", "sample_score",
             # Extensiones DPD (mismo orden que CSV_COLUMNS del pipeline)
-            "lat", "lon", "hum_pct", "area_m2", "personas_afectadas", "perdidas_est"]
+            "lat", "lon", "hum_pct", "area_m2", "personas_afectadas", "perdidas_est",
+            # F3: fuego/humo
+            "fire_pct", "smoke_pct"]
     with csv_path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()

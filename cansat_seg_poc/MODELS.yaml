@@ -332,6 +332,36 @@ vuelo:
       Tree). Con el remapeo oficial (flood = {Building-flooded, Road-flooded},
       agua = {Water}) es el primer modelo del repo que PASÓ la auditoría IMX500.
 
+  fuego_humo:
+    # F3 (2026-09-18): extensión — el DPD no la exige, pero suma alerta temprana.
+    onnx: "outputs/cansat_fire_smoke.onnx"
+    checkpoint: "outputs/best_fire_smoke.pth"
+    entrenado_por: "train_fire_smoke.py --epochs 30 (init encoder desde best_terrain_v2.pth)"
+    exportado_por: "el propio script exporta el BEST con dynamo=False"
+    dataset: "fire_smoke_seg (LibreYOLO/fire-smoke-seg, derivado de FLAME, CC BY 4.0)"
+    entrada: "[1, 3, 256, 256]"
+    clases: 3
+    nombres_clases: [other, fuego, humo]
+    estado: "VUELA (opcional; se apaga con --no-damage o si falta el ONNX)"
+    metricas:
+      iou_fuego_valid: 0.806
+      iou_humo_valid: 0.718
+      iou_fuego_test: 0.791      # test split (20 imgs, nunca usado en selección)
+      iou_humo_test: 0.774
+      media_test: 0.782
+      falso_positivo_fuego: "0.00 % en LoveDA urbano/rural y RescueNet"
+      falso_positivo_humo: "mediana 2.45 % en rural (máx 15.01 %)"
+      fuente: "validación interna + eval en el test split con el checkpoint BEST"
+    notas: |
+      Extensión F3: 141 pares de entrenamiento (256², polígonos de FLAME vía
+      Roboflow, CC BY 4.0), encoder inicializado desde el terreno v2 (dominio
+      aéreo). Supera el objetivo del plan (fire IoU ≥0.40): 0.79 en test.
+      Alertas en cansat/indices.py: fuego >1 % (FIRE_ALERT_PCT) y humo >30 %
+      (SMOKE_ALERT_PCT), con margen medido contra escenas sin incendio.
+      Telemetría: columnas fire_pct/smoke_pct (CSV 31 columnas) + reglas
+      INCENDIO/HUMO EXTENSO en el diagnóstico. La estación las lee
+      (web_server CSV_COLUMNS + types.ts) y el demo las simula.
+
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"
     framework: "ultralytics"

@@ -143,6 +143,8 @@ CSV_COLUMNS = [
     "area_m2",              # huella en tierra del frame
     "personas_afectadas",   # estimación de exposición (cansat.casualties)
     "perdidas_est",         # estimación de pérdidas humanas (con supuestos)
+    "fire_pct",             # fuego detectado (F3; vacío si el modelo no está)
+    "smoke_pct",            # humo detectado (F3)
 ]
 
 # IDs de clase COCO. Se validan contra ``model.names`` en runtime: antes estaban
@@ -477,6 +479,9 @@ def build_parser():
                      help="especialista de inundación a 224 px (F3 2026-09-18, "
                           "IoU 0.489 y la mitad de cómputo que el de 320). "
                           "Alternativa: outputs/cansat_flood_specialist.onnx")
+    mod.add_argument("--fire-onnx", default="outputs/cansat_fire_smoke.onnx",
+                     help="detector de fuego/humo (F3 2026-09-18, media IoU "
+                          "0.762). Opcional: si falta, no se usa.")
     mod.add_argument("--siamese-onnx", default="",
                      help="siamés de cambio pre/post. DESACTIVADO por defecto: los "
                           "pesos del repo están marcados ROTO en MODELS.yaml "
@@ -657,7 +662,7 @@ def main(argv=None):
         cv2.setNumThreads(1)
 
     damage_on = not args.no_damage
-    sess_d = sess_d2 = sess_siam = sess_f = None
+    sess_d = sess_d2 = sess_siam = sess_f = sess_fire = None
     if damage_on:
         sess_d = onnxio.load_required(args.damage_onnx, "daño principal",
                                       hint="Corré export_damage_onnx.py.")
@@ -668,6 +673,7 @@ def main(argv=None):
         else:
             print("  [i] Siamés desactivado (pesos ROTO; ver --siamese-onnx).")
         sess_f = onnxio.load_optional(args.flood_onnx, "flood specialist")
+        sess_fire = onnxio.load_optional(args.fire_onnx, "fuego/humo")
 
     # ── Detección: backend ──────────────────────────────────────────────
     det_backend = args.det_backend
@@ -724,7 +730,8 @@ def main(argv=None):
         print(f"                 principal={Path(args.damage_onnx).name} "
               f"two-stage={Path(args.damage2_onnx).name}")
         print(f"                 siamés={'ON' if sess_siam else 'OFF'} "
-              f"flood={'ON' if sess_f else 'OFF'}")
+              f"flood={'ON' if sess_f else 'OFF'} "
+              f"fuego/humo={'ON' if sess_fire else 'OFF'}")
     print(f"  Detección    : {'OFF' if det_backend == 'none' else det_backend}"
           + (f" · {args.det_model}" if det_backend == "yolo" else "")
           + (f" · {Path(args.imx500_model).name}" if det_backend == "imx500" else ""))
@@ -965,6 +972,7 @@ def main(argv=None):
             pct_dan = pct_dan2 = pct_siam = None
             pct_dan2_edif = None
             pct_flood = pct_fw = None
+            pct_fire = pct_smoke = None
             dan_max = 0.0
             if damage_on:
                 t_dmg = time.perf_counter()
@@ -1007,6 +1015,22 @@ def main(argv=None):
                     pct_flood = float(((pred_f == 1) & valid_f).sum()) / n_valid_f * 100.0
                     pct_fw = float(((pred_f == 2) & valid_f).sum()) / n_valid_f * 100.0
 
+                # Fuego/humo (F3): alerta independiente del daño estructural.
+                if sess_fire:
+                    size_fire = sess_fire.size_px or args.img_size
+                    if size_fire == args.img_size:
+                        tensor_fire, valid_fire = tensor, valid
+                    else:
+                        tensor_fire = PP.preprocess_bgr(bgr, size_fire)
+                        valid_fire = cv2.resize(
+                            valid.astype(np.uint8), (size_fire, size_fire),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                    pred_fire = np.argmax(
+                        sess_fire.run({"input": tensor_fire})[0], axis=0)
+                    n_valid_fire = max(1, int(valid_fire.sum()))
+                    pct_fire = float(((pred_fire == 1) & valid_fire).sum()) / n_valid_fire * 100.0
+                    pct_smoke = float(((pred_fire == 2) & valid_fire).sum()) / n_valid_fire * 100.0
+
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)
                 ms_dmg = (time.perf_counter() - t_dmg) * 1000.0
@@ -1017,6 +1041,7 @@ def main(argv=None):
                 pcts, pct_dan, pct_dan2, pct_siam,
                 pct_flood=pct_flood, pct_flood_water=pct_fw,
                 flood_available=bool(sess_f),
+                pct_fire=pct_fire, pct_smoke=pct_smoke,
                 consensus_pct=args.damage_threshold,
                 consensus_pct_two_stage=args.damage_threshold_two_stage,
             )
@@ -1080,6 +1105,8 @@ def main(argv=None):
                 "danado2_edif_pct": _rnum(pct_dan2_edif),
                 "danado_siam_pct": _rnum(pct_siam),
                 "danado_max_pct": round(dan_max, 1),
+                "fire_pct": _rnum(pct_fire),
+                "smoke_pct": _rnum(pct_smoke),
                 "aff_m2": int(aff_m2),
                 "area_m2": int(area_frame_m2),
                 # Estimación de pérdidas humanas (ver cansat/casualties.py):
@@ -1118,6 +1145,8 @@ def main(argv=None):
                 (round(hum, 1) if hum is not None else ""),
                 int(area_frame_m2),
                 est.personas_afectadas, est.perdidas_estimadas,
+                (round(pct_fire, 1) if pct_fire is not None else ""),
+                (round(pct_smoke, 1) if pct_smoke is not None else ""),
             ])
             csvf.flush()
 

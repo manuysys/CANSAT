@@ -298,6 +298,8 @@ def diagnose(
     pct_flood: float | None = None,
     pct_flood_water: float | None = None,
     flood_available: bool = False,
+    pct_fire: float | None = None,
+    pct_smoke: float | None = None,
     consensus_pct: float | None = None,
     consensus_pct_two_stage: float | None = None,
 ) -> tuple[str, int]:
@@ -357,6 +359,15 @@ def diagnose(
 
     dan_max = max(votos_modelos) if votos_modelos else 0.0
 
+    # 0) Fuego/humo (F3 2026-09-18): alerta independiente del daño estructural.
+    #    Umbrales calibrados contra imágenes normales (LoveDA/RescueNet): el
+    #    modelo da fuego 0.00 % y humo ≤15 % en escenas sin incendio, así que
+    #    fuego >1 % ya es señal y humo >30 % es humo extenso.
+    if pct_fire is not None and pct_fire > FIRE_ALERT_PCT:
+        return "INCENDIO", 1
+    if pct_smoke is not None and pct_smoke > SMOKE_ALERT_PCT:
+        return "HUMO EXTENSO", 1
+
     # 1) Daño estructural por consenso.
     if votos >= mayoria:
         if agua > AGUA_EXTENSA_PCT:
@@ -403,6 +414,11 @@ FLOOD_URBAN_MIN_BUI: float = 5.0
 FIRE_MAX_VEG: float = 5.0
 FIRE_MIN_BARE: float = 40.0
 FIRE_MIN_DAN: float = 5.0
+# Fuego/humo (modelo cansat_fire_smoke, F3 2026-09-18). Medido en escenas
+# normales: fuego 0.00 % (LoveDA urbano/rural, RescueNet) y humo ≤15 % en
+# rural; los umbrales dejan margen.
+FIRE_ALERT_PCT: float = 1.0
+SMOKE_ALERT_PCT: float = 30.0
 
 
 # ══════════════════════════════════════════════════════════════════════ #

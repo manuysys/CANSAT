@@ -200,3 +200,22 @@ satélite: con esta receta no hay un solo modelo bueno en ambos dominios. Para
 el CanSat alcanza para *detectar* daño a nivel frame (F1 0.83, recall 0.89) y
 estimar exposición; el mapa fino por edificio sigue pendiente (más datos
 etiquetados del dominio UAV, o un modelo por dominio según la GSD del frame).
+
+### F3 — Fuego/humo (2026-09-18): extensión, no requisito del DPD
+
+| Split | IoU fuego | IoU humo | media |
+|---|---|---|---|
+| valid (selección) | 0.806 | 0.718 | 0.762 |
+| **test** (nunca usado) | **0.791** | **0.774** | **0.782** |
+
+- Datos: `LibreYOLO/fire-smoke-seg` (HuggingFace), derivado de FLAME con
+  polígonos (CC BY 4.0): 141 train / 40 valid / 20 test, imágenes 256².
+  `prepare_fire_smoke.py` convierte polígonos YOLO → máscaras 0/1/2.
+- Modelo: `train_fire_smoke.py` (DeepLabV3+MV2, encoder inicializado desde el
+  terreno v2) → `cansat_fire_smoke.onnx` (256 px, auditado).
+- **No alucina en escenas normales**: fuego 0.00 % en LoveDA urbano/rural y
+  RescueNet; humo ≤15 % en rural. Umbrales: fuego >1 % y humo >30 %
+  (`FIRE_ALERT_PCT` / `SMOKE_ALERT_PCT`), alertas INCENDIO / HUMO EXTENSO
+  independientes del daño estructural.
+- Supera el objetivo del plan (fire IoU ≥0.40) por 2×. Es extensión: el DPD
+  pide vegetación/personas/edificios/agua + estrés + daños + pérdidas, no fuego.

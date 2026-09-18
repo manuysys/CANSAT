@@ -54,6 +54,9 @@ export interface Frame {
   area_m2?: number | null
   personas_afectadas?: number | null
   perdidas_est?: number | null
+  /* F3: fuego/humo */
+  fire_pct?: number | null
+  smoke_pct?: number | null
   _idx: number
   files?: FrameFiles
   [extra: string]: unknown

@@ -58,3 +58,23 @@ def test_tres_modelos_mayoria_simple():
 def test_umbrales_calibrados_publicados():
     assert pytest.approx(10.0) == I.DAMAGE_CONSENSUS_PCT
     assert pytest.approx(10.2) == I.DAMAGE_CONSENSUS_PCT_TWO_STAGE
+
+
+def test_fuego_dispara_alerta_independiente_del_dano():
+    """F3: fuego >1 % alerta aunque no haya daño estructural."""
+    diag, alert = I.diagnose(TERRENO, pct_dan=0.0, pct_dan2=0.0, pct_siam=None,
+                             pct_fire=3.0)
+    assert alert == 1 and diag == "INCENDIO"
+
+
+def test_humo_extenso_alerta():
+    diag, alert = I.diagnose(TERRENO, pct_dan=0.0, pct_dan2=0.0, pct_siam=None,
+                             pct_smoke=40.0)
+    assert alert == 1 and diag == "HUMO EXTENSO"
+
+
+def test_humo_leve_no_alerta():
+    """Hasta 15 % de humo aparece en escenas rurales normales: no alerta."""
+    _diag, alert = I.diagnose(TERRENO, pct_dan=0.0, pct_dan2=0.0, pct_siam=None,
+                              pct_smoke=10.0)
+    assert alert == 0
