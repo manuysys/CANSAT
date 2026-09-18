@@ -173,15 +173,28 @@ Mismo protocolo two-stage (IoU de dañado sobre edificios) en los dos val:
 Los dominios compiten: agregar RescueNet sube el daño UAV de 0.497 → 0.735
 pero hunde xBD de 0.472 → 0.096 (olvido catastrófico con 82 % de RescueNet;
 parcial con el balanceo ×4). **El vuelo del CanSat es UAV (7.7 cm/px)**, así
-que el balanceado es el mejor candidato de misión y el xBD-only queda como
-referencia cross-event del informe. Caveat: el 0.735 de RescueNet val puede
-estar inflado por proximidad geográfica train/val del propio dataset (mismos
-vuelos post-Michael); el número cross-dataset honesto es el de xBD.
+que el balanceado es el modelo de vuelo elegido (2026-09-18) y el xBD-only
+queda como referencia cross-event del informe. Caveat: el 0.735 de RescueNet
+val puede estar inflado por proximidad geográfica train/val del propio dataset
+(mismos vuelos post-Michael); el número cross-dataset honesto es el de xBD.
+
+**Calibración en el dominio de vuelo** (`tools/calibrate_thresholds.py
+--rescuenet --tiles 600 --torch --min-dano-px 10`, GPU): el two-stage
+balanceado tiene F1-óptimo **10.18 %** (F1 0.828, precisión 0.776, **recall
+0.887**, FPR 41.5 % sobre val de zona de desastre); el umbral de vuelo quedó en
+**10.2 %** (prioriza detección). El principal xBD **satura en UAV** (mediana
+62.7 % de "daño" en tiles sin daño): en vuelo no discrimina, el two-stage es el
+que decide. Recalibrar con frames reales del predio (`--folder/--labels`)
+antes de la campaña.
+
+**Experimento descartado**: re-entrenar el principal (damage3) con la misma
+mezcla empeoró ambos dominios (xBD 0.173 → 0.047; RescueNet 0.476), así que el
+principal xBD se mantiene como segundo votante del consenso.
 
 **Interpretación honesta**: la generalización cross-event sobre satélite sigue
 siendo modesta (IoU 0.10-0.47 según el modelo). Con RescueNet (UAV, el dominio
 real del vuelo) el daño sube a 0.735, pero ese mismo modelo deja de servir para
 satélite: con esta receta no hay un solo modelo bueno en ambos dominios. Para
-el CanSat alcanza para *detectar* daño a nivel frame (F1 0.77) y estimar
-exposición; el mapa fino por edificio sigue pendiente (más datos etiquetados
-del dominio UAV, o un modelo por dominio según la GSD del frame).
+el CanSat alcanza para *detectar* daño a nivel frame (F1 0.83, recall 0.89) y
+estimar exposición; el mapa fino por edificio sigue pendiente (más datos
+etiquetados del dominio UAV, o un modelo por dominio según la GSD del frame).

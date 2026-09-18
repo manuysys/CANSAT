@@ -191,30 +191,31 @@ vuelo:
       de RescueNet en el two-stage).
 
   dano_two_stage:
-    onnx: "outputs/cansat_damage_v3.onnx"
-    checkpoint: "outputs/best_damage_v3.pth"
-    entrenado_por: "train_damage_v3.py --epochs 12 --loss rescue (2026-09-17)"
+    # F2 (2026-09-18): el two-stage de VUELO pasó a ser el adaptado a UAV con
+    # RescueNet (ver dano_f2_rescuenet). El xBD puro queda como alternativa.
+    onnx: "outputs/cansat_damage_v3_bal.onnx"
+    checkpoint: "outputs/best_damage_v3_bal.pth"
+    entrenado_por: "train_damage_v3.py --epochs 8 --loss rescue --xbd-repeat 4 --extra-manifest dataset/rescuenet_tiles/manifest_train_sub4000.csv (2026-09-18)"
+    exportado_por: "python export_onnx.py --arch damage --num-classes 3 --checkpoint outputs/best_damage_v3_bal.pth --output outputs/cansat_damage_v3_bal.onnx --img-size 320"
     clases: 3
     entrada: "[1, 3, 320, 320]"
-    dataset: "xBD / xView2"
-    licencia: "CC BY-NC-SA 4.0"
-    estado: "VUELA (re-entrenado 2026-09-17; pasa auditoría IMX500)"
+    dataset: "xBD (split por desastre) + RescueNet (UAV óptico)"
+    licencia: "xBD CC BY-NC-SA 4.0 · RescueNet: investigación"
+    estado: "VUELA (F2 2026-09-18; pasa auditoría IMX500)"
     metricas:
-      iou_dano_two_stage_val_desastres_nuevos: 0.472
-      fuente: "mejor época del entrenamiento (val = hurricane-matthew + palu-tsunami, nunca vistos)"
-      comparacion_modelo_viejo: "0.436 con edificios GT pero con FUGA (split por fila) · 0.025 con máscara de terreno en val honesto"
+      iou_dano_rescuenet_val_uav: 0.735    # dominio de vuelo (UAV, GSD 7.7 cm/px)
+      iou_dano_xbd_heldout: 0.096          # cross-event satelital (trade-off)
+      umbral_voto_uav: 10.2                # F1 0.828 · recall 0.887 (RescueNet val)
+      fuente: "val interno de train_damage_v3.py + tools/calibrate_thresholds.py --rescuenet --torch"
     notas: |
-      ⚠ RE-ENTRENADO 2026-09-17 con:
-        · split POR DESASTRE (`cansat/xbd.py`),
-        · **loss de RescueNet** (`--loss rescue`): BCE de localización
-          edificio/fondo + CE selectiva en foreground, adaptada a una sola
-          cabeza de 3 clases,
-        · selección por IoU de daño sobre edificios (la métrica de la misión),
-        · 12 épocas, semilla fija.
-      0.472 sobre desastres NUNCA vistos es el mejor número honesto del
-      proyecto para daño y triplica el del modelo viejo en el mismo protocolo.
-      El two-stage sigue dependiendo de la máscara de edificios: en vuelo se
-      enmascara con el modelo de terreno (recall de edificios 84 %).
+      ⚠ CAMBIO DE MODELO DE VUELO (2026-09-18): se reemplazó el two-stage xBD
+      (0.472 xBD / 0.497 RescueNet val) por el balanceado xBD×4 + 4k RescueNet
+      (0.096 xBD / 0.735 RescueNet val). Motivo: la GSD de vuelo (7.7 cm/px a
+      250 m) es del dominio UAV, no satelital; el usuario priorizó detectar
+      daño en el dominio de vuelo. Umbral de voto recalibrado en RescueNet val
+      (10.2 %, F1 0.828, recall 0.887). El xBD puro sigue en
+      `outputs/cansat_damage_v3.onnx` como referencia cross-event del informe.
+      El two-stage se enmascara con los edificios del terreno (recall 84 %).
 
   dano_f2_rescuenet:
     # F2 (2026-09-18): mezcla con RescueNet (UAV óptico, GSD ≈0.05-0.08 m/px,
@@ -242,20 +243,42 @@ vuelo:
         onnx: "outputs/cansat_damage_v3_bal.onnx"
         iou_dano_xbd_heldout: 0.096
         iou_dano_rescuenet_val: 0.735
-        nota: "mejor modelo para el dominio de vuelo (UAV); NO alcanza el 0.20
-               cross-event del plan F2 sobre xBD"
+        nota: "ELEGIDO para volar (two-stage de vuelo)"
+      - nombre: "Principal (damage3) re-entrenado con la mezcla"
+        checkpoint: "outputs/best_damage3_bal.pth"
+        iou_dano_xbd_heldout: 0.047          # protocolo v2 (media por muestra)
+        iou_dano_rescuenet_val: 0.476        # protocolo v2 (centro 320)
+        nota: "DESCARTADO: peor que el principal xBD en ambos dominios
+               (xBD 0.173 → 0.047). Entrenamiento cortado en época 1."
+    calibracion_uav:
+      herramienta: "tools/calibrate_thresholds.py --rescuenet --tiles 600 --torch --min-dano-px 10"
+      two_stage_balanceado:
+        umbral_f1_optimo: 10.18
+        f1: 0.828
+        precision: 0.776
+        recall: 0.887
+        fpr: 0.415           # sobre val de zona de desastre (tiles "limpios" con escombros)
+        umbral_fpr_5pct: 83.55
+      principal_xbd:
+        umbral_f1_optimo: 10.89
+        f1: 0.772
+        recall: 0.927
+        fpr: 0.769
+        nota: "SATURA en UAV: mediana 62.7 % de 'daño' en tiles sin daño. En
+               vuelo no discrimina; el two-stage es el que decide."
     interpretacion: |
       Los dominios satelital (0.3 m/px) y UAV (0.05-0.08 m/px) compiten:
       agregar RescueNet sube el daño en UAV de 0.497 → 0.735 pero hunde xBD de
-      0.472 → 0.096 (olvido catastrófico con 82 % de RescueNet; solo parcial
-      con el balanceo ×4). Para la misión (GSD 7.7 cm/px) el balanceado es el
-      mejor candidato; el xBD-only queda como referencia cross-event del
-      informe. Decisión de vuelo: pendiente de medir con frames reales en la Pi.
+      0.472 → 0.096. DECISIÓN 2026-09-18 (usuario): vuela el mejor detector en
+      el dominio de vuelo → two-stage balanceado, umbral 10.2 % (prioriza
+      detección: recall 0.887). El xBD-only queda como referencia cross-event.
       El balanceado pasa la auditoría IMX500 (opset 17, 51 MB, autocontenido).
     caveat: |
       El 0.735 de RescueNet val puede estar inflado por proximidad geográfica
       entre train y val del propio dataset (mismos vuelos post-Michael). El
-      número cross-dataset honesto es el de xBD held-out.
+      número cross-dataset honesto es el de xBD held-out. El FPR del umbral
+      de vuelo (41.5 %) se midió sobre val de zona de desastre: recalibrar con
+      frames reales del predio (--folder/--labels) antes de la campaña.
 
   dano_siames:
     onnx: "outputs/cansat_siamese_damage.onnx"

@@ -386,9 +386,16 @@ def diagnose(
 
 DAMAGE_CONSENSUS_PCT: float = 10.0  # umbral de voto del principal y del siamés
 # Umbral propio del two-stage: trabaja enmascarado por edificios, así que sus
-# porcentajes son ~3× menores. Calibrado el 2026-09-17 con
-# tools/calibrate_thresholds.py (xBD val por desastre, FPR ≤ 5 %).
-DAMAGE_CONSENSUS_PCT_TWO_STAGE: float = 3.7
+# porcentajes son ~3× menores que los del principal.
+#   · 2026-09-17: calibrado en xBD val por desastre → 3.7 % (FPR ≤ 5 %).
+#   · 2026-09-18: el modelo de vuelo pasó a ser el two-stage adaptado a UAV
+#     (RescueNet, ver MODELS.yaml dano_f2_rescuenet) y se recalibró en el
+#     dominio de vuelo (RescueNet val, 600 tiles, etiqueta ≥10 % de píxeles
+#     dañados): F1-óptimo 10.18 % (F1 0.828, recall 0.887, FPR 41.5 % sobre
+#     val de zona de desastre). Se prioriza DETECCIÓN: 10.2 %.
+#     Ojo: el principal xBD satura en UAV (mediana 62.7 % de "daño" en tiles
+#     sin daño) — en vuelo el que discrimina es este two-stage.
+DAMAGE_CONSENSUS_PCT_TWO_STAGE: float = 10.2
 DAMAGE_STRONG_PCT: float = 25.0  # "daño fuerte" para la red de seguridad
 FLOOD_MIN_PCT: float = 20.0
 FLOOD_RATIO: float = 1.5

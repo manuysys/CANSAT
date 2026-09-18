@@ -33,11 +33,12 @@ Write-Host "  destino  : $Dist"
 # Por defecto van el de terreno (vuelo) y el flood re-entrenado (pasa la
 # auditoría IMX500 y es liviano). Con -Todos se agregan daño/two-stage/siamés
 # (sólo útiles si la placa mide bien; ver pi/guia_pi.md paso 6).
+# El two-stage de vuelo es el adaptado a UAV con RescueNet (F2 2026-09-18).
 $Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist.onnx")
 if ($Todos) {
     $Modelos += @(
         "cansat_damage3_mobilenetv2.onnx",
-        "cansat_damage_v3.onnx",
+        "cansat_damage_v3_bal.onnx",
         "cansat_siamese_damage.onnx"
     )
 }

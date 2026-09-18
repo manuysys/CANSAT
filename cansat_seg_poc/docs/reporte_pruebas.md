@@ -1,6 +1,6 @@
 # CanSat La Base (CONAE 135) — Reporte de pruebas de misión secundaria
 
-Generado: 2026-09-17 por `generate_report.py`.
+Generado: 2026-09-18 por `generate_report.py`.
 
 > Las secciones 1–5 salen de **artefactos medidos** en disco. Las 7–9
 > salen de `docs/decisiones.yaml`, que es editable sin tocar código.

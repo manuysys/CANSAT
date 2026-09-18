@@ -83,6 +83,26 @@ def conf_matrix(pred, targ, n=3):
     return np.bincount(n * t + p, minlength=n * n).reshape(n, n)
 
 
+def leer_manifest(path: str) -> list[dict]:
+    """Filas de un manifest con el formato de xBD (name,image,mask,intacto,...)."""
+    with open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def evaluar(model, loader, device) -> tuple[np.ndarray, float]:
+    """Devuelve (matriz de confusión, DAÑADO* medio por muestra)."""
+    cm = np.zeros((3, 3), dtype=np.int64)
+    iou_edif: list[float] = []
+    with torch.no_grad():
+        for x, y in loader:
+            y_np = y.numpy()
+            pred = model(x.to(device)).argmax(1).cpu().numpy()
+            cm += conf_matrix(pred, y_np)
+            for pr, gt in zip(pred, y_np, strict=False):
+                iou_edif.append(iou_dano_edificios(pr, gt))
+    return cm, (float(np.mean(iou_edif)) if iou_edif else 0.0)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=12)
@@ -92,17 +112,38 @@ def main():
     ap.add_argument("--out", default="outputs/best_damage3.pth")
     ap.add_argument("--holdout-frac", type=float, default=0.2,
                     help="fracción de DESASTRES reservados para val")
+    ap.add_argument("--extra-manifest", nargs="*", default=[],
+                    help="manifests adicionales (formato xBD) que van TODOS a "
+                         "train; p.ej. dataset/rescuenet_tiles/manifest_train_sub4000.csv")
+    ap.add_argument("--extra-val-manifest", nargs="*", default=[],
+                    help="manifests adicionales solo para REPORTAR validación")
+    ap.add_argument("--xbd-repeat", type=int, default=1,
+                    help="repite las filas xBD de train N veces (balance de dominios)")
+    ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     set_seed(args.seed)
 
-    with open(MANIFEST, encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+    rows = leer_manifest(MANIFEST)
     # ⚠ Split POR DESASTRE: el holdout son eventos completos que el modelo
     #   nunca ve en train. Antes era 90/10 por fila y filtraba geografía.
     train_rows, val_rows, val_grupos = split_por_desastre(
         rows, args.holdout_frac, args.seed)
-    print(f"Muestras: {len(rows)} → train {len(train_rows)} / val {len(val_rows)}")
+    n_xbd = len(train_rows)
+    if args.xbd_repeat > 1:
+        train_rows = train_rows * args.xbd_repeat
+        print(f"xBD train repetido ×{args.xbd_repeat} → {len(train_rows)} filas")
+    for m in args.extra_manifest:
+        extra = leer_manifest(m)
+        print(f"Extra train: {len(extra)} filas de {m}")
+        train_rows = train_rows + extra
+    extra_val_rows = []
+    for m in args.extra_val_manifest:
+        extra = leer_manifest(m)
+        print(f"Extra val (reporte): {len(extra)} filas de {m}")
+        extra_val_rows = extra_val_rows + extra
+    print(f"Muestras: xBD {len(rows)} → train {n_xbd} / val {len(val_rows)} · "
+          f"train total {len(train_rows)}")
     print(f"Val por desastre: {val_grupos}")
 
     totals = np.zeros(3)
@@ -135,8 +176,17 @@ def main():
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     train_dl = DataLoader(XBDv2(train_rows, args.size, aug=True),
-                          batch_size=args.batch, shuffle=True)
-    val_dl = DataLoader(XBDv2(val_rows, args.size), batch_size=args.batch)
+                          batch_size=args.batch, shuffle=True,
+                          num_workers=args.workers,
+                          persistent_workers=args.workers > 0)
+    val_dl = DataLoader(XBDv2(val_rows, args.size), batch_size=args.batch,
+                        num_workers=args.workers,
+                        persistent_workers=args.workers > 0)
+    extra_val_dl = (DataLoader(XBDv2(extra_val_rows, args.size),
+                               batch_size=args.batch,
+                               num_workers=args.workers,
+                               persistent_workers=args.workers > 0)
+                    if extra_val_rows else None)
 
     best = -1.0
     for ep in range(args.epochs):
@@ -152,15 +202,7 @@ def main():
         print(f"  epoch {ep + 1}: loss {loss.item():.4f} — evaluando...")
 
         model.eval()
-        cm = np.zeros((3, 3), dtype=np.int64)
-        iou_edif: list[float] = []
-        with torch.no_grad():
-            for x, y in val_dl:
-                y_np = y.numpy()
-                pred = model(x.to(device)).argmax(1).cpu().numpy()
-                cm += conf_matrix(pred, y_np)
-                for pr, gt in zip(pred, y_np, strict=False):
-                    iou_edif.append(iou_dano_edificios(pr, gt))
+        cm, sel = evaluar(model, val_dl, device)
         ious = []
         for i in range(3):
             inter = cm[i, i]
@@ -169,21 +211,26 @@ def main():
         miou = float(np.mean(ious))
         # Métrica de selección = la de la misión (daño sobre edificios), no el
         # mIoU de 3 clases donde el fondo domina.
-        sel = float(np.mean(iou_edif)) if iou_edif else 0.0
+        sel_ex = None
+        if extra_val_dl is not None:
+            _cm_ex, sel_ex = evaluar(model, extra_val_dl, device)
+        extra_txt = f"  | extra DAÑADO*={sel_ex:.3f}" if sel_ex is not None else ""
         print(f"  IoU: other={ious[0]:.2f}  intacto={ious[1]:.2f}  "
               f"DAÑADO={ious[2]:.2f}  | mIoU={miou:.3f}  | "
-              f"DAÑADO* (edificios)={sel:.3f}")
+              f"DAÑADO* (edificios)={sel:.3f}{extra_txt}")
         if sel > best:
             best = sel
+            meta_extra = ({"iou_dano_extra": round(float(sel_ex), 4)}
+                          if sel_ex is not None else {})
             save_ckpt(args.out, model,
                       num_classes=3, img_size=args.size, class_names=CLASSES,
                       iou_dano_edificios=round(sel, 4),
                       miou_3clases=round(miou, 4),
                       iou_per_class=[round(float(x), 4) for x in ious],
-                      dataset="xbd (split por desastre)",
+                      dataset="xbd (split por desastre) + extras",
                       val_desastres=val_grupos,
                       script="train_damage_v2.py",
-                      epochs=ep + 1, seed=args.seed)
+                      epochs=ep + 1, seed=args.seed, **meta_extra)
             print(f"  → guardado {args.out}")
 
     print(f"[OK] mejor DAÑADO* (edificios): {best:.3f}")

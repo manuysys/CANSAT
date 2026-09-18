@@ -23,7 +23,7 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
 | Imágenes mejoradas con IA | EDSR x2 (`enhance_image.py`) en post-vuelo + `--enhance` (denoise+unsharp) a bordo | ✅ |
 | Mapa del terreno | `corridor_map.py` (corredor apilado) + **trayectoria GPS** en la estación (`GpsTrack.tsx`) + overlays de segmentación | ✅ |
 | Estrés ambiental por contaminación | USI (edificios/vegetación), GVI, densidad urbana, `flood_risk`, veredicto en `cansat/indices.py` | ✅ |
-| Detección de daños materiales | Consenso de 3 modelos (principal + two-stage + siamés) con `cansat.indices.diagnose` | ✅ (ver §4: generalización débil) |
+| Detección de daños materiales | Consenso de 2-3 modelos (principal + two-stage adaptado a UAV + siamés opcional) con `cansat.indices.diagnose`; two-stage de vuelo = `cansat_damage_v3_bal.onnx` (F2 2026-09-18, IoU dañado 0.735 en el dominio UAV, umbral calibrado 10.2 %) | ✅ |
 | **Estimación de pérdidas humanas** | `cansat/casualties.py`: modelo de exposición con supuestos declarados (densidad, ocupación, colapso, letalidad) + banda de incertidumbre; KPI en la estación | ✅ |
 
 ## 2. Asociación imagen ↔ telemetría (DPD: "hora, posición, altitud, presión, temperatura")
@@ -59,9 +59,13 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
 
 ## 5. Brechas abiertas (priorizadas)
 
-1. **Generalización de los modelos de daño**: medido en desastres NO vistos, el
-   IoU de píxel "dañado" es ~0.10 (y 0.13 en train). El 0.32 que se citaba
-   venía de un split con fuga geográfica. Plan en `docs/DATASETS-Y-TECNICAS.md`.
+1. **Generalización de los modelos de daño**: RESUELTO PARCIAL (F2
+   2026-09-18). El two-stage de vuelo se re-entrenó con RescueNet (UAV) y
+   sube a **0.735 de IoU de dañado en el dominio de vuelo** (era 0.497);
+   a cambio pierde el dominio satelital (xBD 0.472 → 0.096), que queda como
+   referencia cross-event. El principal xBD satura en UAV (62.7 % de "daño" en
+   tiles sin daño). Umbral de voto recalibrado (10.2 %, F1 0.828, recall
+   0.887). Detalle en `docs/DATASETS-Y-TECNICAS.md` y `MODELS.yaml`.
 2. **Validar el modo IMX500 y el pipeline en la Pi** (medir s/frame reales).
 3. **Umbrales del consenso sin calibrar** con frames reales (`--damage-threshold`
    ya es configurable; el JSONL registra todo para calibrar).
