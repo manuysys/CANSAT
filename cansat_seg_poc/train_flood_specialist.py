@@ -96,13 +96,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--batch", type=int, default=8)
+    ap.add_argument("--size", type=int, default=320)
+    ap.add_argument("--out", default="outputs/best_flood_specialist.pth")
+    ap.add_argument("--onnx-out", default="outputs/cansat_flood_specialist.onnx")
+    ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     set_seed(args.seed)
-    train_ds = FloodDS("train", aug=True)
-    val_ds = FloodDS("val")
-    print(f"Pares: train {len(train_ds)} / val {len(val_ds)}")
+    train_ds = FloodDS("train", size=args.size, aug=True)
+    val_ds = FloodDS("val", size=args.size)
+    print(f"Pares: train {len(train_ds)} / val {len(val_ds)} · {args.size}px")
     if not train_ds:
         print("[ERROR] Corré antes prepare_floodnet.py")
         raise SystemExit(1)
@@ -116,8 +120,11 @@ def main():
 
     opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
     train_dl = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
-                          num_workers=0)
-    val_dl = DataLoader(val_ds, batch_size=args.batch, num_workers=0)
+                          num_workers=args.workers,
+                          persistent_workers=args.workers > 0)
+    val_dl = DataLoader(val_ds, batch_size=args.batch,
+                        num_workers=args.workers,
+                        persistent_workers=args.workers > 0)
 
     best = -1.0
     for ep in range(args.epochs):
@@ -145,8 +152,8 @@ def main():
               f"agua={ious[2]:.2f}")
         if ious[1] > best:
             best = ious[1]
-            save_ckpt("outputs/best_flood_specialist.pth", model,
-                      num_classes=3, img_size=320,
+            save_ckpt(args.out, model,
+                      num_classes=3, img_size=args.size,
                       class_names=["other", "flood", "agua_normal"],
                       iou_per_class=[round(x, 4) for x in ious],
                       iou_flood=round(ious[1], 4),
@@ -160,16 +167,15 @@ def main():
     # la última época) y con dynamo=False: el default de torch 2.11 genera IR10
     # con pesos externos, que ni cv2.dnn ni el conversor IMX500 aceptan.
     from cansat.checkpoints import load_model_state
-    model.load_state_dict(load_model_state("outputs/best_flood_specialist.pth",
-                                           strict=True))
+    model.load_state_dict(load_model_state(args.out, strict=True))
     model.eval().cpu()
-    torch.onnx.export(model, torch.randn(1, 3, 320, 320),
-                      "outputs/cansat_flood_specialist.onnx",
+    torch.onnx.export(model, torch.randn(1, 3, args.size, args.size),
+                      args.onnx_out,
                       input_names=["input"], output_names=["logits"],
                       opset_version=17, do_constant_folding=True,
                       dynamo=False)
-    print("[OK] outputs/cansat_flood_specialist.onnx (modelo BEST, dinamo off)")
-    print("     Verificá: python audit_imx500.py --onnx outputs/cansat_flood_specialist.onnx")
+    print(f"[OK] {args.onnx_out} (modelo BEST, dinamo off)")
+    print(f"     Verificá: python audit_imx500.py --onnx {args.onnx_out}")
 
 
 if __name__ == "__main__":

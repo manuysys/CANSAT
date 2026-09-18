@@ -306,26 +306,31 @@ vuelo:
       Backup de los pesos ROTO: outputs/_roto_backup/.
 
   flood_specialist:
-    onnx: "outputs/cansat_flood_specialist.onnx"
-    checkpoint: "outputs/best_flood_specialist.pth"
-    entrenado_por: "train_flood_specialist.py --epochs 12 (dataset remapeado corregido)"
+    # F3 (2026-09-18): el de vuelo pasó a 224 px (mitad de cómputo, IoU flood
+    # igual o mejor). El de 320 queda como alternativa.
+    onnx: "outputs/cansat_flood_specialist_224.onnx"
+    checkpoint: "outputs/best_flood_specialist_224.pth"
+    entrenado_por: "train_flood_specialist.py --epochs 12 --size 224 (2026-09-18)"
+    exportado_por: "el propio script exporta el BEST con dynamo=False"
     dataset: "FloodNet (Kaggle) + LoveDA"
     licencia: "FloodNet sin licencia declarada en la ficha — verificar"
-    estado: "VUELA (opcional; se desactiva solo si falta)"
+    estado: "VUELA (224 px; el de 320 queda como alternativa)"
     metricas:
-      iou_flood: 0.483
-      iou_agua_normal: 0.555
-      iou_other: 0.881
+      iou_flood: 0.489          # vs 0.483 a 320 px
+      iou_agua_normal: 0.502    # vs 0.555 a 320 px (baja: trade-off)
+      iou_other: 0.876          # vs 0.881 a 320 px
       fuente: "mejor época del entrenamiento (Val, split 80/20 del remapeo)"
     notas: |
-      ⚠ RE-ENTRENADO Y RE-EXPORTADO 2026-09-17. El modelo anterior era
-      INSERVIBLE: prepare_floodnet.py aplicaba un `shift` heurístico que
-      desplazaba todas las clases, así que "flood" era Building-NON-flooded
-      (2.98 %) y "agua normal" era Tree (16.55 %). Además sólo mapeaba
-      Road-flooded y confundía Vehicle con Pool. Ahora el remapeo sigue el
-      class_mapping.csv oficial: flood = {Building-flooded, Road-flooded},
-      agua = {Water}. Es el primer modelo del repo que PASA la auditoría
-      IMX500 (opset 17, autocontenido, 1 entrada).
+      ⚠ RE-ENTRENADO A 224 px (2026-09-18): IoU flood 0.489 (vs 0.483 a 320) y
+      **2.04× menos cómputo por frame** en la Pi. La clase agua-normal baja
+      (0.555 → 0.502): es el precio del tamaño. El pipeline preprocesa por
+      modelo (mission_pipeline: size_f = sess_f.size_px) así que el flood puede
+      correr a 224 aunque el terreno/daño vayan a 320.
+      El modelo de 320 sigue en outputs/cansat_flood_specialist.onnx.
+      Historia previa: el modelo anterior era INSERVIBLE (shift heurístico en
+      prepare_floodnet.py: "flood" era Building-NON-flooded y "agua normal" era
+      Tree). Con el remapeo oficial (flood = {Building-flooded, Road-flooded},
+      agua = {Water}) es el primer modelo del repo que PASÓ la auditoría IMX500.
 
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"

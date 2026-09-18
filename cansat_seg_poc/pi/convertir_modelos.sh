@@ -33,7 +33,7 @@ echo "Modelos de vuelo candidatos (deben pasar audit_imx500.py):"
 echo "  · outputs/cansat_seg_terrain_v2.onnx   (segmentación, 52.19 % mIoU)"
 echo "  · outputs/cansat_seg_terrain_v2_224.onnx (alternativa 224 px, 49.96 %)"
 echo "  · outputs/cansat_seg_terrain_tiny_224.onnx (tiny 4.3 MB, candidato NPU)"
-echo "  · outputs/cansat_flood_specialist.onnx (flood, ya auditado)"
+echo "  · outputs/cansat_flood_specialist_224.onnx (flood 224 px, IoU 0.489)"
 echo "  · outputs/cansat_damage3_mobilenetv2.onnx (daño principal, xBD)"
 echo "  · outputs/cansat_damage_v3_bal.onnx (daño two-stage de vuelo, UAV)"
 echo

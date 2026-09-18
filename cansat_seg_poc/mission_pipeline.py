@@ -473,7 +473,10 @@ def build_parser():
                      help="two-stage de vuelo: adaptado a UAV con RescueNet "
                           "(F2 2026-09-18). El xBD puro queda como alternativa: "
                           "outputs/cansat_damage_v3.onnx")
-    mod.add_argument("--flood-onnx", default="outputs/cansat_flood_specialist.onnx")
+    mod.add_argument("--flood-onnx", default="outputs/cansat_flood_specialist_224.onnx",
+                     help="especialista de inundación a 224 px (F3 2026-09-18, "
+                          "IoU 0.489 y la mitad de cómputo que el de 320). "
+                          "Alternativa: outputs/cansat_flood_specialist.onnx")
     mod.add_argument("--siamese-onnx", default="",
                      help="siamés de cambio pre/post. DESACTIVADO por defecto: los "
                           "pesos del repo están marcados ROTO en MODELS.yaml "
@@ -987,9 +990,22 @@ def main(argv=None):
                 # resultado se reutiliza para el diagnóstico y para el sampler.
                 # Antes se ejecutaba dos veces (rama de diagnóstico + sampler).
                 if sess_f:
-                    pred_f = np.argmax(sess_f.run({"input": tensor})[0], axis=0)
-                    pct_flood = float(((pred_f == 1) & valid).sum()) / n_valid * 100.0
-                    pct_fw = float(((pred_f == 2) & valid).sum()) / n_valid * 100.0
+                    # El flood puede tener su propio tamaño de entrada (p.ej.
+                    # 224 px: la mitad de cómputo que 320). Si coincide con el
+                    # del terreno se reutiliza el tensor; si no, se preprocesa
+                    # aparte y se adapta la máscara de válidos.
+                    size_f = sess_f.size_px or args.img_size
+                    if size_f == args.img_size:
+                        tensor_f, valid_f = tensor, valid
+                    else:
+                        tensor_f = PP.preprocess_bgr(bgr, size_f)
+                        valid_f = cv2.resize(
+                            valid.astype(np.uint8), (size_f, size_f),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                    pred_f = np.argmax(sess_f.run({"input": tensor_f})[0], axis=0)
+                    n_valid_f = max(1, int(valid_f.sum()))
+                    pct_flood = float(((pred_f == 1) & valid_f).sum()) / n_valid_f * 100.0
+                    pct_fw = float(((pred_f == 2) & valid_f).sum()) / n_valid_f * 100.0
 
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)

@@ -12,13 +12,15 @@ datasets para mejorar los desastres (tornados/huracanes, terremotos)"*.
 |---|---|---|
 | Terreno (DeepLabV3+ MV2, 5 clases) | **mIoU 52.19 %** (Val completo) | fuerte para edge; margen de mejora acotado |
 | Daño principal (3 clases, xBD) | IoU "dañado" **0.104** en desastres no vistos (0.132 en train) | el número viejo (0.32) tenía fuga |
-| Daño two-stage | **0.025** con desastres no vistos; 0.436 con edificios GT | vive de la máscara de edificios |
+| Daño two-stage | **0.025** con desastres no vistos; 0.436 con edificios GT | F2: el de vuelo es el adaptado a UAV (RescueNet val 0.735) |
 | Siamés (re-entrenado) | DAÑADO* **0.601**; 1.23 % de daño falso con pre==post | desactivado por defecto |
-| Flood specialist (re-entrenado) | IoU flood **0.483** | remapeo corregido |
+| Flood specialist (re-entrenado) | IoU flood **0.483** a 320 px → **0.489** a 224 px (F3, el de vuelo) | remapeo corregido |
 | Personas | sin métrica todavía | el SSD del IMX500 y YOLO existen; falta medir |
 
 **Conclusión**: el eslabón débil no es el terreno (52 % es competitivo), son los
-modelos de daño y la estimación de personas. Ahí van las mejoras.
+modelos de daño y la estimación de personas. Ahí van las mejoras. Estado tras
+F2/F3 (2026-09-18): daño adaptado al dominio de vuelo (UAV) con IoU 0.735 en
+RescueNet val y flood a 224 px con IoU 0.489.
 
 ## 2. Datasets recomendados (además de los actuales)
 

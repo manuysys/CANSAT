@@ -74,7 +74,7 @@ DAMAGE2 = "outputs/cansat_damage_v3_bal.onnx"
 # El siamés está DESACTIVADO por defecto: los pesos del repo están marcados
 # ROTO en MODELS.yaml (alucinaban daño sin cambio). Se activa con --siamese-onnx.
 SIAMESE = ""
-FLOOD_ONNX = "outputs/cansat_flood_specialist.onnx"
+FLOOD_ONNX = "outputs/cansat_flood_specialist_224.onnx"   # F3: 224 px, IoU 0.489
 TERRAIN_V2 = "outputs/cansat_seg_terrain_v2.onnx"
 
 # Candidatos de SegFormer B5 en orden de preferencia. El anterior hardcodeaba

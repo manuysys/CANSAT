@@ -34,7 +34,7 @@ Write-Host "  destino  : $Dist"
 # auditoría IMX500 y es liviano). Con -Todos se agregan daño/two-stage/siamés
 # (sólo útiles si la placa mide bien; ver pi/guia_pi.md paso 6).
 # El two-stage de vuelo es el adaptado a UAV con RescueNet (F2 2026-09-18).
-$Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist.onnx")
+$Modelos = @("cansat_seg_terrain_v2.onnx", "cansat_flood_specialist_224.onnx")
 if ($Todos) {
     $Modelos += @(
         "cansat_damage3_mobilenetv2.onnx",
