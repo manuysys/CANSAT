@@ -19,7 +19,7 @@
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
 | Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
-| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO) · 🟡 NPU IMX500 sin validar en placa |
+| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · 🟡 NPU IMX500 sin validar en placa |
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
@@ -177,7 +177,11 @@ red de seguridad para daño fuerte.
 ### 4.6 Personas y vehículos
 
 - **PC/post-vuelo**: `yolov8n_visdrone.pt` (fine-tune de VisDrone): 254 personas
-  vs 42 del COCO en imagen aérea de prueba.
+  vs 42 del COCO en imagen aérea de prueba. **v2**: `yolo11n_visdrone_v2.pt`
+  (40 épocas, mAP50-95 0.164 en el val completo de VisDrone: 548 imgs / 38 759
+  instancias); mismo conteo en la imagen de prueba (~250). El ONNX está listo
+  para convertir a `.rpk` en la PC Linux (Ultralytics `format="imx"` **requiere
+  Linux** — verificado que en Windows falla con "Export only supported on Linux").
 - **Vuelo**: NPU del IMX500 (`--det-backend imx500`, `cansat/imx500.py`) con el
   `.rpk` SSD stock. 🟡 Pendiente validar en hardware a la GSD del descenso
   (a 250 m una persona ≈ 6 px: hay que medir cuántas detecta realmente).
@@ -232,6 +236,13 @@ recomendaron alternativas en vez de repetirlas sin corregir la causa.
 **Conclusión honesta**: las técnicas que fallaron no eran malas en sí — estaban
 mal implementadas o mal aplicadas al dominio. La receta que sí movió la aguja
 fue **datos del dominio correcto (UAV) + split honesto + calibración medida**.
+
+**Hallazgo cross-event (F2 v3, 2026-09-19)**: medido en el **terremoto de
+Türkiye 2023** (KATE-PD, nunca visto), el modelo de vuelo **satura** (78 % de
+píxeles marcados como dañados; IoU binaria 0.027 vs 0.89 de recall). Coincide
+con el BRIGHT Challenge 2026: la generalización cross-event sigue abierta. Se
+sumaron **KATE-PD** (sismo) y **CRASAR-U-DROIDs** (10 desastres sUAS: tornado,
+volcán, incendio, huracanes) al entrenamiento de severidad para atacarlo.
 
 ---
 

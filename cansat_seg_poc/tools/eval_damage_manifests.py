@@ -62,6 +62,7 @@ def main() -> int:
                     num_workers=0)
     cm = np.zeros((3, 3), dtype=np.int64)
     inter_d = union_d = 0
+    inter_bin = union_bin = 0
     with torch.no_grad():
         for x, y in dl:
             pred = model(x.to(dev)).argmax(1).cpu().numpy()
@@ -70,8 +71,14 @@ def main() -> int:
             pd, gd, gb = pred == 2, yt == 2, yt >= 1
             inter_d += int((pd & gd).sum())
             union_d += int(((pd & gb) | gd).sum())
+            # IoU BINARIA de daño (predicho vs GT, sin depender de "intacto"):
+            # es la métrica honesta en datasets que sólo etiquetan lo dañado
+            # (KATE-PD, CRASAR), donde DAÑADO* se vuelve un recall.
+            inter_bin += int((pd & gd).sum())
+            union_bin += int((pd | gd).sum())
 
     iou_d2 = inter_d / union_d if union_d else 0.0
+    iou_bin = inter_bin / union_bin if union_bin else 0.0
     ious = []
     for i in range(3):
         inter = cm[i, i]
@@ -79,6 +86,7 @@ def main() -> int:
         ious.append(inter / union if union else 0.0)
     print(f"  other={ious[0]:.3f} intacto={ious[1]:.3f} dañado={ious[2]:.3f}")
     print(f"  DAÑADO* two-stage (sobre edificios) = {iou_d2:.4f}")
+    print(f"  IoU BINARIA de daño (pred ∪ GT)    = {iou_bin:.4f}")
     return 0
 
 

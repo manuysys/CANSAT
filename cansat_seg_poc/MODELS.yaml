@@ -401,7 +401,8 @@ vuelo:
     estado: "VUELA en PC/post-vuelo (desactivable con --no-detect)"
     metricas:
       comparacion_modelos: "2026-09-17 sobre dataset/pruebas/PERSONAS_AUTOS.png @1280: VisDrone 254 personas / COCO yolov8s 42 personas"
-      precision_recall: "NO MEDIDO formalmente (no hay set etiquetado de personas)"
+      v2_yolo11n_val: "2026-09-19: mAP50-95 0.164 · mAP50 0.295 (548 imgs / 38 759 instancias, val completo de VisDrone)"
+      precision_recall: "medido en val de VisDrone (v2); en la imagen de prueba los tres modelos dan ~250 personas"
     notas: |
       ⚠ CAMBIO 2026-09-17: el detector por defecto pasó de `yolov8s.pt` (COCO)
       al fine-tune de **VisDrone** (`yolov8n_visdrone.pt`, 5.9 MB). Medición
@@ -409,6 +410,11 @@ vuelo:
       contra 42 del COCO — los modelos COCO pierden personas sub-píxel, que es
       exactamente el caso del CanSat (a 250 m, 1 persona ≈ 6 px).
       `yolo11n_visdrone.pt` da casi lo mismo (251) y queda como alternativa.
+      **v2 (2026-09-19)**: `yolo11n_visdrone_v2.pt` re-entrenado 40 épocas con
+      paciencia 15 (mAP50-95 0.164 en el val completo). El ONNX
+      (`models/yolo11n_visdrone_v2.onnx`) está listo para convertir a `.rpk`
+      con Ultralytics `format="imx"` — **requiere Linux** (en Windows falla con
+      "Export only supported on Linux"; verificado).
       En la Pi Zero v1 (ARMv6, sin torch) la detección va por el NPU del
       AI Camera (--det-backend imx500); el SSD COCO on-sensor tiene la misma
       limitación de personas chicas y hay que medirlo en la placa.

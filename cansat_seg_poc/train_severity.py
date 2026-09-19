@@ -96,19 +96,76 @@ class RescueNetSeverity(Dataset):
                 torch.from_numpy(msk.astype(np.int64)))
 
 
-def compute_weights(ds: RescueNetSeverity, n=5, clip=(0.3, 8.0)):
+class Mask5Manifest(Dataset):
+    """Manifest con máscaras de 5 clases ya hechas (p. ej. CRASAR-U-DROIDs)."""
+
+    def __init__(self, manifest: Path, size: int = 320, aug: bool = False):
+        self.size, self.aug = size, aug
+        with manifest.open(encoding="utf-8") as f:
+            self.rows = list(csv.DictReader(f))
+
+    def __len__(self):
+        return len(self.rows)
+
+    def __getitem__(self, i):
+        r = self.rows[i]
+        img = cv2.imread(r["image"])
+        msk = cv2.imread(r["mask"], cv2.IMREAD_GRAYSCALE)
+        img = cv2.resize(img, (self.size, self.size))
+        msk = cv2.resize(msk, (self.size, self.size),
+                         interpolation=cv2.INTER_NEAREST)
+        if self.aug:
+            if random.random() < 0.5:
+                img, msk = cv2.flip(img, 1), cv2.flip(msk, 1)
+            if random.random() < 0.5:
+                img, msk = cv2.flip(img, 0), cv2.flip(msk, 0)
+            k = random.choice([0, 1, 2, 3])
+            if k:
+                img = np.ascontiguousarray(np.rot90(img, k))
+                msk = np.ascontiguousarray(np.rot90(msk, k))
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        rgb = (rgb - MEAN) / STD
+        return (torch.from_numpy(rgb.transpose(2, 0, 1)).float(),
+                torch.from_numpy(msk.astype(np.int64)))
+
+
+def histograma(ds: Dataset, n: int = 5) -> np.ndarray:
+    """Histograma de clases de un dataset (Reconstruye RescueNet o lee máscaras)."""
     hist = np.zeros(n, dtype=np.float64)
-    for r in ds.rows:
-        split, sid, y0, x0 = parsear_nombre(r["name"])
-        lab = cv2.imread(str(RAW / f"{split}-label-img" / f"{sid}_lab.png"),
-                         cv2.IMREAD_GRAYSCALE)
-        if lab is None:
-            continue
-        lab = lab[y0:y0 + TILE, x0:x0 + TILE]
-        msk = np.zeros_like(lab, dtype=np.uint8)
-        for src, dst in REMAP.items():
-            msk[lab == src] = dst
-        hist += np.bincount(msk.ravel(), minlength=n)[:n]
+    if isinstance(ds, RescueNetSeverity):
+        for r in ds.rows:
+            split, sid, y0, x0 = parsear_nombre(r["name"])
+            lab = cv2.imread(str(RAW / f"{split}-label-img" / f"{sid}_lab.png"),
+                             cv2.IMREAD_GRAYSCALE)
+            if lab is None:
+                continue
+            lab = lab[y0:y0 + TILE, x0:x0 + TILE]
+            msk = np.zeros_like(lab, dtype=np.uint8)
+            for src, dst in REMAP.items():
+                msk[lab == src] = dst
+            hist += np.bincount(msk.ravel(), minlength=n)[:n]
+    else:
+        for r in ds.rows:
+            m = cv2.imread(r["mask"], cv2.IMREAD_GRAYSCALE)
+            if m is None:
+                continue
+            hist += np.bincount(m.ravel(), minlength=n)[:n]
+    return hist
+
+
+def compute_weights(datasets, n=5, clip=(0.3, 8.0)):
+    """Pesos 1/√frecuencia sobre la UNIÓN de los datasets de train."""
+    if not isinstance(datasets, (list, tuple)):
+        datasets = [datasets]
+    expandidos = []
+    for ds in datasets:
+        if hasattr(ds, "datasets"):          # ConcatDataset
+            expandidos.extend(ds.datasets)
+        else:
+            expandidos.append(ds)
+    hist = np.zeros(n, dtype=np.float64)
+    for ds in expandidos:
+        hist += histograma(ds, n)
     freq = hist / max(1.0, hist.sum())
     w = 1.0 / np.sqrt(np.maximum(freq, 1e-9))
     w = np.clip(w, clip[0], clip[1])
@@ -146,6 +203,11 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--manifest", default="dataset/rescuenet_tiles/manifest_train_sub4000.csv")
     ap.add_argument("--val-manifest", default="dataset/rescuenet_tiles/manifest_val.csv")
+    ap.add_argument("--extra-manifest", nargs="*", default=[],
+                    help="manifests extra con máscaras de 5 clases ya hechas "
+                         "(p. ej. dataset/crasar_tiles/manifest_train.csv)")
+    ap.add_argument("--extra-val-manifest", nargs="*", default=[],
+                    help="manifests extra solo para REPORTAR (p. ej. CRASAR test)")
     ap.add_argument("--out", default="outputs/best_severity.pth")
     ap.add_argument("--onnx-out", default="outputs/cansat_severity.onnx")
     ap.add_argument("--init", default="outputs/best_damage_v3_bal.pth")
@@ -158,6 +220,20 @@ def main() -> int:
 
     train_ds = RescueNetSeverity(Path(args.manifest), args.size, aug=True)
     val_ds = RescueNetSeverity(Path(args.val_manifest), args.size)
+    extras = [Mask5Manifest(Path(m), args.size, aug=True)
+              for m in args.extra_manifest]
+    extra_val = [Mask5Manifest(Path(m), args.size)
+                 for m in args.extra_val_manifest]
+    if extras:
+        from torch.utils.data import ConcatDataset
+        train_ds = ConcatDataset([train_ds, *extras])
+        print(f"Extra train: {sum(len(d) for d in extras)} tiles de "
+              f"{len(extras)} manifest(s)")
+    extra_val_ds = None
+    if extra_val:
+        from torch.utils.data import ConcatDataset
+        extra_val_ds = ConcatDataset(extra_val)
+        print(f"Extra val (reporte): {sum(len(d) for d in extra_val)} tiles")
     print(f"Pares: train {len(train_ds)} / val {len(val_ds)} · {args.size}px")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -183,6 +259,10 @@ def main() -> int:
     val_dl = DataLoader(val_ds, batch_size=args.batch,
                         num_workers=args.workers,
                         persistent_workers=args.workers > 0)
+    extra_val_dl = (DataLoader(extra_val_ds, batch_size=args.batch,
+                               num_workers=args.workers,
+                               persistent_workers=args.workers > 0)
+                    if extra_val_ds is not None else None)
 
     best = -1.0
     for ep in range(args.epochs):
@@ -206,21 +286,34 @@ def main() -> int:
             inter = cm[i, i]
             union = cm[i, :].sum() + cm[:, i].sum() - inter
             ious.append(inter / union if union else 0.0)
+        extra_txt = ""
+        iou_col_extra = None
+        if extra_val_dl is not None:
+            _cm_e, iou_col_extra = evaluar(model, extra_val_dl, device)
+            extra_txt = f" | COLAPSO* extra={iou_col_extra:.3f}"
+        # Con datos multi-desastre la selección es la MEDIA de los dos val
+        # (RescueNet + CRASAR): así el modelo no gana en uno perdiendo el otro.
+        sel = ((iou_col + iou_col_extra) / 2.0 if iou_col_extra is not None
+               else iou_col)
         print(f"  epoch {ep + 1}: " +
               " ".join(f"{CLASSES[i]}={ious[i]:.2f}" for i in range(5)) +
-              f" | COLAPSO*={iou_col:.3f} | loss {run / len(train_dl):.4f}")
-        if iou_col > best:
-            best = iou_col
+              f" | COLAPSO*={iou_col:.3f}{extra_txt} | sel={sel:.3f} | "
+              f"loss {run / len(train_dl):.4f}")
+        if sel > best:
+            best = sel
+            meta_extra = ({"iou_colapso_extra": round(float(iou_col_extra), 4)}
+                          if iou_col_extra is not None else {})
             save_ckpt(args.out, model, num_classes=5, img_size=args.size,
                       class_names=CLASSES,
                       iou_per_class=[round(x, 4) for x in ious],
                       iou_colapso_edificios=round(iou_col, 4),
-                      dataset="RescueNet (severidad original)",
+                      dataset=("RescueNet + CRASAR (multi-desastre)"
+                               if extras else "RescueNet (severidad original)"),
                       script="train_severity.py",
-                      epochs=ep + 1, seed=args.seed)
+                      epochs=ep + 1, seed=args.seed, **meta_extra)
             print(f"  → guardado {args.out}")
 
-    print(f"[OK] mejor IoU COLAPSO* (mayor+destruido sobre edificios): {best:.3f}")
+    print(f"[OK] mejor selección (media RescueNet+extra si hay): {best:.3f}")
 
     from cansat.checkpoints import load_model_state
     model.load_state_dict(load_model_state(args.out, strict=True))

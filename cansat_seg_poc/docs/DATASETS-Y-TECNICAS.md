@@ -236,3 +236,23 @@ etiquetados del dominio UAV, o un modelo por dominio según la GSD del frame).
   `casualties.py`; la telemetría declara `colapso_fuente` (medido/supuesto).
 - Es la pieza que cierra el *"según su magnitud, estimar las posibles pérdidas
   humanas"* del DPD con un número medido y no un supuesto fijo.
+
+### F2 v3 — Multi-desastre (2026-09-19): otros tipos de desastre
+
+**Hallazgo cross-event (medido)**: en el **terremoto de Türkiye 2023** (KATE-PD,
+nunca visto) el modelo de vuelo **satura**: predice daño en ~78 % de los píxeles
+(recall 0.89 pero **IoU binaria de daño 0.027**; el principal xBD da 0.043). Es
+la confirmación local de lo que reporta el BRIGHT Challenge 2026: *la
+generalización cross-event y la discriminación de severidad son los problemas
+abiertos*. Por eso se suman datasets de otros desastres y se entrena con ellos.
+
+| Dataset nuevo | Desastres | Formato | Uso |
+|---|---|---|---|
+| **KATE-PD** (HF `cscrs/kate-pd`, IGARSS 2025) | **Terremoto Türkiye 2023** (7 ciudades, 0.3-0.5 m) | 832 tiles 512² con polígonos + máscara binaria | Test cross-event de sismo + clase "dañado" para entrenar |
+| **CRASAR-U-DROIDs** (HF `CRASAR/CRASAR-U-DROIDs`, **CC BY 4.0**, AAAI'26) | **10 desastres sUAS**: huracanes Ian/Ida/Harvey/Idalia/Laura/Michael, **tornado Mayfield**, **volcán Kilauea**, incendio Mussett Bayou, colapso Champlain | 13 ortomosaicos (3.8 Gpx) → **1 086 train + 690 test tiles** 640² con severidad JDS (4 niveles) | Severidad multi-desastre (tornado/volcán/incendio) con split por desastre |
+
+- Preparadores: `prepare_kate_pd.py` (parquet → tiles) y `prepare_crasar.py`
+  (lectura por ventanas con rasterio + rasterizado de polígonos JDS).
+- `tools/eval_damage_manifests.py` ahora reporta la **IoU binaria de daño**
+  (pred ∪ GT), la métrica honesta en datasets que sólo etiquetan lo dañado.
+- Licencias: KATE-PD (verificar ficha), CRASAR **CC BY 4.0** (atribución).
