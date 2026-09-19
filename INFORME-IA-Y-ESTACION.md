@@ -246,6 +246,14 @@ pérdidas_estimadas  = afectadas × fracción_de_colapso × letalidad
 
 - Supuestos por defecto (todos configurables y registrados en el JSONL):
   1 500 hab/km², ocupación 0.6, colapso 0.3, letalidad 0.1.
+- **Ocupación por franja horaria (metodología PAGER, USGS)**: día 0.55,
+  tránsito 0.75, noche 0.90 — de noche hay más gente presente y los eventos
+  nocturnos matan más (hallazgo de PAGER). La hora sale de `--hora-local` o del
+  reloj de la Pi al arrancar; la telemetría registra `hora_local`, `ocupacion` y
+  `ocupacion_fuente` (dia/noche/transito/manual).
+- **Vulnerabilidad del stock edilicio**: `--vulnerabilidad` (1.0 = referencia
+  global; >1 mampostería frágil, <1 sismorresistente) escala la fracción de
+  colapso, como las funciones de fatalidad por país de PAGER.
 - **Densidad poblacional REAL por GPS (WorldPop)**: `tools/build_pop_grid.py`
   agrega el raster 1 km de WorldPop (CC BY 4.0) a una grilla de 0.1° (15 467
   celdas pobladas de Argentina) y `cansat/population.py` la consulta por frame

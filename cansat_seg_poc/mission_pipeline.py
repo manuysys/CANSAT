@@ -119,7 +119,8 @@ from cansat import preprocess as PP
 from cansat import population as POP
 from cansat import protocol as PROTO
 from cansat import stress as ST
-from cansat.casualties import Supuestos, estimar as estimar_perdidas
+from cansat.casualties import (Supuestos, estimar as estimar_perdidas,
+                               ocupacion_por_hora)
 from cansat.crf import dense_crf
 
 from adaptive_sampler import AdaptiveSampler
@@ -616,8 +617,15 @@ def build_parser():
                      help="densidad poblacional del área relevada. El default (1500) "
                           "es urbano-periurbano típico; ajustar con el dato del predio. "
                           "Ver cansat/casualties.py para las referencias.")
-    cas.add_argument("--occupancy", type=float, default=0.6,
-                     help="fracción de la población presente en el momento del vuelo")
+    cas.add_argument("--occupancy", type=float, default=None,
+                     help="fracción de la población presente; default: por franja "
+                          "horaria PAGER (--hora-local o la hora del sistema)")
+    cas.add_argument("--hora-local", type=float, default=None, metavar="H",
+                     help="hora local del vuelo (0-23.99) para la ocupación PAGER; "
+                          "default: la hora del sistema al arrancar")
+    cas.add_argument("--vulnerabilidad", type=float, default=1.0,
+                     help="fragilidad del stock edilicio (1.0 = referencia global; "
+                          ">1 mampostería frágil, <1 sismorresistente)")
     cas.add_argument("--collapse-frac", type=float, default=0.3,
                      help="de lo dañado, fracción que colapsó (el modelo de daño no "
                           "distingue colapso; valor conservador documentado)")
@@ -638,8 +646,19 @@ def build_parser():
 # ══════════════════════════════════════════════════════════════════════ #
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    supuestos = Supuestos(pop_density=args.pop_density, occupancy=args.occupancy,
-                          collapse_frac=args.collapse_frac, fatality=args.fatality_ratio)
+    # Ocupación por franja horaria (PAGER, USGS): de noche hay más gente
+    # presente en el predio y los eventos nocturnos matan más. Un --occupancy
+    # explícito la pisa (y queda registrado como "manual").
+    ahora = datetime.now()
+    hora_local = (float(args.hora_local) if args.hora_local is not None
+                  else ahora.hour + ahora.minute / 60.0)
+    occ_pager, occ_franja = ocupacion_por_hora(hora_local)
+    occ = float(args.occupancy) if args.occupancy is not None else occ_pager
+    occ_fuente = "manual" if args.occupancy is not None else occ_franja
+    supuestos = Supuestos(pop_density=args.pop_density, occupancy=occ,
+                          collapse_frac=args.collapse_frac,
+                          fatality=args.fatality_ratio,
+                          vulnerabilidad=args.vulnerabilidad)
     # GPS: si hay UART state se sobreescribe por frame; --lat/--lon sirven de
     # posición fija para demos/simulacros sin hardware.
     lat_f, lon_f = float(args.lat), float(args.lon)
@@ -1142,7 +1161,8 @@ def main(argv=None):
             est = estimar_perdidas(
                 dan_max, area_frame_m2, sup_frame,
                 collapse_frac_medido=(colapso_pct / 100.0
-                                      if colapso_pct is not None else None))
+                                      if colapso_pct is not None else None),
+                ocupacion_fuente=occ_fuente)
 
             # ── Muestreo adaptativo ─────────────────────────────────────
             if sampler is not None:
@@ -1219,6 +1239,11 @@ def main(argv=None):
                 # Densidad poblacional del frame y de dónde salió (DPD: pérdidas).
                 "pop_density": round(dens_pob, 1),
                 "pop_fuente": pob_fuente,
+                # Ocupación por franja horaria (PAGER) + vulnerabilidad.
+                "hora_local": round(hora_local, 2),
+                "ocupacion": round(occ, 3),
+                "ocupacion_fuente": occ_fuente,
+                "vulnerabilidad": args.vulnerabilidad,
                 "lat": round(lat_f, 5), "lon": round(lon_f, 5),
                 "diag": diag, "alert": alert,
                 "sharp": round(sharp, 1), "sharp_ok": bool(sharp_ok),

@@ -8,7 +8,7 @@ producen NaN ni números absurdos.
 import pytest
 
 from cansat.casualties import (Supuestos, estimar, estimar_mision,
-                               BANDA_INCERTIDUMBRE)
+                               BANDA_INCERTIDUMBRE, ocupacion_por_hora)
 
 
 def test_sin_dano_no_hay_perdidas():
@@ -56,6 +56,30 @@ def test_colapso_medido_se_acota_a_0_1():
     assert e.colapso_usado == pytest.approx(1.0)
     e2 = estimar(danado_pct=50.0, area_m2=10_000.0, collapse_frac_medido=-0.2)
     assert e2.colapso_usado == pytest.approx(0.0)
+
+
+def test_ocupacion_por_hora_franjas_pager():
+    """PAGER: de noche hay más gente presente (los sismos nocturnos matan más)."""
+    occ_dia, f_dia = ocupacion_por_hora(12.0)
+    occ_noche, f_noche = ocupacion_por_hora(23.0)
+    occ_trans, f_trans = ocupacion_por_hora(7.0)
+    assert f_dia == "dia" and f_noche == "noche" and f_trans == "transito"
+    assert occ_noche > occ_trans > occ_dia
+
+
+def test_vulnerabilidad_escala_el_colapso():
+    s = Supuestos(vulnerabilidad=2.0)
+    e = estimar(50.0, 10_000.0, s, collapse_frac_medido=0.3)
+    assert e.colapso_usado == pytest.approx(0.6)      # 0.3 × 2.0
+    assert e.supuestos.vulnerabilidad == 2.0
+    assert e.perdidas_estimadas > estimar(50.0, 10_000.0,
+                                          collapse_frac_medido=0.3).perdidas_estimadas
+
+
+def test_ocupacion_fuente_se_registra_en_el_resultado():
+    e = estimar(10.0, 1000.0, ocupacion_fuente="noche")
+    assert e.ocupacion_fuente == "noche"
+    assert e.ocupacion_usada == pytest.approx(0.6)    # default del dataclass
 
 
 def test_area_cero_no_divide_ni_explota():

@@ -45,10 +45,35 @@ from dataclasses import asdict, dataclass
 
 # ── Supuestos por defecto (documentados arriba) ────────────────────────── #
 POP_DENSITY_DEFAULT: float = 1500.0   # hab/km²
-OCCUPANCY_DEFAULT: float = 0.6        # fracción presente
+OCCUPANCY_DEFAULT: float = 0.6        # fracción presente (si no se sabe la hora)
 COLLAPSE_FRAC_DEFAULT: float = 0.3    # de lo dañado, fracción colapsada
 FATALITY_DEFAULT: float = 0.1         # letalidad entre ocupantes de colapso
 BANDA_INCERTIDUMBRE: tuple[float, float] = (0.5, 2.0)
+
+# ── Ocupación por hora del día (metodología PAGER, USGS) ──────────────── #
+# PAGER modela la población indoor por franja horaria (día 10-17, noche 22-05,
+# tránsito 05-10/17-22) y muestra que los sismos nocturnos matan más porque
+# hay más gente adentro de las casas. Acá se usa la fracción de población
+# PRESENTE en el predio por franja (no indoor): de día la gente está en el
+# trabajo/escuela (fuera del predio residencial), de noche en sus casas.
+OCCUPANCY_DIA: float = 0.55
+OCCUPANCY_NOCHE: float = 0.9
+OCCUPANCY_TRANSITO: float = 0.75
+
+
+def ocupacion_por_hora(hora: float) -> tuple[float, str]:
+    """
+    Fracción de población presente en el predio según la hora local (0-23.99).
+
+    Devuelve ``(fraccion, franja)`` con franja en ``dia|noche|transito``.
+    Referencia: Jaiswal & Wald (PAGER, USGS) para las franjas horarias.
+    """
+    h = float(hora) % 24.0
+    if 10.0 <= h < 17.0:
+        return OCCUPANCY_DIA, "dia"
+    if h >= 22.0 or h < 5.0:
+        return OCCUPANCY_NOCHE, "noche"
+    return OCCUPANCY_TRANSITO, "transito"
 
 
 @dataclass
@@ -59,6 +84,10 @@ class Supuestos:
     occupancy: float = OCCUPANCY_DEFAULT
     collapse_frac: float = COLLAPSE_FRAC_DEFAULT
     fatality: float = FATALITY_DEFAULT
+    # Factor de vulnerabilidad del stock edilicio (1.0 = referencia global).
+    # PAGER usa funciones de fatalidad por país/región; acá escala la fracción
+    # de colapso: mampostería frágil >1, construcción sismorresistente <1.
+    vulnerabilidad: float = 1.0
 
     def __post_init__(self) -> None:
         if self.pop_density < 0:
@@ -68,6 +97,8 @@ class Supuestos:
                           ("fatality", self.fatality)):
             if not 0.0 <= v <= 1.0:
                 raise ValueError(f"{nombre} debe estar en [0, 1], llegó {v}")
+        if not 0.1 <= self.vulnerabilidad <= 5.0:
+            raise ValueError(f"vulnerabilidad fuera de rango [0.1, 5]: {self.vulnerabilidad}")
 
 
 @dataclass
@@ -84,6 +115,8 @@ class EstimacionPerdidas:
     supuestos: Supuestos
     colapso_usado: float = COLLAPSE_FRAC_DEFAULT   # fracción aplicada
     colapso_fuente: str = "supuesto"               # "medido" | "supuesto"
+    ocupacion_usada: float = OCCUPANCY_DEFAULT     # fracción presente aplicada
+    ocupacion_fuente: str = "supuesto"             # "dia"|"noche"|"transito"|"supuesto"
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -101,6 +134,7 @@ def estimar(
     area_m2: float,
     supuestos: Supuestos | None = None,
     collapse_frac_medido: float | None = None,
+    ocupacion_fuente: str = "supuesto",
 ) -> EstimacionPerdidas:
     """
     Estimación para un frame.
@@ -113,6 +147,10 @@ def estimar(
     modelo de severidad está disponible: es la fracción de edificios dañados
     que quedaron en colapso (mayor + destrucción total). El DPD pide estimar
     las pérdidas "según su magnitud" — con esto la magnitud es medida.
+
+    ``ocupacion_fuente`` documenta de dónde salió la ocupación (franja horaria
+    PAGER o supuesto). ``supuestos.vulnerabilidad`` escala el colapso por
+    fragilidad del stock edilicio (1.0 = referencia global).
     """
     s = supuestos or Supuestos()
     danado_pct = max(0.0, min(100.0, float(danado_pct)))
@@ -123,6 +161,8 @@ def estimar(
     else:
         colapso = max(0.0, min(1.0, float(collapse_frac_medido)))
         fuente = "medido"
+    # Fragilidad del stock edilicio (PAGER la modela por país/región).
+    colapso = max(0.0, min(1.0, colapso * s.vulnerabilidad))
 
     area_km2 = area_m2 / 1e6
     frac = danado_pct / 100.0
@@ -142,6 +182,8 @@ def estimar(
         supuestos=s,
         colapso_usado=round(colapso, 4),
         colapso_fuente=fuente,
+        ocupacion_usada=round(s.occupancy, 3),
+        ocupacion_fuente=ocupacion_fuente,
     )
 
 

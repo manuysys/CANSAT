@@ -1,0 +1,17 @@
+# VisDrone (detección aérea) — CanSat LB135
+# Clases oficiales del dataset; el pipeline usa 0,1 como personas y 2..8 vehículos.
+path: C:/Users/manuy/PROYECTOS_Y_ESTUDIOS/CANSAT/cansat_seg_poc/datasets/VisDrone
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: pedestrian
+  1: people
+  2: bicycle
+  3: car
+  4: van
+  5: truck
+  6: tricycle
+  7: awning-tricycle
+  8: motor
+  9: others
