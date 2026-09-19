@@ -224,11 +224,11 @@ etiquetados del dominio UAV, o un modelo por dominio según la GSD del frame).
 
 | Clase | IoU (val RescueNet, 2 093 tiles) |
 |---|---|
-| intacto | 0.550 |
-| menor | 0.381 |
-| mayor | 0.303 |
-| destruido | 0.481 |
-| **colapso (mayor+destruido sobre edificios)** | **0.575** |
+| intacto | 0.584 |
+| menor | 0.385 |
+| mayor | 0.415 |
+| destruido | 0.550 |
+| **colapso (mayor+destruido sobre edificios)** | **0.633** |
 
 - `train_severity.py` reconstruye el recorte desde la máscara **original** de
   RescueNet (el nombre del tile guarda `y0`/`x0`), sin regenerar 17 560 tiles.

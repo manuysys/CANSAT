@@ -18,7 +18,7 @@
 | Detección de daño (two-stage) | ✅ **0.735** IoU de dañado en el dominio de vuelo (UAV) · 0.472 cross-event satelital |
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
-| Severidad del daño (5 niveles) | ✅ **0.575** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
+| Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
 | Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO) · 🟡 NPU IMX500 sin validar en placa |
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
@@ -164,15 +164,15 @@ red de seguridad para daño fuerte.
 - `train_severity.py` reconstruye el recorte desde la máscara **original** de
   RescueNet (el nombre del tile guarda `y0`/`x0`), evitando regenerar 17 560
   tiles. Clases: other/intacto/menor/mayor/destruido.
-- **IoU de colapso sobre edificios (mayor+destruido): 0.575** en el val de
-  RescueNet (2 093 tiles); por clase: intacto 0.55, menor 0.38, mayor 0.30,
-  destruido 0.48. ONNX auditado y cargando en `cv2.dnn`.
+- **IoU de colapso sobre edificios (mayor+destruido): 0.633** en el val de
+  RescueNet (2 093 tiles); por clase: intacto 0.58, menor 0.39, mayor 0.42,
+  destruido 0.55. ONNX auditado y cargando en `cv2.dnn`.
 - En vuelo: `colapso_pct` medido por frame → `casualties.estimar(...,
   collapse_frac_medido=...)` reemplaza el supuesto 0.3. La telemetría registra
   `colapso_pct` + `colapso_fuente` ("medido"/"supuesto"). Esto es el
   *"según su magnitud"* del DPD.
-- Entrenamiento cortado en la época 4 por tiempo (~10 min/época por decodificar
-  las imágenes originales 3000×4000); queda margen para más épocas.
+- Entrenado en dos corridas (10 + 15 épocas con `--resume`, mejor época 12);
+  ~10 min/época porque decodifica las imágenes originales 3000×4000.
 
 ### 4.6 Personas y vehículos
 
