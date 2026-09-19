@@ -116,6 +116,7 @@ from cansat import indices as IDX
 from cansat import nodata as ND
 from cansat import onnxio
 from cansat import preprocess as PP
+from cansat import population as POP
 from cansat import protocol as PROTO
 from cansat import stress as ST
 from cansat.casualties import Supuestos, estimar as estimar_perdidas
@@ -1128,8 +1129,18 @@ def main(argv=None):
             # posibles pérdidas humanas resultantes").
             area_frame_m2 = ground_area_m2(alt)
             aff_m2 = area_frame_m2 * dan_max / 100.0
+            # Densidad poblacional REAL por GPS (WorldPop, grilla 0.1°) cuando
+            # hay fix; si no, el supuesto de --pop-density (la telemetría
+            # declara cuál se usó).
+            dens_pob, pob_fuente = POP.densidad(lat_f, lon_f,
+                                                default=args.pop_density)
+            sup_frame = (supuestos if pob_fuente == "supuesto"
+                         else Supuestos(pop_density=dens_pob,
+                                        occupancy=supuestos.occupancy,
+                                        collapse_frac=supuestos.collapse_frac,
+                                        fatality=supuestos.fatality))
             est = estimar_perdidas(
-                dan_max, area_frame_m2, supuestos,
+                dan_max, area_frame_m2, sup_frame,
                 collapse_frac_medido=(colapso_pct / 100.0
                                       if colapso_pct is not None else None))
 
@@ -1205,6 +1216,9 @@ def main(argv=None):
                 "perdidas_max": est.perdidas_max,
                 "colapso_pct": _rnum(colapso_pct),
                 "colapso_fuente": est.colapso_fuente,
+                # Densidad poblacional del frame y de dónde salió (DPD: pérdidas).
+                "pop_density": round(dens_pob, 1),
+                "pop_fuente": pob_fuente,
                 "lat": round(lat_f, 5), "lon": round(lon_f, 5),
                 "diag": diag, "alert": alert,
                 "sharp": round(sharp, 1), "sharp_ok": bool(sharp_ok),

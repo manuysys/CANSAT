@@ -246,6 +246,12 @@ pérdidas_estimadas  = afectadas × fracción_de_colapso × letalidad
 
 - Supuestos por defecto (todos configurables y registrados en el JSONL):
   1 500 hab/km², ocupación 0.6, colapso 0.3, letalidad 0.1.
+- **Densidad poblacional REAL por GPS (WorldPop)**: `tools/build_pop_grid.py`
+  agrega el raster 1 km de WorldPop (CC BY 4.0) a una grilla de 0.1° (15 467
+  celdas pobladas de Argentina) y `cansat/population.py` la consulta por frame
+  con el lat/lon del GPS; sin fix cae al supuesto y la telemetría declara
+  `pop_fuente` (worldpop/supuesto). Ej.: El Palomar 6 495 hab/km² (antes 1 500
+  fijo para todo el país).
 - Se publica con banda **[×0.5, ×2]** porque los tres últimos factores son
   incertidumbre pura.
 - El **área** sale de la huella en tierra por frame (`ground_area_m2`, FOV real
@@ -384,7 +390,7 @@ npm run smoke
 | Validar en la Pi: s/frame, IMX500, personas | Alto (define el modo de vuelo) | microSD + AI Camera en mano |
 | Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
 | Severidad → colapso medido en casualties | ✅ hecho (0.575 IoU de colapso) | más épocas opcionales |
-| Densidad poblacional real (WorldPop) por GPS | Medio | diseño pendiente |
+| Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame | — |
 | `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
 | UI de la estación para bruma/calor/fuego | Bajo | los datos ya viajan |
 | Pseudo-labels regenerados + re-destilado | Medio | baja prioridad (v3/v4 en legacy) |

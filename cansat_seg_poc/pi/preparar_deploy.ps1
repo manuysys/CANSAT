@@ -73,6 +73,14 @@ foreach ($f in $Archivos) {
 }
 Copy-Item (Join-Path $Root "cansat") -Destination $Dist -Recurse -Force
 Copy-Item (Join-Path $Root "pi")     -Destination $Dist -Recurse -Force
+# Datos auxiliares: grilla de densidad poblacional (WorldPop) para casualties.
+$PopGrid = Join-Path $Root "dataset\population\population_grid.csv"
+if (Test-Path $PopGrid) {
+    $PopDst = Join-Path $Dist "dataset\population"
+    New-Item -ItemType Directory -Force -Path $PopDst | Out-Null
+    Copy-Item $PopGrid -Destination $PopDst -Force
+    Write-Host "  grilla poblacional copiada (dataset/population, WorldPop CC BY 4.0)" -ForegroundColor DarkGray
+}
 # Limpiar cachés de Python que se cuelan con -Recurse.
 Get-ChildItem -Path $Dist -Recurse -Directory -Filter "__pycache__" |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
