@@ -114,12 +114,52 @@ def heat_verdict(hx: float) -> str:
 
 
 # ── Índice agregado ───────────────────────────────────────────────────── #
-def stress_score(haze_pct: float, hx: float, usi_norm: float) -> float:
+def stress_score(haze_pct: float, hx: float, usi_norm: float,
+                 fire_pct: float = 0.0) -> float:
     """
     Índice de estrés ambiental 0–100: bruma (50 %), calor (25 %) y carga
-    antrópica (25 %). Pesos declarados acá para que el informe los cite.
+    antrópica (25 %). Un incendio detectado pisa el índice (mínimo 60) porque
+    es estrés agudo, no crónico. Pesos declarados acá para que el informe los
+    cite.
     """
     haze_n = min(1.0, max(0.0, float(haze_pct) / 50.0))
     heat_n = min(1.0, max(0.0, (float(hx) - 25.0) / 25.0))
     urb_n = min(1.0, max(0.0, float(usi_norm)))
-    return round(100.0 * (0.50 * haze_n + 0.25 * heat_n + 0.25 * urb_n), 1)
+    base = 100.0 * (0.50 * haze_n + 0.25 * heat_n + 0.25 * urb_n)
+    if fire_pct and fire_pct > 1.0:
+        base = max(base, min(100.0, 60.0 + float(fire_pct) * 2.0))
+    return round(base, 1)
+
+
+# ── Vegetación y sombras (índices RGB sin segmentación) ───────────────── #
+EXG_UMBRAL: float = 0.05      # ExG por encima de esto = píxel vegetal
+
+
+def exg_metrics(bgr: np.ndarray) -> dict:
+    """
+    Excess Green (ExG = 2G − R − B, normalizado) — índice de vegetación RGB
+    robusto a la iluminación, independiente del modelo de segmentación.
+
+    Devuelve ``exg_medio`` (media en [-2, 2]) y ``veg_exg_pct`` (% de píxeles
+    vegetales por ExG).
+    """
+    img = bgr.astype(np.float32)
+    b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+    s = np.maximum(1.0, b + g + r)
+    exg = (2.0 * g - r - b) / s
+    return {
+        "exg_medio": round(float(exg.mean()), 4),
+        "veg_exg_pct": round(float((exg > EXG_UMBRAL).mean() * 100.0), 2),
+    }
+
+
+SHADOW_UMBRAL: int = 55       # V por debajo = sombra/objeto oscuro
+
+
+def shadow_pct(bgr: np.ndarray) -> float:
+    """
+    % de píxeles muy oscuros (V < umbral): proxy de sombras proyectadas —
+    más sombra ⇒ más volumen construido/vertical (proxy de densidad urbana).
+    """
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    return round(float((hsv[:, :, 2] < SHADOW_UMBRAL).mean() * 100.0), 2)

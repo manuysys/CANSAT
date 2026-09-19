@@ -430,6 +430,9 @@ def environment(
     valid_frac: float = 1.0,
     haze_pct: float | None = None,
     humidex: float | None = None,
+    exg_pct: float | None = None,
+    shadow_pct: float | None = None,
+    fire_pct: float | None = None,
 ) -> dict[str, object]:
     """
     Diccionario ambiental completo, con las mismas claves que devolvía
@@ -467,9 +470,14 @@ def environment(
     if humidex is not None:
         out["humidex"] = round(float(humidex), 1)
         out["heat"] = ST.heat_verdict(float(humidex))
-    if haze_pct is not None or humidex is not None:
+    if exg_pct is not None:
+        out["veg_exg_pct"] = round(float(exg_pct), 2)
+    if shadow_pct is not None:
+        out["shadow_pct"] = round(float(shadow_pct), 2)
+    if (haze_pct is not None or humidex is not None or fire_pct is not None):
         out["stress_idx"] = ST.stress_score(
             haze_pct if haze_pct is not None else 0.0,
             humidex if humidex is not None else 25.0,
-            usi_norm(pcts))
+            usi_norm(pcts),
+            fire_pct=fire_pct if fire_pct is not None else 0.0)
     return out

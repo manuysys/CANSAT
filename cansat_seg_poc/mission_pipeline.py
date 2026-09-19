@@ -1025,9 +1025,12 @@ def main(argv=None):
             # El DPD pide estudiar el estrés ambiental "junto con la información
             # de los sensores": acá se combinan la bruma/aerosoles de la imagen
             # (dark channel prior, cansat/stress.py) con el humidex de
-            # temperatura y humedad. La bruma se calcula sobre una copia chica
-            # (≤320 px) para que en la Pi no cueste.
+            # temperatura y humedad. También se miden dos índices RGB sin
+            # segmentación: ExG (vegetación) y sombras (volumen construido).
+            # Todo sobre una copia chica (≤320 px) para que en la Pi no cueste.
             haze = None
+            exg = None
+            shd = None
             if not args.no_stress:
                 h, w = bgr.shape[:2]
                 esc = STRESS_MAX_SIDE / max(h, w)
@@ -1035,13 +1038,17 @@ def main(argv=None):
                     bgr, (max(1, int(w * esc)), max(1, int(h * esc))),
                     interpolation=cv2.INTER_AREA) if esc < 1.0 else bgr)
                 haze = ST.haze_metrics(small)
+                exg = ST.exg_metrics(small)
+                shd = ST.shadow_pct(small)
             hx = ST.humidex(temp, hum) if hum is not None else None
 
             # Índices y veredicto: FUENTE ÚNICA (cansat.indices).
             env = IDX.environment(pcts, n_green_patches=_green_patches(seg, valid),
                                   valid_frac=float(valid.mean()),
                                   haze_pct=(haze["haze_pct"] if haze else None),
-                                  humidex=hx)
+                                  humidex=hx,
+                                  exg_pct=(exg["veg_exg_pct"] if exg else None),
+                                  shadow_pct=shd)
             vcode = env["vcode"]
 
             # ── Daño: consenso real de modelos ──────────────────────────
@@ -1130,6 +1137,12 @@ def main(argv=None):
 
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)
+                # Un incendio detectado es estrés AGUDO: pisa el stress_idx.
+                if pct_fire is not None and pct_fire > 1.0:
+                    env["stress_idx"] = ST.stress_score(
+                        env.get("haze_pct", 0.0), hx or 25.0,
+                        env["usi_norm"], fire_pct=pct_fire)
+                    env["fire_pct"] = round(pct_fire, 1)
                 ms_dmg = (time.perf_counter() - t_dmg) * 1000.0
             else:
                 ms_dmg = 0.0
@@ -1224,6 +1237,8 @@ def main(argv=None):
                 "contam": env.get("contam"),
                 "heat": env.get("heat"),
                 "stress_idx": env.get("stress_idx"),
+                "veg_exg_pct": env.get("veg_exg_pct"),
+                "shadow_pct": env.get("shadow_pct"),
                 # Trazabilidad F6: modelo exacto (hash) y precisión por frame.
                 "model_ids": model_ids, "quant": "fp32",
                 "aff_m2": int(aff_m2),

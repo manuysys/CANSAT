@@ -61,3 +61,23 @@ def test_environment_sin_datos_no_inventa_estres():
     env = IDX.environment([40, 30, 10, 10, 10])
     assert "stress_idx" not in env
     assert "haze_pct" not in env
+
+
+def test_exg_detecta_vegetacion():
+    verde = np.zeros((64, 64, 3), np.uint8)
+    verde[:, :, 1] = 180                       # BGR: canal verde alto
+    gris = np.full((64, 64, 3), 128, np.uint8)
+    v, g = ST.exg_metrics(verde), ST.exg_metrics(gris)
+    assert v["veg_exg_pct"] > 90 and g["veg_exg_pct"] < 10
+    assert v["exg_medio"] > g["exg_medio"]
+
+
+def test_shadow_pct_extremos():
+    assert ST.shadow_pct(np.zeros((32, 32, 3), np.uint8)) == 100.0
+    assert ST.shadow_pct(np.full((32, 32, 3), 200, np.uint8)) == 0.0
+
+
+def test_stress_score_con_fuego_pisa_el_indice():
+    base = ST.stress_score(0.0, 20.0, 0.0)
+    con_fuego = ST.stress_score(0.0, 20.0, 0.0, fire_pct=10.0)
+    assert con_fuego >= 80.0 > base
