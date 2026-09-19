@@ -83,8 +83,11 @@ def recolectar(max_por_clase: int = 1200, seed: int = 42) -> list[tuple[str, int
             por_clase[TIPO["huracan"]].append(r["image"])
 
     crasar = ROOT / "dataset/crasar_tiles/manifest_train.csv"
-    if crasar.is_file():
-        for r in csv.DictReader(crasar.open(encoding="utf-8")):
+    crasar_test = ROOT / "dataset/crasar_tiles/manifest_test.csv"
+    for man in (crasar, crasar_test):
+        if not man.is_file():
+            continue
+        for r in csv.DictReader(man.open(encoding="utf-8")):
             tipo = next((t for sub, t in CRASAR_TIPO.items()
                          if sub in r["name"]), None)
             if tipo:
