@@ -58,60 +58,98 @@ function useStars() {
   }, [])
 }
 
-/* Cuerdas: del BORDE del domo (r=1.55, y=0) a los anclajes del cuerpo. */
-function useStrings() {
+/* Cuerdas: del BORDE del domo (r=1.53) al anillo de anclaje sobre el cuerpo.
+   ⚠ Antes eran LineSegments de 1 px que terminaban DENTRO de la silueta del
+   cuerpo (radio 0.3 < 0.42) y el domo/cuerpo oscilaban por separado: no
+   parecían sostener nada. Ahora son cilindros finos (visibles), convergen en
+   un hardpoint real y viven en el MISMO grupo que el domo y el cuerpo, así
+   que los extremos no se separan nunca. */
+const DOME_Y = 2.08        // altura del borde del domo (espacio del conjunto)
+const RIM_R = 1.53         // radio del borde del domo
+const HARD_Y = 0.95        // altura del anillo de anclaje sobre el cuerpo
+const N_CUERDAS = 8
+
+function useCuerdas() {
   return useMemo(() => {
-    const pts: number[] = []
-    const N = 8
-    for (let i = 0; i < N; i++) {
-      const a = (i / N) * Math.PI * 2
-      pts.push(
-        Math.cos(a) * 1.53, 0.02, Math.sin(a) * 1.53,
-        Math.cos(a) * 0.3, -1.52, Math.sin(a) * 0.3,
-      )
+    const out: { pos: [number, number, number]; rot: [number, number, number]; len: number }[] = []
+    const up = new THREE.Vector3(0, 1, 0)
+    const bot = new THREE.Vector3(0, HARD_Y, 0)
+    for (let i = 0; i < N_CUERDAS; i++) {
+      const a = (i / N_CUERDAS) * Math.PI * 2
+      const top = new THREE.Vector3(Math.cos(a) * RIM_R, DOME_Y, Math.sin(a) * RIM_R)
+      const mid = top.clone().add(bot).multiplyScalar(0.5)
+      const dir = bot.clone().sub(top)
+      const len = dir.length()
+      const q = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize())
+      const e = new THREE.Euler().setFromQuaternion(q)
+      out.push({ pos: [mid.x, mid.y, mid.z], rot: [e.x, e.y, e.z], len })
     }
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
-    return new THREE.LineSegments(
-      g,
-      new THREE.LineBasicMaterial({ color: '#aebdcd', transparent: true, opacity: 0.65 }),
-    )
+    return out
   }, [])
 }
 
 /* ── CanSat detallado ──────────────────────────────────────────────────── */
 function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
   const beacon = useRef<THREE.MeshStandardMaterial>(null)
-  const canopy = useRef<THREE.Group>(null)
+  const chute = useRef<THREE.Group>(null)     // sway del conjunto (domo+cuerdas+cuerpo)
+  const dome = useRef<THREE.Group>(null)      // domo: despliegue (scale) y colapso
+  const cuerdas = useRef<THREE.Group>(null)   // opacidad de las cuerdas
   const body = useRef<THREE.Group>(null)
+  const segs = useCuerdas()
 
   useFrame((st, dt) => {
     const t = st.clock.elapsedTime
     if (beacon.current) beacon.current.emissiveIntensity = Math.sin(t * 7) > 0.2 ? 3.2 : 0.25
-    if (canopy.current) {
-      const targetScale = stowed ? 0.14 : 1
-      const sc = THREE.MathUtils.damp(canopy.current.scale.x, targetScale, 3, dt)
-      canopy.current.scale.set(sc, sc, sc)
-      canopy.current.rotation.z = THREE.MathUtils.damp(canopy.current.rotation.z, landed ? 0.9 : Math.sin(t * 0.7) * 0.045, 2, dt)
-      canopy.current.rotation.x = Math.cos(t * 0.55) * 0.035
-      canopy.current.position.y = THREE.MathUtils.damp(canopy.current.position.y, landed ? 0.9 : 2.08, 2, dt)
+    // El CONJUNTO entero oscila: los extremos de las cuerdas no se separan.
+    if (chute.current) {
+      chute.current.rotation.z = THREE.MathUtils.damp(
+        chute.current.rotation.z, Math.sin(t * 0.5) * 0.05, 2, dt)
+      chute.current.rotation.x = Math.cos(t * 0.42) * 0.035
+    }
+    if (dome.current) {
+      // Desplegado: scale 1 a y=2.08. Plegado (ascenso): scale 0.14.
+      // Aterrizado: el paracaídas se colapsa SOBRE el cuerpo (no bajo tierra).
+      const targetScale = stowed ? 0.14 : landed ? 0.22 : 1
+      const sc = THREE.MathUtils.damp(dome.current.scale.x, targetScale, 3, dt)
+      dome.current.scale.set(sc, sc, sc)
+      dome.current.position.y = THREE.MathUtils.damp(
+        dome.current.position.y, landed ? 0.55 : DOME_Y, 2, dt)
+    }
+    // Cuerdas: visibles en descenso; se desvanecen plegadas o aterrizado.
+    if (cuerdas.current) {
+      const targetOp = stowed || landed ? 0 : 0.92
+      cuerdas.current.traverse(o => {
+        const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
+        if (m && 'opacity' in m) m.opacity = THREE.MathUtils.damp(m.opacity, targetOp, 4, dt)
+      })
     }
     if (body.current) {
-      body.current.rotation.z = Math.sin(t * 0.5 + 1.2) * 0.06
-      body.current.rotation.x = Math.cos(t * 0.42 + 0.6) * 0.04
+      // Contrapeso pendular leve (los anclajes viven en el grupo del conjunto).
+      body.current.rotation.z = Math.sin(t * 0.5 + 1.2) * 0.015
+      body.current.rotation.x = Math.cos(t * 0.42 + 0.6) * 0.012
     }
   })
 
-  const strings = useStrings()
-  useEffect(() => () => {
-    strings.geometry.dispose()
-    ;(strings.material as THREE.Material).dispose()
-  }, [strings])
-
   return (
-    <group>
-      {/* ─ paracaídas: domo + borde + ventral + cuerdas ─ */}
-      <group ref={canopy} position={[0, 2.08, 0]}>
+    <group ref={chute}>
+      {/* anillo de anclaje: donde convergen las cuerdas, sobre el cuerpo */}
+      <mesh position={[0, HARD_Y, 0]} rotation-x={Math.PI / 2}>
+        <torusGeometry args={[0.12, 0.022, 8, 24]} />
+        <meshStandardMaterial color="#22303f" roughness={0.5} metalness={0.4} />
+      </mesh>
+
+      {/* cuerdas: cilindros finos del borde del domo al anillo */}
+      <group ref={cuerdas}>
+        {segs.map((s, i) => (
+          <mesh key={i} position={s.pos} rotation={s.rot}>
+            <cylinderGeometry args={[0.012, 0.012, s.len, 6]} />
+            <meshStandardMaterial color="#cfd9e6" metalness={0.45} roughness={0.4} transparent opacity={0.92} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* ─ paracaídas: domo + borde + ventral ─ */}
+      <group ref={dome} position={[0, DOME_Y, 0]}>
         <mesh scale={[1, 0.78, 1]}>
           <sphereGeometry args={[1.55, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial color="#e9eff7" roughness={0.55} metalness={0.05} side={THREE.DoubleSide} />
@@ -131,7 +169,6 @@ function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
           <torusGeometry args={[0.26, 0.03, 8, 24]} />
           <meshStandardMaterial color="#22303f" roughness={0.5} />
         </mesh>
-        <primitive object={strings} />
       </group>
 
       {/* ─ cuerpo del cansat ─ */}
@@ -353,7 +390,10 @@ export function DescentScene() {
   const ticks = [1, 0.75, 0.5, 0.25, 0].map(p => Math.round(altMin + (altMax - altMin) * p))
   const phase = missionPhase(frames, summary)
   const stowed = phase.id === 'ascenso' || phase.id === 'sin-tlm'
-  const landed = phase.id === 'aterrizado' || phase.id === 'post-vuelo'
+  // El paracaídas sigue al FRAME que se está mirando (focus), no al resumen de
+  // la misión: en post-vuelo se puede estar viendo un frame de descenso a
+  // 108 m y debe verse desplegado con las cuerdas sosteniendo el CanSat.
+  const landed = alt <= 3
   const vs = verticalSpeed(frames)
   const apo = apogeo(frames)
   const anomala = tasaAnomala(phase.id, vs)
