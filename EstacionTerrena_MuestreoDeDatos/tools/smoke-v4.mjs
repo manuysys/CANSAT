@@ -117,7 +117,15 @@ check((await page.locator('#tour-detalle h2').first().innerText()) === 'cap_0009
 check(await page.getByText('Prioridad del sampler').count() >= 1, 'panel de muestreo presente');
 check(await page.getByText('Cobertura por clase').count() >= 1, 'cobertura por clase presente');
 check(await page.getByText('Trayectoria GPS del descenso').count() >= 1, 'trayectoria GPS presente');
-check(await page.locator('.recharts-scatter').count() >= 1, 'scatter de la trayectoria renderizado');
+// Basemap offline (MapOffline): tiles locales + track SVG. Si el tile central
+// no existe, MapOffline cae al scatter sin basemap (GpsTrack) — ambos válidos.
+const nMapa = await page.locator('img[src^="/tiles/"]').count();
+const nScatter = await page.locator('.recharts-scatter').count();
+check(nMapa >= 1 || nScatter >= 1,
+  `trayectoria renderizada (${nMapa} tiles de basemap / ${nScatter} scatter)`);
+if (nMapa >= 1) {
+  check(await page.locator('svg polyline').count() >= 2, 'trazo SVG sobre el basemap');
+}
 
 // Tabs de imagen degradadas
 await page.click('[data-card-src="cap_0000"]');

@@ -57,6 +57,11 @@ await page.screenshot({ path: `${OUT}/07_jurado_criticos.png` });
 await page.keyboard.press('Escape');
 await page.waitForTimeout(600);
 
+// mapa offline de la trayectoria (MapOffline: tiles locales Web Mercator)
+await page.getByText('Trayectoria GPS del descenso').scrollIntoViewIfNeeded();
+await page.waitForTimeout(900);
+await page.screenshot({ path: `${OUT}/10_mapa_offline.png` });
+
 // póster: descargar y verificar archivo
 const [dl] = await Promise.all([
   page.waitForEvent('download', { timeout: 15000 }),

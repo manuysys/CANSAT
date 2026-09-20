@@ -36,7 +36,7 @@ import { Jurado } from '@/components/Jurado'
 import { Scrubber } from '@/components/Scrubber'
 import { AltProfile } from '@/components/AltProfile'
 import { Bitacora } from '@/components/Bitacora'
-import { GpsTrack } from '@/components/GpsTrack'
+import { MapOffline } from '@/components/MapOffline'
 import { Sampling } from '@/components/Sampling'
 
 const PostView = lazy(() => import('@/components/PostView').then(m => ({ default: m.PostView })))
@@ -108,7 +108,7 @@ function VueloView() {
         <p>Qué decidió el sampler a bordo, con qué señal, y dónde pasó cada frame</p>
       </div>
       <Sampling />
-      <GpsTrack />
+      <MapOffline />
       <div className="mission-section-heading mt-2">
         <div><span>03 / evidencia</span><h2>Explorador de misión</h2></div>
         <p>Selecciona un frame para abrir toda su evidencia</p>
