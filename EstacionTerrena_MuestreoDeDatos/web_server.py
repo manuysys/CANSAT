@@ -420,7 +420,10 @@ CACHE = MissionCache()
 # trae sample_pri/sample_score; el JSONL agrega la incertidumbre, los tiempos
 # por etapa y el % de píxeles sin datos que el pipeline registra a bordo.
 _JSONL_KEYS = ("uncert", "ms_seg", "ms_dmg", "ms_total", "nodata_pct",
-               "danado2_edif_pct", "sharp_ok", "area_m2", "supuestos")
+               "danado2_edif_pct", "sharp_ok", "area_m2", "supuestos",
+               # Contrato v3: trazabilidad de fuentes y modelos por frame.
+               "colapso_fuente", "pop_fuente", "ocupacion_fuente",
+               "tipo_desastre", "tipo_conf", "model_ids", "quant")
 
 _JSONL_CACHE: dict = {"sig": "", "extras": {}, "resumen": {}}
 

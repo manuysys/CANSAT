@@ -62,6 +62,13 @@ await page.getByText('Trayectoria GPS del descenso').scrollIntoViewIfNeeded();
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${OUT}/10_mapa_offline.png` });
 
+// detalle de frame con contrato v3 (badge de tipo, colapso con fuente, modelos)
+await page.locator('[data-card-src="cap_0006"]').click();
+await page.waitForTimeout(800);
+await page.locator('#tour-detalle').scrollIntoViewIfNeeded();
+await page.waitForTimeout(600);
+await page.locator('#tour-detalle').screenshot({ path: `${OUT}/09_detalle_frame.png` });
+
 // póster: descargar y verificar archivo
 const [dl] = await Promise.all([
   page.waitForEvent('download', { timeout: 15000 }),

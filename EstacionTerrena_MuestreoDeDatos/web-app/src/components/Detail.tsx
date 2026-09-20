@@ -39,8 +39,10 @@ export function Detail() {
   const detailImg = useMission(s => s.detailImg)
   const select = useMission(s => s.select)
   const setDetailImg = useMission(s => s.setDetailImg)
+  const samples = useMission(s => s.samples)
 
   const f: Frame | null = selected ? bySrc.get(selected) ?? null : null
+  const ex = f ? samples[f.src] : undefined
   const list = useMemo(() => filteredFrames({ frames, filters, sort }), [frames, filters, sort])
 
   const avail = useMemo(() => (f ? IMG_TABS.filter(t => f.files?.[t.k]) : []), [f])
@@ -94,6 +96,16 @@ export function Detail() {
               <TriangleAlert className="size-3" />
             </motion.span>
             alerta
+          </Badge>
+        )}
+        {/* Contrato v3: tipo de desastre (clasificador, etiqueta débil del evento) */}
+        {ex?.tipo_desastre && (
+          <Badge
+            variant="secondary"
+            className="border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[10px] text-[#a8d4f5]"
+            title={`Clasificador de tipo de desastre (etiqueta débil del evento, confianza ${num(ex.tipo_conf, 2)}). No altera el diagnóstico.`}
+          >
+            evento: {ex.tipo_desastre}{Number(ex.tipo_conf) > 0 ? ` · ${num(ex.tipo_conf, 2)}` : ''}
           </Badge>
         )}
         <div className="ml-auto flex items-center gap-1.5">
@@ -216,7 +228,11 @@ export function Detail() {
             {/* F3/F2b: fuego/humo y colapso medido (solo si el modelo corrió) */}
             {Number(f.fire_pct) > 0 && <Kv k="Fuego" v={num(f.fire_pct, 1)} u="%" tone="text-[#ff4d5e]" />}
             {Number(f.smoke_pct) > 0 && <Kv k="Humo" v={num(f.smoke_pct, 1)} u="%" tone="text-[#ffb020]" />}
-            {Number(f.colapso_pct) > 0 && <Kv k="Colapso" v={num(f.colapso_pct, 1)} u="%" />}
+            {/* Severidad textual: colapso MEDIDO (modelo) vs supuesto 0.3 */}
+            {Number(f.colapso_pct) > 0 && (
+              <Kv k="Colapso" v={`${num(f.colapso_pct, 1)}${ex?.colapso_fuente ? ` ${ex.colapso_fuente}` : ''}`} u="%"
+                gloss="colapso" />
+            )}
             <Kv k="Afectado" v={num(f.aff_m2, 0)} u="m²" />
             <Kv k="Personas" v={String(intOr(f.people))} tone={intOr(f.people) ? 'text-[#ffb020]' : ''} />
             <Kv k="Vehículos" v={String(intOr(f.vehicles))} tone={intOr(f.vehicles) ? 'text-[#ffb020]' : ''} />
@@ -225,6 +241,15 @@ export function Detail() {
             <Gloss term={f.diag ?? 'SINDESASTRE'}>{f.diag || 'sin diagnóstico'}</Gloss>
             {isAlert ? ' · alerta activa' : ''}
           </div>
+          {/* Contrato v3: hash corto del ONNX que produjo cada campo (trazabilidad) */}
+          {ex?.model_ids && Object.keys(ex.model_ids).length > 0 && (
+            <p
+              className="mt-2 font-mono text-[9.5px] leading-relaxed text-muted-foreground/70"
+              title={`Trazabilidad: hash corto (8 hex) del ONNX que produjo cada campo · quant ${ex.quant ?? 'fp32'}`}
+            >
+              modelos: {Object.entries(ex.model_ids).map(([k, v]) => `${k} ${v}`).join(' · ')}
+            </p>
+          )}
         </section>
 
         <section className="rounded-xl border border-border/60 bg-muted/20 p-2.5">

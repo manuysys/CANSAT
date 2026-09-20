@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
@@ -70,6 +71,27 @@ except ImportError:  # pragma: no cover
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "outputs"
+
+
+def _model_ids() -> dict[str, str]:
+    """Contrato v3: hash corto (8 hex) de los ONNX de vuelo, si están.
+
+    El demo corre desde la estación, con el repo de vuelo al lado
+    (``../cansat_seg_poc``); si no está, se omite el campo (la web lo tolera).
+    """
+    base = ROOT.parent / "cansat_seg_poc" / "outputs"
+    pares = {"seg": "cansat_seg_terrain_v2_224.onnx",
+             "dmg": "cansat_damage3_mobilenetv2.onnx",
+             "dmg2": "cansat_damage_v3_bal.onnx",
+             "fire": "cansat_fire_smoke.onnx",
+             "sev": "cansat_severity.onnx",
+             "flood": "cansat_flood_specialist_224.onnx"}
+    out: dict[str, str] = {}
+    for k, n in pares.items():
+        p = base / n
+        if p.is_file():
+            out[k] = hashlib.sha256(p.read_bytes()).hexdigest()[:8]
+    return out
 ENTREGA = ROOT / "entrega"
 
 # --------------------------------------------------------------------------- #
@@ -802,6 +824,7 @@ def main(argv=None) -> int:
     # al CSV (incertidumbre, tiempos por etapa, % sin datos). Sin él, el panel
     # de Muestreo de la estación queda vacío en las demos.
     jsonl_path = OUT / "mission" / "telemetry.jsonl"
+    model_ids = _model_ids()
     with jsonl_path.open("w", encoding="utf-8") as fh:
         for r in rows:
             unc = round(min(0.95, 0.12 + r["danado_pct"] / 220.0
@@ -818,6 +841,15 @@ def main(argv=None) -> int:
                 "sample_pri": r["sample_pri"],
                 "sample_score": r["sample_score"],
                 "supuestos": sup,
+                # Contrato v3: fuentes y trazabilidad (mismas claves que el
+                # pipeline real; el demo las simula para ejercitar la UI).
+                "colapso_fuente": "medido",
+                "pop_fuente": "demo",
+                "ocupacion_fuente": "demo",
+                "tipo_desastre": "inundacion",
+                "tipo_conf": 0.51,
+                "model_ids": model_ids,
+                "quant": "fp32",
             }, ensure_ascii=False) + "\n")
 
     # ── corridor_map.jpg ──

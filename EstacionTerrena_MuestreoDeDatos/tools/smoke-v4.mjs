@@ -127,6 +127,11 @@ if (nMapa >= 1) {
   check(await page.locator('svg polyline').count() >= 2, 'trazo SVG sobre el basemap');
 }
 
+// Contrato v3 en el detalle: tipo de desastre, colapso con fuente y modelos
+check(await page.getByText('evento:', { exact: false }).count() >= 1, 'badge de tipo de desastre (contrato v3)');
+check(await page.getByText('modelos:', { exact: false }).count() >= 1, 'trazabilidad de modelos (contrato v3)');
+check(await page.getByText('medido', { exact: false }).count() >= 1, 'colapso con fuente (medido/supuesto)');
+
 // Tabs de imagen degradadas
 await page.click('[data-card-src="cap_0000"]');
 await waitDetailSrc(page, 'cap_0000');

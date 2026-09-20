@@ -79,6 +79,14 @@ export interface SampleExtra {
   sharp_ok?: boolean | null
   area_m2?: number | null
   supuestos?: Record<string, number> | null
+  /* Contrato v3: trazabilidad de fuentes y modelos por frame */
+  colapso_fuente?: string | null
+  pop_fuente?: string | null
+  ocupacion_fuente?: string | null
+  tipo_desastre?: string | null
+  tipo_conf?: number | null
+  model_ids?: Record<string, string> | null
+  quant?: string | null
 }
 
 export interface SamplesResumen {
