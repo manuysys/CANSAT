@@ -208,7 +208,15 @@ El entorno virtual (`venv/`) ya tiene todas las dependencias instaladas.
 
 ### Sobre EarthVQA
 
-**NO se descarga EarthVQA** en esta etapa. Es un dataset diferente y se integrará posteriormente si es necesario.
+El benchmark del parser de la Consulta Terrestre usa los QA de EarthVQA
+(`tools/bench_parser_earthvqa.py`): mide **cobertura** de plantillas y
+**precisión de mapeo** sobre una muestra estratificada etiquetada a mano — NO
+exactitud de respuesta VQA. El dataset está **gated** en Hugging Face
+(https://huggingface.co/datasets/Kingdrone-Junjue/EarthVLSet): hay que aceptar
+las condiciones con una cuenta y bajar `Val_QA.json` (≈7.5 MB) a
+`dataset/earthvqa/` (no se versiona; licencia académica, no comercial).
+Mientras no haya acceso, el benchmark está listo para correr y la métrica
+queda documentada como pendiente, sin inventar números.
 
 ### Verificación Visual Antes de Entrenar
 
@@ -261,5 +269,5 @@ Después de completar este pipeline:
 2. ⏭️ Preparar dataloaders para PyTorch
 3. ⏭️ Entrenar modelo de segmentación
 4. ⏭️ Evaluar en Val set
-5. ⏭️ (Opcional) Integrar EarthVQA
+5. ⏭️ (Opcional) Aceptar el gating de EarthVQA y correr `python tools/bench_parser_earthvqa.py`
 6. ⏭️ (Opcional) Descargar Test.zip para evaluación final

@@ -44,26 +44,36 @@ SUJETOS: dict[str, tuple[str, ...]] = {
     "edificio": (
         "edificio", "edificios", "construccion", "construcciones", "vivienda",
         "viviendas", "casa", "casas", "estructura", "estructuras",
+        # Inglés (benchmark EarthVQA; el QA de la estación sigue en español)
+        "building", "buildings", "house", "houses", "structure", "structures",
+        "construction",
     ),
     "vegetacion": (
         "vegetacion", "vegetal", "verde", "arbol", "arboles", "bosque", "forestal",
+        "vegetation", "green", "tree", "trees", "forest", "woodland",
     ),
-    "agua": ("agua", "aguas", "lago", "laguna", "rio"),
+    "agua": ("agua", "aguas", "lago", "laguna", "rio",
+             "water", "lake", "river", "pond"),
     "inundacion": (
         "inundacion", "inundaciones", "inundado", "inundada", "inundados",
         "inundadas", "anegado", "anegada", "anegados", "anegadas", "flood",
         "anegamiento",
+        "floods", "flooded", "flooding", "inundation",
     ),
     "via": (
         "via", "vias", "ruta", "rutas", "calle", "calles", "camino", "caminos",
         "carretera", "carreteras", "avenida", "avenidas",
+        "road", "roads", "street", "streets", "route", "routes", "highway",
+        "highways", "avenue", "path", "paths",
     ),
     "dano": (
         "dano", "danos", "danado", "danada", "danados", "danadas", "destruido",
         "destruida", "destruidos", "destruidas", "derrumbado", "derrumbada",
         "derrumbados", "derrumbadas",
+        "damage", "damaged", "destroyed", "collapsed", "ruin", "ruins",
     ),
-    "suelo": ("suelo", "suelos", "tierra", "terreno desnudo", "suelo desnudo"),
+    "suelo": ("suelo", "suelos", "tierra", "terreno desnudo", "suelo desnudo",
+              "soil", "bare soil", "bare ground", "barren"),
 }
 
 #: Sujeto canónico → (sufijo de máscara, valores de clase que lo forman).
@@ -106,8 +116,10 @@ LIMITACIONES: list[str] = [
     "la longitud se estima por esqueletización (≈ ±10 %).",
 ]
 
-_FLAG_INUNDACION = r"(?:inundad|anegad|bajo agua|bajo el agua|flood)"
-_FLAG_DANO = r"(?:con dano|danad|destruid|derrumb)"
+_FLAG_INUNDACION = (
+    r"(?:inundad|anegad|bajo agua|bajo el agua|flood|flooded|flooding|under water)"
+)
+_FLAG_DANO = r"(?:con dano|danad|destruid|derrumb|damaged|destroyed|collapsed)"
 _ALT = "|".join(sorted({s for sins in SUJETOS.values() for s in sins},
                        key=len, reverse=True))
 
@@ -186,10 +198,28 @@ def _sujeto_implicito(resto: str, a: str) -> str | None:
     return None
 
 
+def _con_estado(t: str, a: str, fin: int) -> tuple[str, str | None]:
+    """
+    Resuelve el orden sujeto/estado.
+
+    En español el sujeto suele ir primero ('edificios inundados'), pero en
+    inglés el estado va primero ('flooded buildings'): si el primer sujeto es
+    un estado (inundación/daño) y hay otro sujeto después, se intercambian.
+    """
+    b = _sujeto_implicito(t[fin:], a)
+    if b is None and a in ("inundacion", "dano"):
+        otro, _, _ = _buscar_sujeto(t, fin)
+        if otro:
+            return otro, a
+    return a, b
+
+
 def _buffer(t: str, desde: int) -> tuple[str | None, float | None]:
-    """'a menos de 50 m de una vía' → (sujeto C, radio en metros)."""
+    """'a menos de 50 m de una vía' / 'within 50 m of a road' → (C, metros)."""
     m = re.search(
-        r"a menos de (\d+(?:[.,]\d+)?)\s*(km|kilometros?|m|metros?)\s*de", t[desde:])
+        r"(?:a menos de|dentro de|within|less than)\s+(\d+(?:[.,]\d+)?)\s*"
+        r"(km|kilometers?|kilometros?|m|meters?|metros?|metres?)\s*(?:de|of|from)",
+        t[desde:])
     if not m:
         return None, None
     dist = float(m.group(1).replace(",", "."))
@@ -205,47 +235,46 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
     disp = set(disponibles or ())
 
     # 1) área / superficie
-    if re.search(r"\b(?:area|superficie)\b", t):
+    if re.search(r"\b(?:area|superficie|surface)\b", t):
         a, _, fin = _buscar_sujeto(t)
         if a:
-            return _spec("area", "area", a, _sujeto_implicito(t[fin:], a), t, disp)
+            a, b = _con_estado(t, a, fin)
+            return _spec("area", "area", a, b, t, disp)
 
     # 2) fracción / porcentaje (longitud)
-    if re.search(r"\b(?:fraccion|porcentaje|proporcion)\b", t):
+    if re.search(r"\b(?:fraccion|porcentaje|proporcion|fraction|percentage|proportion)\b",
+                 t):
         a, _, fin = _buscar_sujeto(t)
         if a:
-            b, _, _ = _buscar_sujeto(t, fin)
-            if b is None and re.search(_FLAG_INUNDACION, t[fin:]):
-                b = "inundacion"
-            if b is None and re.search(_FLAG_DANO, t[fin:]):
-                b = "dano"
+            a, b = _con_estado(t, a, fin)
             if b:
                 return _spec("length_fraction", "length_fraction", a, b, t, disp)
 
     # 3) conteo (cuántos X …)
-    m = re.search(r"\b(?:cuant[oa]s?|numero de|conteo de|cantidad de)\b", t)
+    m = re.search(r"\b(?:cuant[oa]s?|numero de|conteo de|cantidad de"
+                  r"|how many|number of|count of|amount of)\b", t)
     if m:
-        if re.search(r"\bpersonas?\b", t):
+        if re.search(r"\b(?:personas?|people|persons?)\b", t):
             return _spec("personas", "personas", "persona", None, t, disp)
         a, _, fin = _buscar_sujeto(t, m.end())
         if a:
-            b = _sujeto_implicito(t[fin:], a)
+            a, b = _con_estado(t, a, fin)
             c, buffer_m = _buffer(t, fin)
             if c:
                 return _spec("count", "count", a, b, t, disp, c=c, buffer_m=buffer_m)
             return _spec("count", "count", a, b, t, disp)
 
     # 4) distancia entre A y B
-    if re.search(r"\bdistancia\b", t):
+    if re.search(r"\b(?:distancia|distance)\b", t):
         a, _, fin = _buscar_sujeto(t)
         if a:
             b, _, _ = _buscar_sujeto(t, fin)
             if b:
                 return _spec("distance", "distance", a, b, t, disp)
 
-    # 5) personas sueltas ("¿cuántas personas hay?")
-    if re.search(r"\bpersonas?\b", t) and re.search(
-            r"\b(?:cuant|numero|conteo|cantidad|hay)\b", t):
+    # 5) personas sueltas ("¿cuántas personas hay?" / "how many people?")
+    if re.search(r"\b(?:personas?|people|persons?)\b", t) and re.search(
+            r"\b(?:cuant|numero|conteo|cantidad|hay|how many|number of)\b", t):
         return _spec("personas", "personas", "persona", None, t, disp)
 
     return {

@@ -286,6 +286,16 @@ limitaciones:
       cae en ZONA SALUDABLE, que es discutible y conviene revisar si el jurado
       lo pregunta.
 
+  - id: earthvqa-gate
+    texto: |
+      El benchmark del parser de la consulta (tools/bench_parser_earthvqa.py)
+      mide cobertura de plantillas por tipo de pregunta y precisión de mapeo
+      sobre una muestra etiquetada a mano; NO mide exactitud de respuesta VQA.
+      El QA real de EarthVQA está GATED en Hugging Face: la descarga devuelve
+      403 (hay que aceptar las condiciones con la cuenta). No se inventa la
+      métrica: queda pendiente y documentada. El parser ahora acepta sinónimos
+      en inglés (building/road/water/flooded/…), además del español, con tests.
+
   - id: baseline-dominio
     texto: |
       El baseline siamés (outputs/baseline.png) es un tile satelital nadir de

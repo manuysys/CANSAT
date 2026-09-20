@@ -65,6 +65,12 @@ def _region_izquierda():
     ("¿qué fracción de las vías está inundada?", "length_fraction", "via", "inundacion"),
     ("distancia entre agua y vegetación", "distance", "agua", "vegetacion"),
     ("¿cuántas personas hay?", "personas", "persona", None),
+    # Inglés: mismo parser para el benchmark EarthVQA (QA en inglés).
+    ("What is the area of the flooded buildings?", "area", "edificio", "inundacion"),
+    ("How many damaged buildings are there?", "count", "edificio", "dano"),
+    ("What percentage of roads are flooded?", "length_fraction", "via", "inundacion"),
+    ("What is the distance between water and buildings?", "distance", "agua", "edificio"),
+    ("How many people are in this scene?", "personas", "persona", None),
 ])
 def test_parser_plantillas(texto, plantilla, a, b):
     spec = CO.parsear(texto, DISPONIBLES)
@@ -83,6 +89,13 @@ def test_parser_no_soportada():
     spec = CO.parsear("¿cuántas heladerías hay?", DISPONIBLES)
     assert not spec["soportada"]
     assert spec["sugerencias"]
+
+
+def test_parser_juicio_sin_soporte():
+    # Las preguntas Yes/No de EarthVQA (Basic Judging) no son una operación del
+    # motor: quedan explícitamente no soportadas, no se adivinan.
+    spec = CO.parsear("Are there any buildings in this scene?", DISPONIBLES)
+    assert not spec["soportada"]
 
 
 def test_parser_sujeto_sin_mascara():
