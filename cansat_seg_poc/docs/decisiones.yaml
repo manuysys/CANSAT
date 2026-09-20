@@ -195,6 +195,28 @@ decisiones:
       decía 9% y los otros dos 80%, no había alerta. Y la UI anunciaba "consenso
       de 3 modelos".
 
+  - id: stress-suite
+    estado: vigente
+    texto: |
+      Aptitud de vuelo MEDIDA con corrupción sintética (tools/stress_suite.py +
+      cansat/corrupt.py; 120 imgs/tarea, seed 42, severidad fija declarada en el
+      módulo; JSON: outputs/stress_suite.json). mIoU limpio → estresado:
+        · Terreno (LoveDA Val, cansat_seg_terrain_v2): 51.0 % → lluvia 20.2 %,
+          niebla 16.3 %, motion_blur 43.1 %, subexp 44.9 %, sobreexp 29.3 %,
+          escala 50.2 %.
+        · Daño xBD held-out (Joplin/Nepal, cansat_damage3): IoU bin 0.142 →
+          lluvia 0.073, niebla 0.069, motion 0.091, subexp 0.121, sobreexp 0.069,
+          escala 0.159.
+        · Daño two-stage de vuelo (RescueNet val, cansat_damage_v3_bal):
+          IoU bin 0.403 → lluvia 0.334, niebla 0.198, motion 0.350, subexp 0.356,
+          sobreexp 0.278, escala 0.374.
+      Lectura honesta: niebla y lluvia son las degradaciones dominantes (la niebla
+      más que duplica el error de daño del two-stage); las exposiciones y el
+      motion blur afectan moderado; el jitter de escala casi no afecta porque el
+      resize al input normaliza. Son corrupciones SINTÉTICAS: miden robustez
+      relativa del mismo modelo contra sí mismo, no reemplazan validación de
+      vuelo real.
+
   - id: performance-pi
     estado: vigente
     texto: |

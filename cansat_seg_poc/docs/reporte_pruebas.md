@@ -1,6 +1,6 @@
 # CanSat La Base (CONAE 135) — Reporte de pruebas de misión secundaria
 
-Generado: 2026-09-18 por `generate_report.py`.
+Generado: 2026-09-20 por `generate_report.py`.
 
 > Las secciones 1–5 salen de **artefactos medidos** en disco. Las 7–9
 > salen de `docs/decisiones.yaml`, que es editable sin tocar código.
@@ -101,6 +101,7 @@ la placa.
 - Perfil de descenso del simulador alineado al DPD: eyección ~250 m, descenso 2-4 m/s.
 - Lo que se llamaba "NDVI" se renombra GVI (Greenness / Verdor Index). No hay banda NIR en una cámara RGB, así que no es NDVI, y presentarlo como tal ante CONAE era un riesgo de credibilidad evitable. La columna de telemetry.csv sigue siendo `ndvi` para no romper el contrato publicado; el campo canónico es `gvi` y ambos llevan el mismo valor. El glosario del frontend (web-app/src/lib/vocab.ts) se actualizó en consecuencia.
 - El diagnóstico de daño es mayoría simple de los modelos disponibles sobre 10% de superficie dañada, más una red de seguridad si dos modelos ven >25%. Antes la condición era `pct_dan > 10 and votos >= 2` con `votos` incluyendo a `pct_dan > 10`, o sea que el modelo principal tenía veto: si decía 9% y los otros dos 80%, no había alerta. Y la UI anunciaba "consenso de 3 modelos".
+- Aptitud de vuelo MEDIDA con corrupción sintética (tools/stress_suite.py + cansat/corrupt.py; 120 imgs/tarea, seed 42, severidad fija declarada en el módulo; JSON: outputs/stress_suite.json). mIoU limpio → estresado: · Terreno (LoveDA Val, cansat_seg_terrain_v2): 51.0 % → lluvia 20.2 %, niebla 16.3 %, motion_blur 43.1 %, subexp 44.9 %, sobreexp 29.3 %, escala 50.2 %. · Daño xBD held-out (Joplin/Nepal, cansat_damage3): IoU bin 0.142 → lluvia 0.073, niebla 0.069, motion 0.091, subexp 0.121, sobreexp 0.069, escala 0.159. · Daño two-stage de vuelo (RescueNet val, cansat_damage_v3_bal): IoU bin 0.403 → lluvia 0.334, niebla 0.198, motion 0.350, subexp 0.356, sobreexp 0.278, escala 0.374. Lectura honesta: niebla y lluvia son las degradaciones dominantes (la niebla más que duplica el error de daño del two-stage); las exposiciones y el motion blur afectan moderado; el jitter de escala casi no afecta porque el resize al input normaliza. Son corrupciones SINTÉTICAS: miden robustez relativa del mismo modelo contra sí mismo, no reemplazan validación de vuelo real.
 - --no-damage apaga de verdad los tres modelos de daño + siamés + flood. Antes --no-detect sólo apagaba YOLO y todo lo demás corría igual por frame. Además el flood specialist se ejecutaba DOS veces por frame (una en la rama de diagnóstico y otra en el bloque del sampler) y el tensor del baseline siamés se releía y reprocesaba en cada frame aunque la imagen no cambia. Los tres eran cuellos de botella en la Pi Zero 2 W.
 
 ## 8. Limitaciones conocidas del modelo
