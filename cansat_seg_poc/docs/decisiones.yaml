@@ -237,6 +237,19 @@ decisiones:
       vía en FloodNet val no supera 0.50, quedan "no soportadas" y se documenta
       la técnica como no funcionó (no se integra un modelo peor al pipeline).
 
+  - id: mil-tipo-desastre
+    estado: vigente
+    texto: |
+      MIL para el tipo de desastre (bolsa = evento, instancias = tiles, pooling
+      con atención gatada) probado contra el clasificador por tile con el MISMO
+      LOEO (24 eventos, seed 42): media ponderada de accuracy por bolsa 0.3277
+      vs 0.3681 del baseline por tile. NO lo supera: se documenta como técnica
+      que no funcionó y el clasificador por tile queda. Caveat registrado: la
+      métrica de bolsa (accuracy por bolsa, ponderada por bolsas) no es idéntica
+      a la de tile (ponderada por tiles); 6 épocas y K=8 con eventos chicos de
+      alta varianza. JSON: outputs/mil_loeo.json. Per-eventos donde sí gana:
+      moore-tornado, socal-fire, woolsey-fire y palu-tsunami (acc bolsa 0.95-1.0).
+
   - id: performance-pi
     estado: vigente
     texto: |

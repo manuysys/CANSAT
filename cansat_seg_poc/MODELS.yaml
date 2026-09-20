@@ -441,6 +441,12 @@ vuelo:
                (puna 0.049). Es una pista de contexto, NO un clasificador
                confiable en eventos nuevos. Ver outputs/disaster_type_loeo.json."
       loeo_json: "outputs/disaster_type_loeo.json"
+      mil_media_bolsa: 0.3277
+      mil_baseline_tile_loeo: 0.3681
+      mil_json: "outputs/mil_loeo.json"
+      mil_resultado: "MIL (bolsa=evento, atención gatada) NO supera al clasificador
+                      por tile en el LOEO: 0.3277 vs 0.3681. Se documenta como
+                      técnica que no funcionó (2026-09-20); queda el tile."
       muestras: "3 355 balanceadas (huracán 1200, incendio 907, sismo 796,
                  inundación 355, volcán 41, otro 56, tornado 0 — Mayfield es
                  test y sus ortomosaicos grandes se bajaron después)"
