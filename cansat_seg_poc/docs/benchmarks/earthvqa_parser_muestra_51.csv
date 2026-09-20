@@ -1,0 +1,52 @@
+imagen,tipo,pregunta,soportada,plantilla,sujetos,veredicto
+2966.png,Basic Counting,What is the area of agriculture?,SI,area,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of barren?,SI,area,"{""a"": ""suelo"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of buildings?,SI,area,"{""a"": ""edificio"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of playgrounds?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of roads?,SI,area,"{""a"": ""via"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of the forest?,SI,area,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Counting,What is the area of water?,SI,area,"{""a"": ""agua"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Are there any buildings in this scene?,SI,exists,"{""a"": ""edificio"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Are there any playgrounds in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Are there any roads in this scene?,SI,exists,"{""a"": ""via"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Is there any agriculture in this scene?,SI,exists,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Is there any barren in this scene?,SI,exists,"{""a"": ""suelo"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Is there any forest in this scene?,SI,exists,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+2966.png,Basic Judging,Is there any water in this scene?,SI,exists,"{""a"": ""agua"", ""b"": null, ""c"": null}",SI
+3863.png,Comprehensive Analysis,What are the comprehensive traffic situations in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Comprehensive Analysis,What are the land use types in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Comprehensive Analysis,What are the needs for the renovation of residents?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Comprehensive Analysis,What are the needs for the renovation of villages?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Comprehensive Analysis,What are the road materials around the village?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Comprehensive Analysis,What are the road types around the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Comprehensive Analysis,What are the water situations around the agricultural land?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Object Situation Analysis,What are the types of residential buildings?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Object Situation Analysis,What are the water types in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Object Situation Analysis,What is the situation of barren land?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Counting,How many eutrophic waters are in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Counting,How many intersections are in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any bridges in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Are there any eutrophic waters in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Are there any greenhouses in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any intersections in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any intersections near the school?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Are there any large driveways (more than four lanes)?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any urban villages in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any viaducts in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any viaducts near the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Are there any villages in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is it a rural or urban scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there a commercial area near the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there a construction area near the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there a park near the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there a school near the residential area?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is there any agricultural land in this scene?,SI,exists,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there any commercial land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there any construction land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there any educational land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is there any industrial land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Is there any park land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is there any residential land in this scene?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is there any uncultivated agricultural land in this scene?,SI,exists,"{""a"": ""suelo"", ""b"": null, ""c"": null}",SI
+2966.png,Reasoning-based Judging,Is there any woodland in this scene?,SI,exists,"{""a"": ""vegetacion"", ""b"": null, ""c"": null}",SI
+3863.png,Reasoning-based Judging,Whether greening need to be supplemented in residential areas?,NO,,"{""a"": null, ""b"": null, ""c"": null}",SI

@@ -1,0 +1,61 @@
+{
+  "generado": "2026-09-20T20:40:02.818504+00:00",
+  "script": "tools/bench_parser_earthvqa.py",
+  "qa": "dataset\\earthvqa\\Val_QA.json",
+  "preguntas_unicas_totales": 51,
+  "cobertura": {
+    "global": {
+      "n": 57202,
+      "soportadas": 23681,
+      "cobertura": 0.414
+    },
+    "por_tipo": {
+      "Basic Counting": {
+        "n": 11683,
+        "soportadas": 10014,
+        "cobertura": 0.8571
+      },
+      "Basic Judging": {
+        "n": 11683,
+        "soportadas": 10014,
+        "cobertura": 0.8571
+      },
+      "Comprehensive Analysis": {
+        "n": 6676,
+        "soportadas": 0,
+        "cobertura": 0.0
+      },
+      "Object Situation Analysis": {
+        "n": 3023,
+        "soportadas": 0,
+        "cobertura": 0.0
+      },
+      "Reasoning-based Counting": {
+        "n": 1669,
+        "soportadas": 0,
+        "cobertura": 0.0
+      },
+      "Reasoning-based Judging": {
+        "n": 22468,
+        "soportadas": 3653,
+        "cobertura": 0.1626
+      }
+    },
+    "plantillas": {
+      "exists": 13667,
+      "area": 10014
+    }
+  },
+  "muestra": {
+    "n": 51,
+    "n_soportadas": 15,
+    "n_no_soportadas": 36,
+    "etiquetados": 51,
+    "precision_mapeo": 1.0,
+    "precision_rechazo": 1.0,
+    "exactitud": 1.0,
+    "archivo": "C:\\Users\\manuy\\PROYECTOS_Y_ESTUDIOS\\CANSAT\\cansat_seg_poc\\outputs\\earthvqa_parser_muestra_100_42.csv",
+    "pendiente": null
+  },
+  "nota": "Mide cobertura del parser y precisión de sus DECISIONES sobre una muestra etiquetada a mano (mapeo correcto en filas soportadas; rechazo correcto en no soportadas). NO mide exactitud de respuesta VQA (respuestas libres + máscaras refinadas de EarthVQA fuera de este benchmark). EarthVQA: uso académico, no comercial."
+}

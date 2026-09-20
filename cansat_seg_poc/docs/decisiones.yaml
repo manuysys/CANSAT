@@ -324,7 +324,9 @@ limitaciones:
       → suelo, no vegetación) y 'construction land/area' (uso de suelo: se
       rechaza). Aproximaciones declaradas: agriculture/woodland→vegetación y
       uncultivated→suelo; 'roads' usa el especialista de vías (cross-domain
-      LoveDA 0.169). NO mide exactitud de respuesta VQA.
+      LoveDA 0.169). NO mide exactitud de respuesta VQA. Evidencia versionada:
+      docs/benchmarks/earthvqa_parser.json y la muestra adjudicada a mano
+      docs/benchmarks/earthvqa_parser_muestra_51.csv.
 
   - id: baseline-dominio
     texto: |
