@@ -209,14 +209,15 @@ El entorno virtual (`venv/`) ya tiene todas las dependencias instaladas.
 ### Sobre EarthVQA
 
 El benchmark del parser de la Consulta Terrestre usa los QA de EarthVQA
-(`tools/bench_parser_earthvqa.py`): mide **cobertura** de plantillas y
-**precisión de mapeo** sobre una muestra estratificada etiquetada a mano — NO
-exactitud de respuesta VQA. El dataset está **gated** en Hugging Face
+(`tools/bench_parser_earthvqa.py`). Resultado medido (Val, 57 202 preguntas =
+51 distintas): **cobertura 41.4 %** (Basic Counting 85.7 %, Basic Judging
+85.7 %, Reasoning-based Judging 16.3 %, resto 0 % por estar fuera de la
+ontología de 5 clases) y **precisión 100 % de mapeo (15/15) y de rechazo
+(36/36)** sobre el inventario completo etiquetado a mano. NO mide exactitud de
+respuesta VQA. El QA está gated en Hugging Face
 (https://huggingface.co/datasets/Kingdrone-Junjue/EarthVLSet): hay que aceptar
 las condiciones con una cuenta y bajar `Val_QA.json` (≈7.5 MB) a
 `dataset/earthvqa/` (no se versiona; licencia académica, no comercial).
-Mientras no haya acceso, el benchmark está listo para correr y la métrica
-queda documentada como pendiente, sin inventar números.
 
 ### Verificación Visual Antes de Entrenar
 

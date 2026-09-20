@@ -44,13 +44,16 @@ SUJETOS: dict[str, tuple[str, ...]] = {
     "edificio": (
         "edificio", "edificios", "construccion", "construcciones", "vivienda",
         "viviendas", "casa", "casas", "estructura", "estructuras",
-        # Inglés (benchmark EarthVQA; el QA de la estación sigue en español)
+        # Inglés (benchmark EarthVQA). OJO: 'construction' NO va acá: en EarthVQA
+        # 'construction land/area' es uso de suelo y respondíamos existencia de
+        # edificios — un falso soporte medido y corregido (2026-09-20).
         "building", "buildings", "house", "houses", "structure", "structures",
-        "construction",
     ),
     "vegetacion": (
         "vegetacion", "vegetal", "verde", "arbol", "arboles", "bosque", "forestal",
         "vegetation", "green", "tree", "trees", "forest", "woodland",
+        # EarthVQA: 'agriculture' cae en vegetación en nuestro remapeo LoveDA.
+        "agriculture", "agricultural",
     ),
     "agua": ("agua", "aguas", "lago", "laguna", "rio",
              "water", "lake", "river", "pond"),
@@ -73,7 +76,11 @@ SUJETOS: dict[str, tuple[str, ...]] = {
         "damage", "damaged", "destroyed", "collapsed", "ruin", "ruins",
     ),
     "suelo": ("suelo", "suelos", "tierra", "terreno desnudo", "suelo desnudo",
-              "soil", "bare soil", "bare ground", "barren"),
+              "soil", "bare soil", "bare ground", "barren",
+              # EarthVQA: 'uncultivated agricultural land' es barbecho, no
+              # vegetación; el match por frase gana sobre 'agricultural'.
+              "uncultivated agricultural land", "uncultivated land", "fallow land",
+              "fallow", "uncultivated"),
 }
 
 #: Sujeto canónico → (sufijo de máscara, valores de clase que lo forman).
@@ -214,6 +221,21 @@ def _con_estado(t: str, a: str, fin: int) -> tuple[str, str | None]:
     return a, b
 
 
+def _area_es_cabeza(t: str, m: re.Match) -> bool:
+    """
+    ¿La palabra 'area' es el núcleo de una consulta de superficie?
+
+    Evita el falso soporte de 'What are the road types around the residential
+    area?': 'area' ahí es parte de un sintagma, no una operación. Se exige que
+    detrás venga 'of/de/del…' o un estado ('area inundada'), lo que cubre
+    'What is the area of roads?' y '¿cuál es el área de los edificios?'.
+    """
+    resto = t[m.end():]
+    if re.match(r"\s*(?:of|de|del|de la|de los|de las|is|esta|estan|es)\b", resto):
+        return True
+    return bool(re.match(rf"\s*(?:{_FLAG_INUNDACION}|{_FLAG_DANO})", resto))
+
+
 def _buffer(t: str, desde: int) -> tuple[str | None, float | None]:
     """'a menos de 50 m de una vía' / 'within 50 m of a road' → (C, metros)."""
     m = re.search(
@@ -235,7 +257,8 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
     disp = set(disponibles or ())
 
     # 1) área / superficie
-    if re.search(r"\b(?:area|superficie|surface)\b", t):
+    m_area = re.search(r"\b(?:area|superficie|surface)\b", t)
+    if m_area and _area_es_cabeza(t, m_area):
         a, _, fin = _buscar_sujeto(t)
         if a:
             a, b = _con_estado(t, a, fin)
@@ -272,7 +295,16 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
             if b:
                 return _spec("distance", "distance", a, b, t, disp)
 
-    # 5) personas sueltas ("¿cuántas personas hay?" / "how many people?")
+    # 5) existencia (preguntas Yes/No de EarthVQA: 'Is there any X?', '¿hay X?')
+    if re.search(r"\b(?:hay|is there|are there|existe|existen)\b", t):
+        if re.search(r"\b(?:personas?|people|persons?)\b", t):
+            return _spec("personas", "personas", "persona", None, t, disp)
+        a, _, fin = _buscar_sujeto(t)
+        if a:
+            a, b = _con_estado(t, a, fin)
+            return _spec("exists", "exists", a, b, t, disp)
+
+    # 6) personas sueltas ("¿cuántas personas hay?" / "how many people?")
     if re.search(r"\b(?:personas?|people|persons?)\b", t) and re.search(
             r"\b(?:cuant|numero|conteo|cantidad|hay|how many|number of)\b", t):
         return _spec("personas", "personas", "persona", None, t, disp)
@@ -517,6 +549,14 @@ def ejecutar(spec: dict, datos: DatosMision,
                            poligonos=_poligonos_geo(objetivo, fila),
                            areas_m2=[c.get("area_m2") for c in comps[:20]])
 
+        elif op == "exists":
+            objetivo = a if b is None else MK.interseccion(a, b)
+            presencia = MK.area_px(objetivo) > 0
+            if presencia:
+                acum["count"] += 1
+            entrada.update(valor=int(presencia), unidad="presencia",
+                           poligonos=_poligonos_geo(objetivo, fila) if presencia else [])
+
         elif op == "length_fraction":
             interseccion = MK.interseccion(a, b)
             la, lab = MK.longitud_px(a), MK.longitud_px(interseccion)
@@ -554,6 +594,9 @@ def _resultado(spec: dict, acum: dict, por_frame: list[dict],
         total, unidades = round(acum["area_m2"], 2), "m2"
     elif op == "count":
         total, unidades = acum["count"], "componentes"
+    elif op == "exists":
+        total = {"frames_con_presencia": acum["count"], "de": len(por_frame)}
+        unidades = "presencia"
     elif op == "length_fraction":
         total = {
             "fraccion": round(acum["len_ab_m"] / acum["len_a_m"], 4)

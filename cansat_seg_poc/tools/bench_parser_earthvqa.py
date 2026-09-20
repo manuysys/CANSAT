@@ -43,10 +43,11 @@ from cansat.consultas import parsear                        # noqa: E402
 DISPONIBLES = {"terreno", "dano2", "flood", "vias"}
 
 NOTA = (
-    "Mide cobertura del parser y precisión de mapeo sobre muestra etiquetada a "
-    "mano. NO mide exactitud de respuesta VQA (respuestas libres + máscaras "
-    "refinadas de EarthVQA fuera de este benchmark). EarthVQA: uso académico, "
-    "no comercial."
+    "Mide cobertura del parser y precisión de sus DECISIONES sobre una muestra "
+    "etiquetada a mano (mapeo correcto en filas soportadas; rechazo correcto en "
+    "no soportadas). NO mide exactitud de respuesta VQA (respuestas libres + "
+    "máscaras refinadas de EarthVQA fuera de este benchmark). EarthVQA: uso "
+    "académico, no comercial."
 )
 
 
@@ -100,31 +101,47 @@ def cobertura(filas: list[dict]) -> dict:
 
 
 def muestra_estratificada(filas: list[dict], n: int, seed: int) -> list[dict]:
-    """Muestra proporcional por ``Type``, determinista con ``seed``."""
+    """
+    Muestra proporcional por ``Type`` de preguntas ÚNICAS, determinista.
+
+    EarthVQA repite la misma pregunta en cientos de imágenes; muestrear filas
+    daría una precisión artificialmente confiada con pocas familias. Acá se
+    deduplica por texto: con ``--muestra 100`` entran TODAS las preguntas
+    distintas del QA (a la fecha, 51). El peso por tipo sigue el conteo real.
+    """
     rng = random.Random(seed)
     por_tipo: dict[str, list[dict]] = {}
+    vistas: set[tuple[str, str]] = set()
     for f in filas:
+        key = (f["tipo"], f["pregunta"])
+        if key in vistas:
+            continue
+        vistas.add(key)
         por_tipo.setdefault(f["tipo"], []).append(f)
     for v in por_tipo.values():
         rng.shuffle(v)
     out: list[dict] = []
     i = 0
-    while len(out) < min(n, len(filas)):
-        agrego = False
+    tocando = True
+    while tocando and len(out) < min(n, len(vistas)):
+        tocando = False
         for tipo in sorted(por_tipo):
             if i < len(por_tipo[tipo]) and len(out) < n:
                 out.append(por_tipo[tipo][i])
-                agrego = True
-        if not agrego:
-            break
+                tocando = True
         i += 1
-    out.sort(key=lambda f: (f["tipo"], f["imagen"]))
+    out.sort(key=lambda f: (f["tipo"], f["pregunta"]))
     return out
 
 
 def evaluar_muestra(ruta_csv: Path, muestra: list[dict]) -> dict:
     """
-    Precisión de mapeo usando la columna ``veredicto`` (SI/NO) del CSV.
+    Métricas de la muestra usando la columna ``veredicto`` (SI/NO) del CSV.
+
+    El veredicto etiqueta a mano si la DECISIÓN del parser es correcta:
+      · fila soportada → ¿el mapeo propuesto es el correcto?
+      · fila no soportada → ¿era correcto rechazarla?
+    Se reportan precisiones separadas para no mezclar cobertura con acierto.
 
     Si el CSV no existe se escribe con ``veredicto`` vacío y se devuelve
     ``etiquetados=0`` (la cobertura ya es válida; la precisión queda pendiente).
@@ -151,18 +168,25 @@ def evaluar_muestra(ruta_csv: Path, muestra: list[dict]) -> dict:
                                         ensure_ascii=False),
                              ""])
 
-    si = no = 0
+    n_sop = n_no = si_sop = si_no = 0
     for f in muestra:
+        spec = clasificar(f["pregunta"])
         v = existentes.get((f["imagen"], f["pregunta"]), "")
-        if v.startswith("S"):
-            si += 1
-        elif v.startswith("N"):
-            no += 1
-    etiquetados = si + no
+        if spec.get("soportada"):
+            n_sop += 1
+            si_sop += int(v.startswith("S"))
+        else:
+            n_no += 1
+            si_no += int(v.startswith("S"))
+    etiquetados = si_sop + si_no
     return {
         "n": len(muestra),
+        "n_soportadas": n_sop,
+        "n_no_soportadas": n_no,
         "etiquetados": etiquetados,
-        "precision": round(si / etiquetados, 4) if etiquetados else None,
+        "precision_mapeo": round(si_sop / n_sop, 4) if n_sop else None,
+        "precision_rechazo": round(si_no / n_no, 4) if n_no else None,
+        "exactitud": round((si_sop + si_no) / len(muestra), 4) if muestra else None,
         "archivo": str(ruta_csv),
         "pendiente": ("etiquetar la columna veredicto (SI/NO) del CSV y "
                       "re-correr para obtener la precisión"
@@ -205,8 +229,11 @@ def main(argv=None) -> int:
         print(f"    {tipo:<32} {c['cobertura'] * 100:5.1f}%  ({c['soportadas']}/{c['n']})")
     print(f"  Plantillas: {cob['plantillas']}")
     if prec["etiquetados"]:
-        print(f"  Precisión de mapeo (n={prec['etiquetados']}): "
-              f"{prec['precision'] * 100:.1f}%")
+        print(f"  Muestra n={prec['n']}: {prec['n_soportadas']} soportadas / "
+              f"{prec['n_no_soportadas']} rechazadas")
+        print(f"    precisión de mapeo   : {prec['precision_mapeo'] * 100:.1f}%")
+        print(f"    precisión de rechazo : {prec['precision_rechazo'] * 100:.1f}%")
+        print(f"    exactitud de decisión: {prec['exactitud'] * 100:.1f}%")
     else:
         print(f"  Precisión pendiente: etiquetá {prec['archivo']} y re-corré.")
 
@@ -214,6 +241,7 @@ def main(argv=None) -> int:
         "generado": datetime.now(timezone.utc).isoformat(),
         "script": "tools/bench_parser_earthvqa.py",
         "qa": str(p),
+        "preguntas_unicas_totales": len({f["pregunta"] for f in filas}),
         "cobertura": cob,
         "muestra": prec,
         "nota": NOTA,

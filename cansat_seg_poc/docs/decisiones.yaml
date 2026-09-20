@@ -306,15 +306,25 @@ limitaciones:
       cae en ZONA SALUDABLE, que es discutible y conviene revisar si el jurado
       lo pregunta.
 
-  - id: earthvqa-gate
+  - id: benchmark-parser
+    estado: vigente
     texto: |
-      El benchmark del parser de la consulta (tools/bench_parser_earthvqa.py)
-      mide cobertura de plantillas por tipo de pregunta y precisión de mapeo
-      sobre una muestra etiquetada a mano; NO mide exactitud de respuesta VQA.
-      El QA real de EarthVQA está GATED en Hugging Face: la descarga devuelve
-      403 (hay que aceptar las condiciones con la cuenta). No se inventa la
-      métrica: queda pendiente y documentada. El parser ahora acepta sinónimos
-      en inglés (building/road/water/flooded/…), además del español, con tests.
+      Benchmark del parser contra los QA reales de EarthVQA (Val, 57 202
+      preguntas = 51 distintas; dataset gated, QA local en dataset/earthvqa/,
+      uso académico no comercial). Herramienta: tools/bench_parser_earthvqa.py.
+      Cobertura: 41.4 % global; Basic Counting 85.7 % y Basic Judging 85.7 %
+      (falta solo 'playground', que no existe en la ontología de 5 clases);
+      Reasoning-based Judging 16.3 % (agricultural land/woodland/uncultered →
+      vegetación/vegetación/suelo); Comprehensive, Object Situation y
+      Reasoning Counting 0 % (tipos, usos de suelo, intersecciones, eutrófico:
+      fuera de alcance, se rechazan). Precisión de mapeo 100 % (15/15) y de
+      rechazo 100 % (36/36) sobre el inventario COMPLETO de 51 preguntas
+      distintas, etiquetado a mano. Dos falsos soportes detectados a escala y
+      corregidos antes de medir: 'uncultivated agricultural land' (es barbecho
+      → suelo, no vegetación) y 'construction land/area' (uso de suelo: se
+      rechaza). Aproximaciones declaradas: agriculture/woodland→vegetación y
+      uncultivated→suelo; 'roads' usa el especialista de vías (cross-domain
+      LoveDA 0.169). NO mide exactitud de respuesta VQA.
 
   - id: baseline-dominio
     texto: |

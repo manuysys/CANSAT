@@ -71,6 +71,9 @@ def _region_izquierda():
     ("What percentage of roads are flooded?", "length_fraction", "via", "inundacion"),
     ("What is the distance between water and buildings?", "distance", "agua", "edificio"),
     ("How many people are in this scene?", "personas", "persona", None),
+    ("Is there any water in this scene?", "exists", "agua", None),
+    ("¿hay agua en la zona?", "exists", "agua", None),
+    ("What is the area of agriculture?", "area", "vegetacion", None),
 ])
 def test_parser_plantillas(texto, plantilla, a, b):
     spec = CO.parsear(texto, DISPONIBLES)
@@ -91,11 +94,47 @@ def test_parser_no_soportada():
     assert spec["sugerencias"]
 
 
-def test_parser_juicio_sin_soporte():
-    # Las preguntas Yes/No de EarthVQA (Basic Judging) no son una operación del
-    # motor: quedan explícitamente no soportadas, no se adivinan.
+def test_parser_juicio_con_sujeto_conocido():
+    # Yes/No de un sujeto que existe → operación de existencia (no se adivina).
     spec = CO.parsear("Are there any buildings in this scene?", DISPONIBLES)
+    assert spec["soportada"] and spec["plantilla"] == "exists"
+    assert spec["a"] == "edificio"
+
+
+def test_parser_juicio_sin_sujeto_soportado():
+    # 'playground' no existe en nuestra ontología de 5 clases: se rechaza.
+    spec = CO.parsear("Are there any playgrounds in this scene?", DISPONIBLES)
     assert not spec["soportada"]
+
+
+def test_parser_uncultivated_es_suelo():
+    # Barbecho = suelo desnudo, no vegetación (falso soporte medido y corregido).
+    spec = CO.parsear("Is there any uncultivated agricultural land in this scene?",
+                      DISPONIBLES)
+    assert spec["soportada"] and spec["a"] == "suelo"
+
+
+@pytest.mark.parametrize("texto", [
+    "Is there any construction land in this scene?",
+    "Is there a construction area near the residential area?",
+])
+def test_parser_uso_de_suelo_no_se_responde(texto):
+    # 'construction land/area' es uso de suelo: no lo respondemos con edificios.
+    assert not CO.parsear(texto, DISPONIBLES)["soportada"]
+
+
+def test_parser_no_confunde_area_de_sintagma():
+    # 'residential area' es un sintagma, no una consulta de superficie.
+    spec = CO.parsear("What are the road types around the residential area?",
+                      DISPONIBLES)
+    assert not spec["soportada"]
+
+
+def test_existencia_responde_presencia(tmp_path):
+    res = CO.responder("¿hay agua en la zona?", _mision(tmp_path))
+    assert res["operacion"] == "exists"
+    assert res["total"]["frames_con_presencia"] == 2
+    assert res["total"]["de"] == 2
 
 
 def test_parser_sujeto_sin_mascara():
