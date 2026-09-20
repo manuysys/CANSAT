@@ -23,10 +23,12 @@ DISASTER_CLASSES = ["huracan", "inundacion", "sismo", "incendio", "volcan",
 # Clases habilitadas por política: solo incendio puede confirmarse.
 HABILITADAS: dict[str, set[str]] = {"fire_only_v1": {"incendio"}}
 
-# Umbral provisional: lo reemplaza el valor recomendado por el sweep de
-# validación por evento (tools/evaluar_umbral_incendio.py). Si el sweep no
-# alcanza el criterio de aceptación, queda este y se documenta.
-UMBRAL_INCENDIO_DEFAULT = 0.70
+# Umbral CALIBRADO (2026-09-20, conformal v2 sobre LOEO con xBD Tier 3):
+# con FPR<=5% garantizada, tau=0.990 da recall medido 0.291 (1 200 tiles de
+# incendio / 3 921 de calibración). Punto elegido: precisión alta para campaña
+# (un falso positivo de incendio es caro). Si se prioriza recall, tau=0.330 da
+# 0.471 — ver outputs/conformal_incendio.json y MODELS.yaml.
+UMBRAL_INCENDIO_DEFAULT = 0.99
 
 
 def decidir_tipo(probs, umbral: float = UMBRAL_INCENDIO_DEFAULT,

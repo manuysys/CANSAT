@@ -849,10 +849,10 @@ def main(argv=None) -> int:
                 # Política fire_only_v1 (idéntica a cansat/tipos.py): el demo
                 # confirma "incendio" solo en frames con fuego visible; el resto
                 # queda en abstención (el top-1 crudo se audita, no se muestra).
-                **({"tipo_desastre": "incendio", "tipo_conf": 0.82,
+                **({"tipo_desastre": "incendio", "tipo_conf": 0.995,
                     "tipo_estado": "confirmado_por_modelo",
                     "tipo_es_confiable": True,
-                    "tipo_top1_crudo": "incendio", "tipo_top1_conf_cruda": 0.82,
+                    "tipo_top1_crudo": "incendio", "tipo_top1_conf_cruda": 0.995,
                     "tipo_notas": ""}
                    if r["fire_pct"] > 5.0 else
                    {"tipo_desastre": "inundacion", "tipo_conf": 0.51,
@@ -861,7 +861,7 @@ def main(argv=None) -> int:
                     "tipo_top1_crudo": "inundacion", "tipo_top1_conf_cruda": 0.51,
                     "tipo_notas": "inundacion no habilitada en fire_only_v1"}),
                 "tipo_politica": "fire_only_v1",
-                "tipo_umbral_incendio": 0.70,
+                "tipo_umbral_incendio": 0.99,
                 "tipo_modelo_hash": model_ids.get("type"),
                 "model_ids": model_ids,
                 "quant": "fp32",
