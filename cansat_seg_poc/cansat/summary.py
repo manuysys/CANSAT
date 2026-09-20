@@ -44,12 +44,15 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Sequence
 
-SCHEMA_VERSION: int = 2
+SCHEMA_VERSION: int = 3
 MISION: str = "LB135"
 
 # Buckets de imagen del contrato. Deben coincidir con BUCKETS en web_server.py
-# y con FrameFiles en web-app/src/lib/types.ts.
-BUCKETS: tuple = ("vis", "high_res", "full_res", "thumb", "ens_seg", "enhanced", "masks")
+# y con FrameFiles en web-app/src/lib/types.ts. v3 agrega las máscaras de clase
+# por frame (consulta terrestre; la carpeta también viaja en
+# archivos.rutas["masks"]).
+BUCKETS: tuple = ("vis", "high_res", "full_res", "thumb", "ens_seg", "enhanced",
+                  "masks_terreno", "masks_dano2", "masks_flood", "masks_vias")
 
 
 @dataclass

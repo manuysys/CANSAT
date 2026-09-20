@@ -409,8 +409,17 @@ def region_toca_frame(poligono: list | np.ndarray, fila: dict) -> bool:
 # ══════════════════════════════════════════════════════════════════════════ #
 #  Ejecución
 # ══════════════════════════════════════════════════════════════════════════ #
-def _poligonos_geo(mask: np.ndarray, fila: dict) -> list[list[list[float]]]:
-    return [pixeles_a_geo(c, fila, mask.shape) for c in MK.contornos(mask)]
+def _poligonos_geo(mask: np.ndarray, fila: dict,
+                   max_poligonos: int = 40) -> list[list[list[float]]]:
+    """
+    Contornos del resultado en lon/lat para dibujar en la estación.
+
+    Se filtran componentes menores a ``MIN_AREA_PX`` y se recortan a
+    ``max_poligonos``: una máscara ruidosa puede generar cientos de polígonos
+    de 2 px que no aportan nada al overlay.
+    """
+    conts = MK.contornos(mask, min_area_px=MIN_AREA_PX)
+    return [pixeles_a_geo(c, fila, mask.shape) for c in conts[:max_poligonos]]
 
 
 def ejecutar(spec: dict, datos: DatosMision,

@@ -217,6 +217,26 @@ decisiones:
       relativa del mismo modelo contra sí mismo, no reemplazan validación de
       vuelo real.
 
+  - id: consulta-terrestre
+    estado: vigente
+    texto: |
+      Consulta Terrestre en la estación: consultas espaciales simbólicas sobre
+      las máscaras de clase por frame. El post-vuelo ahora las persiste en
+      entrega/masks/ (PNG gris de índices, 255 = sin dato; se apaga con
+      --no-masks y suma el bucket del contrato v3). Motor: cansat/consultas.py
+      (plantillas en español → área, conteo con buffer métrico, fracción de
+      longitud por esqueleto, distancia y personas de la telemetría). NO hay
+      LLM como respondedor: lo que no mapea devuelve "consulta no soportada"
+      con sugerencias. El servidor de la estación lo invoca por subproceso
+      (tools/consulta.py), así sigue siendo stdlib-only.
+      Georreferenciado declarado APROXIMADO: cuadrado de lado sqrt(area_m2)
+      centrado en (lat, lon), norte arriba, sin heading (la telemetría no trae
+      IMU). Las personas se cuentan por frame (no hay posición por detección) y
+      la longitud es ±10 % por esqueletización.
+      Las consultas de vías dependen de train_road_specialist.py: si su IoU de
+      vía en FloodNet val no supera 0.50, quedan "no soportadas" y se documenta
+      la técnica como no funcionó (no se integra un modelo peor al pipeline).
+
   - id: performance-pi
     estado: vigente
     texto: |
