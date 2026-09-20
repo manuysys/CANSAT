@@ -168,7 +168,7 @@ def _entrenar_fold(train, test, args, device, epochs=6):
             p = model(x.to(device)).argmax(1).cpu()
             correct += int((p == y).sum())
             total += len(y)
-            for pi, yi in zip(p.tolist(), y.tolist()):
+            for pi, yi in zip(p.tolist(), y.tolist(), strict=True):
                 preds[CLASES[pi]] += 1
                 reales[CLASES[yi]] += 1
     return correct / max(1, total), preds, reales

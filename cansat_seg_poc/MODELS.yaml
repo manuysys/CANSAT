@@ -409,7 +409,18 @@ vuelo:
     nombres_clases: [huracan, inundacion, sismo, incendio, volcan, tornado, otro]
     entrada: "[1, 3, 224, 224]"
     dataset: "xBD + RescueNet + KATE-PD + CRASAR (etiqueta de EVENTO como supervisión débil)"
-    estado: "OPCIONAL (pista de contexto; no altera el diagnóstico)"
+    estado: "OPCIONAL (política fire_only_v1: solo confirma incendio; el resto abstiene)"
+    politica: |
+      fire_only_v1 (2026-09-20, cansat/tipos.py): el sistema SOLO afirma
+      "incendio" cuando el top-1 es incendio Y la confianza >= umbral
+      (--type-umbral-incendio, default 0.70 PROVISIONAL — pendiente el sweep
+      de validación por evento que lo reemplace; el comando propuesto está en
+      el informe). Cualquier
+      otra clase o incendio bajo umbral → abstención auditada en el JSONL
+      (tipo_estado, tipo_es_confiable, tipo_notas, tipo_modelo_hash). La UI solo
+      muestra badge con tipo_estado=confirmado_por_modelo. No reemplaza a la
+      señal de fuego medida (cansat_fire_smoke.onnx, fire 0.791): son
+      independientes y miden cosas distintas.
     metricas:
       acc_val: 0.978
       loeo_media_ponderada: 0.248

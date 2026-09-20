@@ -116,6 +116,7 @@ from cansat import indices as IDX
 from cansat import nodata as ND
 from cansat import onnxio
 from cansat import preprocess as PP
+from cansat import tipos
 from cansat import population as POP
 from cansat import protocol as PROTO
 from cansat import stress as ST
@@ -175,10 +176,6 @@ TTA_UNCERT_REF = 0.05
 # Lado máximo de la copia donde se calcula la bruma (dark channel): en la Pi
 # Zero v1 el erode a resolución completa costaría segundos por frame.
 STRESS_MAX_SIDE = 320.0
-
-# Clases del clasificador de tipo de desastre (train_disaster_type.py).
-DISASTER_CLASSES = ["huracan", "inundacion", "sismo", "incendio", "volcan",
-                    "tornado", "otro"]
 
 
 def _hash8(path: str | Path) -> str:
@@ -520,7 +517,16 @@ def build_parser():
                           "el supuesto 0.3 de casualties. Opcional.")
     mod.add_argument("--type-onnx", default="outputs/cansat_disaster_type.onnx",
                      help="clasificador de TIPO de desastre (7 clases, F2 v3). "
-                          "Opcional; agrega tipo_desastre/tipo_conf al JSONL.")
+                          "Opcional; política fire_only_v1: solo confirma "
+                          "incendio (ver cansat/tipos.py).")
+    mod.add_argument("--type-umbral-incendio", type=float,
+                     default=tipos.UMBRAL_INCENDIO_DEFAULT,
+                     help="umbral de confianza para confirmar incendio con la "
+                          "política fire_only_v1 (provisional: lo reemplaza el "
+                          "sweep de validación por evento).")
+    mod.add_argument("--type-politica", default="fire_only_v1",
+                     help="política de decisión del clasificador de tipo "
+                          "(default fire_only_v1; desconocida = abstiene todo).")
     mod.add_argument("--no-stress", action="store_true",
                      help="apagar el estrés ambiental por imagen (bruma/dark "
                           "channel); el humidex usa igual los sensores")
@@ -743,7 +749,8 @@ def main(argv=None):
                      ("damage2", args.damage2_onnx),
                      ("flood", args.flood_onnx),
                      ("fire", args.fire_onnx),
-                     ("severity", args.severity_onnx)):
+                     ("severity", args.severity_onnx),
+                     ("type", args.type_onnx)):
         if Path(pth).is_file():
             model_ids[key] = _hash8(pth)
 
@@ -1073,6 +1080,14 @@ def main(argv=None):
             pct_fire = pct_smoke = None
             colapso_pct = None
             tipo_desastre = tipo_conf = None
+            tipo_top1_crudo = tipo_top1_conf_cruda = None
+            # Política fire_only_v1: sin modelo → deshabilitado; con modelo
+            # cargado pero sin bloque de daño → no ejecutado (ambos honestos).
+            tipo_estado = ("modelo_deshabilitado" if not sess_type
+                           else "no_ejecutado")
+            tipo_es_confiable = False
+            tipo_notas = ("sin --type-onnx" if not sess_type
+                          else "modelo cargado pero no ejecutado")
             dan_max = 0.0
             if damage_on:
                 t_dmg = time.perf_counter()
@@ -1144,8 +1159,9 @@ def main(argv=None):
                     if n_edif_sev:
                         colapso_pct = float((pred_sev >= 3).sum()) / n_edif_sev * 100.0
 
-                # Tipo de desastre (F2 v3): etiqueta débil del evento, pista de
-                # contexto para el informe/estación (no altera el diagnóstico).
+                # Tipo de desastre (política fire_only_v1, ver cansat/tipos.py):
+                # solo "incendio" con conf >= umbral se confirma; el top-1 crudo
+                # queda para auditoría, NO como predicción válida.
                 if sess_type:
                     size_tp = sess_type.size_px or 224
                     tensor_tp = (tensor if size_tp == args.img_size
@@ -1153,10 +1169,16 @@ def main(argv=None):
                     lg_tp = np.ravel(sess_type.run({"input": tensor_tp}))
                     e_tp = np.exp(lg_tp - lg_tp.max())
                     probs_tp = e_tp / e_tp.sum()
-                    k_tp = int(probs_tp.argmax())
-                    tipo_desastre = (DISASTER_CLASSES[k_tp]
-                                     if k_tp < len(DISASTER_CLASSES) else str(k_tp))
-                    tipo_conf = round(float(probs_tp[k_tp]), 3)
+                    dec = tipos.decidir_tipo(probs_tp,
+                                             args.type_umbral_incendio,
+                                             args.type_politica)
+                    tipo_desastre = dec["clase"]
+                    tipo_conf = round(dec["conf"], 3)
+                    tipo_top1_crudo = dec["clase"]
+                    tipo_top1_conf_cruda = round(dec["conf"], 3)
+                    tipo_estado = dec["estado"]
+                    tipo_es_confiable = dec["confiable"]
+                    tipo_notas = dec["nota"]
 
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)
@@ -1274,9 +1296,18 @@ def main(argv=None):
                 "perdidas_max": est.perdidas_max,
                 "colapso_pct": _rnum(colapso_pct),
                 "colapso_fuente": est.colapso_fuente,
-                # Tipo de desastre (clasificador, etiqueta débil del evento).
+                # Tipo de desastre (política fire_only_v1): el top-1 crudo se
+                # audita, pero solo "incendio" confirmado es válido.
                 "tipo_desastre": tipo_desastre,
                 "tipo_conf": tipo_conf,
+                "tipo_estado": tipo_estado,
+                "tipo_politica": args.type_politica,
+                "tipo_top1_crudo": tipo_top1_crudo,
+                "tipo_top1_conf_cruda": tipo_top1_conf_cruda,
+                "tipo_umbral_incendio": args.type_umbral_incendio,
+                "tipo_es_confiable": tipo_es_confiable,
+                "tipo_modelo_hash": model_ids.get("type"),
+                "tipo_notas": tipo_notas,
                 # Densidad poblacional del frame y de dónde salió (DPD: pérdidas).
                 "pop_density": round(dens_pob, 1),
                 "pop_fuente": pob_fuente,

@@ -98,12 +98,14 @@ export function Detail() {
             alerta
           </Badge>
         )}
-        {/* Contrato v3: tipo de desastre (clasificador, etiqueta débil del evento) */}
-        {ex?.tipo_desastre && (
+        {/* Política fire_only_v1: badge SOLO si el modelo lo confirmó
+            (tipo_estado=confirmado_por_modelo). El top-1 crudo no se muestra:
+            el clasificador no generaliza a eventos nuevos (LOEO 0.248). */}
+        {ex?.tipo_estado === 'confirmado_por_modelo' && ex?.tipo_desastre === 'incendio' && (
           <Badge
             variant="secondary"
             className="border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[10px] text-[#a8d4f5]"
-            title={`Clasificador de tipo de desastre (etiqueta débil del evento, confianza ${num(ex.tipo_conf, 2)}). No altera el diagnóstico.`}
+            title={`Confirmado por el clasificador de tipo · política ${ex.tipo_politica} · umbral ${num(ex.tipo_umbral_incendio, 2)} · modelo ${ex.tipo_modelo_hash ?? 's/h'}`}
           >
             evento: {ex.tipo_desastre}{Number(ex.tipo_conf) > 0 ? ` · ${num(ex.tipo_conf, 2)}` : ''}
           </Badge>

@@ -85,6 +85,15 @@ export interface SampleExtra {
   ocupacion_fuente?: string | null
   tipo_desastre?: string | null
   tipo_conf?: number | null
+  /* Política fire_only_v1: solo incendio confirmado es predicción válida */
+  tipo_estado?: string | null
+  tipo_politica?: string | null
+  tipo_top1_crudo?: string | null
+  tipo_top1_conf_cruda?: number | null
+  tipo_umbral_incendio?: number | null
+  tipo_es_confiable?: boolean | null
+  tipo_modelo_hash?: string | null
+  tipo_notas?: string | null
   model_ids?: Record<string, string> | null
   quant?: string | null
 }

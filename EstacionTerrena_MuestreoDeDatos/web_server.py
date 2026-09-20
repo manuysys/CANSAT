@@ -423,7 +423,11 @@ _JSONL_KEYS = ("uncert", "ms_seg", "ms_dmg", "ms_total", "nodata_pct",
                "danado2_edif_pct", "sharp_ok", "area_m2", "supuestos",
                # Contrato v3: trazabilidad de fuentes y modelos por frame.
                "colapso_fuente", "pop_fuente", "ocupacion_fuente",
-               "tipo_desastre", "tipo_conf", "model_ids", "quant")
+               "tipo_desastre", "tipo_conf", "model_ids", "quant",
+               # Política fire_only_v1 del clasificador de tipo (2026-09-20).
+               "tipo_estado", "tipo_politica", "tipo_top1_crudo",
+               "tipo_top1_conf_cruda", "tipo_umbral_incendio",
+               "tipo_es_confiable", "tipo_modelo_hash", "tipo_notas")
 
 _JSONL_CACHE: dict = {"sig": "", "extras": {}, "resumen": {}}
 

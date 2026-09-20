@@ -127,8 +127,22 @@ if (nMapa >= 1) {
   check(await page.locator('svg polyline').count() >= 2, 'trazo SVG sobre el basemap');
 }
 
-// Contrato v3 en el detalle: tipo de desastre, colapso con fuente y modelos
-check(await page.getByText('evento:', { exact: false }).count() >= 1, 'badge de tipo de desastre (contrato v3)');
+// Política fire_only_v1: badge SOLO cuando el modelo confirmó incendio.
+const samples = await page.evaluate(async () => (await fetch('/api/samples')).json());
+const vals = Object.values(samples.samples || {});
+const conf = Object.entries(samples.samples || {}).filter(([, s]) => s.tipo_estado === 'confirmado_por_modelo');
+const malConfiable = vals.filter(s => s.tipo_es_confiable === true && !(s.tipo_desastre === 'incendio' && s.tipo_estado === 'confirmado_por_modelo'));
+const malEstado = vals.filter(s => s.tipo_estado && s.tipo_estado !== 'confirmado_por_modelo' && s.tipo_es_confiable === true);
+check(malConfiable.length === 0, `solo incendio confirmado es confiable (${malConfiable.length} violaciones)`);
+check(malEstado.length === 0, `estados no confirmados nunca son confiables (${malEstado.length} violaciones)`);
+if (conf.length > 0) {
+  await page.click(`[data-card-src="${conf[0][0]}"]`);
+  await page.waitForTimeout(500);
+  const badges = await page.locator('text=/evento: /').allInnerTexts();
+  check(badges.some(t => t.includes('incendio')), `badge de incendio confirmado visible (${conf[0][0]})`);
+} else {
+  check((await page.locator('text=/evento: /').count()) === 0, 'sin confirmados: ningún badge de tipo visible');
+}
 check(await page.getByText('modelos:', { exact: false }).count() >= 1, 'trazabilidad de modelos (contrato v3)');
 check(await page.getByText('medido', { exact: false }).count() >= 1, 'colapso con fuente (medido/supuesto)');
 
