@@ -413,9 +413,13 @@ vuelo:
     politica: |
       fire_only_v1 (2026-09-20, cansat/tipos.py): el sistema SOLO afirma
       "incendio" cuando el top-1 es incendio Y la confianza >= umbral
-      (--type-umbral-incendio, default 0.70 PROVISIONAL — pendiente el sweep
-      de validación por evento que lo reemplace; el comando propuesto está en
-      el informe). Cualquier
+      (--type-umbral-incendio). RESULTADO CONFORMAL (2026-09-20, sobre LOEO:
+      907 tiles de incendio / 2 399 de calibración, cansat/conformal.py): NO
+      existe umbral útil — con FPR<=5% el recall es 0.000; con FPR<=20% es
+      0.072. Conclusión honesta: la señal de incendio del clasificador NO es
+      calibrable cross-evento; el default 0.70 queda como fail-safe (en la
+      práctica abstiene siempre) y el incendio se confirma con el modelo
+      MEDIDO cansat_fire_smoke.onnx (0.791). Cualquier
       otra clase o incendio bajo umbral → abstención auditada en el JSONL
       (tipo_estado, tipo_es_confiable, tipo_notas, tipo_modelo_hash). La UI solo
       muestra badge con tipo_estado=confirmado_por_modelo. No reemplaza a la

@@ -1,0 +1,64 @@
+{
+  "n_incendio": 907,
+  "n_no_incendio": 2399,
+  "eventos": [
+    "crasar:Champlain",
+    "crasar:Cocodrie",
+    "crasar:MussettBayouFire",
+    "crasar:Steinhatchee",
+    "kate_pd:turkiye",
+    "rescuenet:huracan",
+    "xbd:hurricane-florence",
+    "xbd:hurricane-harvey",
+    "xbd:hurricane-matthew",
+    "xbd:hurricane-michael",
+    "xbd:mexico-earthquake",
+    "xbd:midwest-flooding",
+    "xbd:palu-tsunami",
+    "xbd:santa-rosa-wildfire",
+    "xbd:socal-fire"
+  ],
+  "filas": [
+    {
+      "alpha": 0.01,
+      "umbral_tau": 1.0,
+      "recall_incendio": 0.0,
+      "confirmados": 0,
+      "tiles_incendio": 907,
+      "fpr_calibracion": 0.0167,
+      "fp": 40,
+      "n_calibracion": 2399
+    },
+    {
+      "alpha": 0.05,
+      "umbral_tau": 1.0,
+      "recall_incendio": 0.0,
+      "confirmados": 0,
+      "tiles_incendio": 907,
+      "fpr_calibracion": 0.0517,
+      "fp": 124,
+      "n_calibracion": 2399
+    },
+    {
+      "alpha": 0.1,
+      "umbral_tau": 0.9999,
+      "recall_incendio": 0.0022,
+      "confirmados": 2,
+      "tiles_incendio": 907,
+      "fpr_calibracion": 0.1,
+      "fp": 240,
+      "n_calibracion": 2399
+    },
+    {
+      "alpha": 0.2,
+      "umbral_tau": 0.996,
+      "recall_incendio": 0.0717,
+      "confirmados": 65,
+      "tiles_incendio": 907,
+      "fpr_calibracion": 0.2001,
+      "fp": 480,
+      "n_calibracion": 2399
+    }
+  ],
+  "nota": "τ garantiza FPR<=alpha en muestra finita; el recall es MEDIDO en eventos de incendio held-out, no garantizado. Con 2 eventos de incendio la incertidumbre del recall es alta: no extrapolar."
+}
