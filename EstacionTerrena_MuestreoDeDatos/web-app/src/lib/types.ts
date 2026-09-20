@@ -147,6 +147,7 @@ export type ConsultaTotal =
   | number
   | { fraccion?: number; longitud_a_m?: number; longitud_afectada_m?: number }
   | { min_m?: number | null; media_m?: number | null }
+  | { frames_con_presencia?: number; de?: number }
 
 export interface ConsultaResult {
   ok?: boolean

@@ -139,6 +139,10 @@ const rNo = await page.evaluate(async () =>
   (await fetch('/api/consulta?q=' + encodeURIComponent('¿cuántas heladerías hay?'))).json());
 check(rNo.soportada === false && (rNo.sugerencias || []).length > 0,
   'consulta no soportada con sugerencias (sin LLM respondedor)');
+const rHay = await page.evaluate(async () =>
+  (await fetch('/api/consulta?q=' + encodeURIComponent('¿hay agua en la zona?'))).json());
+check(rHay.soportada === true && rHay.operacion === 'exists',
+  'consulta de existencia soportada (¿hay agua?)');
 await page.getByText('Consulta terrestre').scrollIntoViewIfNeeded();
 await page.locator('[data-testid="consulta-chip"]').first().click();
 await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 }).catch(() => {});

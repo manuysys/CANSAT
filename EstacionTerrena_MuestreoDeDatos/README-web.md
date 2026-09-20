@@ -136,7 +136,7 @@ node tools/smoke-v4.mjs
 node tools/smoke.mjs
 ```
 
-`smoke-v4.mjs` verifica (**53 aserciones**, cero errores de consola): tour una sola
+`smoke-v4.mjs` verifica (**54 aserciones**, cero errores de consola): tour una sola
 vez y reabrible, resumen narrativo, mismo detalle desde corredor/tabla/alertas/
 curva/galería, tabs de imagen degradadas, teclado (`↑↓ A / Enter Esc 1-2-3`),
 export CSV del filtro, vistas Post-vuelo e Informe con firmas, modo presentación

@@ -325,7 +325,7 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
   (corredor, mejoras EDSR, evidencias, máscaras de consulta).
 - **Simulacro y demo**: `tools/simulacro.py`, `tools/make_demo_mission.py`
   (mundo sintético con zonas de incendio, inundación y sismo), `CHECKLIST-SIMULACRO.md`.
-- **Verificación**: `npm run smoke` → **53 aserciones E2E en verde** (build de
+- **Verificación**: `npm run smoke` → **54 aserciones E2E en verde** (build de
   producción servido por Python, cero errores de consola).
 
 ---
@@ -334,12 +334,12 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **264 pasan** |
+| Tests de vuelo (`pytest`) | **279 pasan** |
 | Lint (`ruff check .`) | verde |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
 | Carga en `cv2.dnn` | verificada para cada ONNX de vuelo |
-| Smoke de la estación | 53 aserciones E2E verdes |
+| Smoke de la estación | 54 aserciones E2E verdes |
 | Registro de modelos | `MODELS.yaml` con métrica, fuente, hash y estado por artefacto |
 
 ---

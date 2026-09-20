@@ -19,6 +19,7 @@ const SUGERENCIAS = [
   '¿qué fracción de las vías está inundada?',
   'distancia entre edificios y agua',
   '¿cuántas personas hay en la zona?',
+  '¿hay agua en la zona?',
 ]
 
 function totalTexto(c: ConsultaResult | null): string {
@@ -33,6 +34,11 @@ function totalTexto(c: ConsultaResult | null): string {
     return `${f} % · ${t.longitud_afectada_m ?? '—'} / ${t.longitud_a_m ?? '—'} m`
   }
   if ('min_m' in t) return `mín ${t.min_m ?? '—'} m · media ${t.media_m ?? '—'} m`
+  if ('frames_con_presencia' in t) {
+    const n = t.frames_con_presencia ?? 0
+    const de = t.de ?? 0
+    return `${n > 0 ? 'sí' : 'no'} · ${n}/${de} frames con presencia`
+  }
   return '—'
 }
 
