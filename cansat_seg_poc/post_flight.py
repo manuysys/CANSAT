@@ -341,7 +341,10 @@ def main(argv=None) -> int:
     enhanced: list[str] = []
     if args.no_edsr:
         print("[3/5] EDSR salteado (--no-edsr).")
-    elif not hasattr(cv2, "dnn_superres"):
+    elif not (hasattr(cv2, "dnn_superres")
+              and hasattr(cv2.dnn_superres, "DnnSuperResImpl_create")):
+        # ⚠ El wheel no-contrib expone cv2.dnn_superres VACÍO: mirar solo el
+        # módulo dejaba pasar el guard y reventaba con AttributeError.
         print("[3/5] [WARN] Este OpenCV no tiene cv2.dnn_superres (falta el flavour "
               "contrib). EDSR salteado; el resto del post-vuelo sigue.")
     else:

@@ -521,11 +521,21 @@ post_vuelo:
     origen: "https://github.com/Saafke/EDSR_Tensorflow"
     licencia: "ver el repo de origen"
     estado: "POST-VUELO"
+    metricas:
+      segundos_frame_1024_cpu: 287.9
+      fuente_medicion: "PC de desarrollo, CPU, venv del repo (2026-09-20); no es la Pi"
     notas: |
       Requiere OpenCV CONTRIB (cv2.dnn_superres), que NO estaba declarado en
       requirements.txt. enhance_image.py ya no lo descarga en runtime: sin red
       en vuelo eso rompía el post-vuelo justo en el paso que genera las imágenes
       "mejoradas con IA" que pide el DPD. Precargar en models/ antes de viajar.
+      ⚠ Medición 2026-09-20: un frame 1024×1024 tarda ~288 s en CPU en la PC de
+      desarrollo (~4.8 min/frame). El default del post-vuelo es EDSR sobre los 3
+      frames más nítidos ≈ 15 min. En la Pi Zero W v1 sería peor: EDSR queda
+      SIEMPRE en post-vuelo/PC, nunca a bordo.
+      ⚠ El wheel NO-contrib expone `cv2.dnn_superres` vacío: los guards de
+      enhance_image.py y post_flight.py ahora chequean también
+      `DnnSuperResImpl_create` (antes pasaban el guard y explotaban después).
 
   vias_consulta:
     onnx: "outputs/cansat_vias_floodnet.onnx"
@@ -563,6 +573,7 @@ validacion_int8:
     acuerdo_veredicto: 0.95
     acuerdo_alerta: 1.00
   estado_2026_09_17: "NO DEPLOYABLE en la Pi objetivo"
+  estado_2026_09_20: "RE-MEDICIÓN PENDIENTE EN LA PLACA (bloqueada: falta microSD para flashear la Pi Zero W v1)"
   mediciones:
     acuerdo_pixel_medio: 0.905
     acuerdo_pixel_min: 0.665

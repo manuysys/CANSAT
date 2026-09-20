@@ -5,17 +5,20 @@ Aplica las corrupciones sintéticas de ``cansat/corrupt.py`` a sets de test ya
 establecidos y reporta F1/IoU limpio vs estresado por corrupción. Es el número
 honesto que pide el DPD: el mismo modelo, la misma GT, sólo cambia el clima.
 
-Tareas por default (las que vuelan):
+Tareas:
   · ``terreno``  ``cansat_seg_terrain_v2.onnx`` × LoveDA Val (5 clases)
   · ``dano``     ``cansat_damage3_mobilenetv2.onnx`` (xBD) × Joplin/Nepal
                  held-out (eventos que NUNCA entrenaron ese checkpoint)
   · ``dano2``    ``cansat_damage_v3_bal.onnx`` (two-stage de vuelo) ×
                  RescueNet val (dominio UAV, GSD de vuelo)
+  · ``flood``    ``cansat_flood_specialist_224.onnx`` × FloodNet val (80 imgs)
+  · ``fuego``    ``cansat_fire_smoke.onnx`` × fire_smoke valid+test (60 imgs)
 
 Uso:
     python tools/stress_suite.py
     python tools/stress_suite.py --tasks terreno --max-images 200
     python tools/stress_suite.py --tasks dano2 --corruptions niebla,motion_blur
+    python tools/stress_suite.py --tasks flood,fuego
 
 Salida: ``outputs/stress_suite.json`` con hashes de modelo, seed, n de imagen,
 métricas limpias y por corrupción + deltas, parámetros usados y la nota de
@@ -45,7 +48,18 @@ from cansat import preprocess as PP                           # noqa: E402
 from evaluate import collect, file_hash, remap_raw            # noqa: E402
 
 NOMBRES_DANO: tuple[str, ...] = ("other", "intacto", "danado")
-TAREAS_ORDEN: tuple[str, ...] = ("terreno", "dano", "dano2")
+NOMBRES_FLOOD: tuple[str, ...] = ("other", "inundacion", "agua")
+NOMBRES_FUEGO: tuple[str, ...] = ("other", "fuego", "humo")
+TAREAS_ORDEN: tuple[str, ...] = ("terreno", "dano", "dano2", "flood", "fuego")
+
+#: Métrica cabecera por tarea (clave del resumen y etiqueta para imprimir).
+OBJETIVO = {
+    "terreno": ("miou", "mIoU"),
+    "dano": ("iou_bin_dano", "IoU daño bin"),
+    "dano2": ("iou_bin_dano", "IoU daño bin"),
+    "flood": ("iou_clase_objetivo", "IoU inundación"),
+    "fuego": ("iou_clase_objetivo", "IoU fuego"),
+}
 
 NOTA = (
     "Corrupción SINTÉTICA con severidad fija (parámetros en cansat/corrupt.py). "
@@ -84,11 +98,27 @@ def xbd_encode(mask: np.ndarray) -> np.ndarray:
     return np.where(mask >= 2, 2, mask).astype(np.uint8)
 
 
-def nombres_clases(n_cls: int) -> list[str]:
-    if n_cls == IDX.NUM_CLASSES:
+def pares_floodnet(root: Path, max_images: int, seed: int):
+    """Pares (imagen, máscara) del val remapeado de FloodNet (clases 0/1/2)."""
+    base = root / "floodnet_remapped" / "val"
+    pares = [(p, base / "masks" / p.name) for p in sorted((base / "images").glob("*.png"))
+             if (base / "masks" / p.name).is_file()]
+    if max_images and len(pares) > max_images:
+        idx = sorted(np.random.RandomState(seed)
+                     .permutation(len(pares))[:max_images].tolist())
+        pares = [pares[i] for i in idx]
+    return pares
+
+
+def nombres_clases(tarea: str, n_cls: int) -> list[str]:
+    if tarea == "terreno" and n_cls == IDX.NUM_CLASSES:
         return list(IDX.CLASS_NAMES[:n_cls])
-    if n_cls == len(NOMBRES_DANO):
+    if tarea in ("dano", "dano2") and n_cls == len(NOMBRES_DANO):
         return list(NOMBRES_DANO[:n_cls])
+    if tarea == "flood" and n_cls == len(NOMBRES_FLOOD):
+        return list(NOMBRES_FLOOD[:n_cls])
+    if tarea == "fuego" and n_cls == len(NOMBRES_FUEGO):
+        return list(NOMBRES_FUEGO[:n_cls])
     return [f"clase_{i}" for i in range(n_cls)]
 
 
@@ -115,7 +145,8 @@ def _promediar(metas: list[dict]) -> dict:
 
 
 def evaluar(sess, pares, mask_mode: str, n_cls: int, img_size: int,
-            corrupcion: str | None, rng, log_cada: int = 50, etiqueta: str = ""):
+            corrupcion: str | None, rng, tarea: str,
+            log_cada: int = 50, etiqueta: str = ""):
     """
     Corre el modelo sobre ``pares`` con (o sin) corrupción y devuelve
     ``(resumen, conf, n)``. Reusa la métrica única de ``cansat.metrics``.
@@ -134,10 +165,10 @@ def evaluar(sess, pares, mask_mode: str, n_cls: int, img_size: int,
             remapeada = True
 
         bgr = cv2.imread(str(ip))
-        if mask_mode == "dano":
-            mask = cv2.imread(str(mp), cv2.IMREAD_GRAYSCALE)
-        else:
+        if mask_mode == "terreno":
             mask = cv2.imread(str(mp), cv2.IMREAD_UNCHANGED)
+        else:
+            mask = cv2.imread(str(mp), cv2.IMREAD_GRAYSCALE)
         if bgr is None or mask is None:
             continue
         if mask.ndim == 3:
@@ -163,19 +194,30 @@ def evaluar(sess, pares, mask_mode: str, n_cls: int, img_size: int,
             print(f"      {etiqueta}{i + 1}/{len(pares)}  "
                   f"({(i + 1) / max(el, 1e-9):.1f} img/s)", flush=True)
 
-    resumen = resumen_metricas(conf, n_cls, nitideces)
+    resumen = resumen_metricas(conf, n_cls, nitideces, tarea)
     if metas:
         resumen["parametros"] = _promediar(metas)
     return resumen, conf, n
 
 
+def _iou(conf: np.ndarray, i: int) -> float:
+    inter = int(conf[i, i])
+    union = int(conf[i, :].sum() + conf[:, i].sum() - inter)
+    return inter / union if union else 0.0
+
+
 def resumen_metricas(conf: np.ndarray, n_cls: int,
-                     nitideces: list[float]) -> dict:
-    """Métricas del contrato (mIoU/F1 por clase) + binarias de daño + nitidez."""
-    out = MET.from_confusion(conf).as_dict(nombres_clases(n_cls))
+                     nitideces: list[float], tarea: str = "terreno") -> dict:
+    """
+    Métricas del contrato (mIoU/F1 por clase) + la cabecera de cada tarea:
+      · dano/dano2 → IoU binaria de daño y two-stage (sobre edificios)
+      · flood      → IoU de inundación (clase 1) y de agua normal (clase 2)
+      · fuego      → IoU de fuego (clase 1) y humo (clase 2)
+    """
+    out = MET.from_confusion(conf).as_dict(nombres_clases(tarea, n_cls))
     out["nitidez_media"] = round(float(np.mean(nitideces)), 2) if nitideces else None
 
-    if n_cls == 3:
+    if tarea in ("dano", "dano2") and n_cls == 3:
         inter_bin = int(conf[2, 2])
         union_bin = int(conf[2, :].sum() + conf[:, 2].sum() - inter_bin)
         # Two-stage: dañado predicho DENTRO de edificios vs GT dañado —
@@ -187,6 +229,13 @@ def resumen_metricas(conf: np.ndarray, n_cls: int,
         out["iou_bin_dano"] = round(inter_bin / max(union_bin, 1), 6)
         out["f1_bin_dano"] = round(2 * prec * rec / max(prec + rec, 1e-12), 6)
         out["iou_dano_two_stage"] = round(inter_d / max(union_d, 1), 6)
+    elif tarea == "flood" and n_cls >= 3:
+        out["iou_clase_objetivo"] = round(_iou(conf, 1), 6)
+        out["iou_agua"] = round(_iou(conf, 2), 6)
+    elif tarea == "fuego" and n_cls >= 3:
+        out["iou_clase_objetivo"] = round(_iou(conf, 1), 6)
+        out["iou_fuego"] = round(_iou(conf, 1), 6)
+        out["iou_humo"] = round(_iou(conf, 2), 6)
     return out
 
 
@@ -194,7 +243,7 @@ def _delta(estresado: dict, limpio: dict) -> dict:
     """Deltas de las métricas cabecera (negativo = empeoró)."""
     out = {}
     for k in ("miou", "pixel_acc", "iou_bin_dano", "f1_bin_dano",
-              "iou_dano_two_stage"):
+              "iou_dano_two_stage", "iou_clase_objetivo", "iou_fuego", "iou_humo"):
         if k in estresado and k in limpio:
             out[f"delta_{k}"] = round(estresado[k] - limpio[k], 6)
     if limpio.get("nitidez_media"):
@@ -211,16 +260,22 @@ def main(argv=None) -> int:
         description="Stress suite limpio-vs-estresado (aptitud de vuelo)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument("--tasks", default="terreno,dano,dano2",
-                    help="tareas separadas por coma (terreno, dano, dano2)")
+                    help="tareas separadas por coma (terreno, dano, dano2, flood, fuego)")
     ap.add_argument("--dataset-root", default="dataset")
     ap.add_argument("--onnx-terreno", default="outputs/cansat_seg_terrain_v2.onnx")
     ap.add_argument("--onnx-dano", default="outputs/cansat_damage3_mobilenetv2.onnx")
     ap.add_argument("--onnx-dano2", default="outputs/cansat_damage_v3_bal.onnx")
+    ap.add_argument("--onnx-flood", default="outputs/cansat_flood_specialist_224.onnx")
+    ap.add_argument("--onnx-fuego", default="outputs/cansat_fire_smoke.onnx")
     ap.add_argument("--manifests-dano", nargs="+",
                     default=["dataset/xbd_masks/manifest_joplin-tornado.csv",
                              "dataset/xbd_masks/manifest_nepal-flooding.csv"])
     ap.add_argument("--manifest-dano2",
                     default="dataset/rescuenet_tiles/manifest_val.csv")
+    ap.add_argument("--manifests-fuego", nargs="+",
+                    default=["dataset/fire_smoke/manifest_valid.csv",
+                             "dataset/fire_smoke/manifest_test.csv"],
+                    help="valid participó de la selección del checkpoint; se declara")
     ap.add_argument("--splits", default="Rural,Urban")
     ap.add_argument("--max-images", type=int, default=120,
                     help="máximo de imágenes por corrida (0 = todas)")
@@ -233,7 +288,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     tareas = [t.strip() for t in args.tasks.split(",") if t.strip()]
-    validas = {"terreno", "dano", "dano2"}
+    validas = {"terreno", "dano", "dano2", "flood", "fuego"}
     if unknown := [t for t in tareas if t not in validas]:
         print(f"[ERROR] tarea(s) desconocida(s): {unknown}. Soportadas: {sorted(validas)}")
         return 1
@@ -272,12 +327,25 @@ def main(argv=None) -> int:
             mask_mode = "dano"
             esperadas = 3
             fuente = f"{len(args.manifests_dano)} manifests xBD held-out"
-        else:
+        elif tarea == "dano2":
             onnx = args.onnx_dano2
             pares = pares_manifest([args.manifest_dano2], args.max_images, args.seed)
             mask_mode = "dano"
             esperadas = 3
             fuente = f"{Path(args.manifest_dano2).name} (RescueNet val, UAV)"
+        elif tarea == "flood":
+            onnx = args.onnx_flood
+            pares = pares_floodnet(root, args.max_images, args.seed)
+            mask_mode = "flood"
+            esperadas = 3
+            fuente = "FloodNet val (remapeo oficial: flood=1 / agua=2)"
+        else:  # fuego
+            onnx = args.onnx_fuego
+            pares = pares_manifest(args.manifests_fuego, args.max_images, args.seed)
+            mask_mode = "fuego"
+            esperadas = 3
+            fuente = ("fire_smoke valid+test; valid participó de la selección "
+                      "del checkpoint (se declara)")
 
         if not pares:
             print(f"  [WARN] {tarea}: sin pares imagen/máscara — se saltea.\n")
@@ -296,24 +364,25 @@ def main(argv=None) -> int:
         print(f"     entrada: {img_size}px · {n_cls} clases · {len(pares)} imgs")
 
         limpio, _conf, n = evaluar(sess, pares, mask_mode, n_cls, img_size,
-                                   None, None, etiqueta=f"{tarea} limpio ")
+                                   None, None, tarea, etiqueta=f"{tarea} limpio ")
         n_por_tarea[tarea] = n
+        obj_key, obj_txt = OBJETIVO[tarea]
+        obj_val = limpio.get(obj_key)
         print(f"     limpio : mIoU {limpio['miou'] * 100:5.1f}% · "
               f"pixel-acc {limpio['pixel_acc'] * 100:5.1f}% · "
               f"nitidez {limpio['nitidez_media']}"
-              + (f" · IoU daño bin {limpio['iou_bin_dano']:.3f}"
-                 if "iou_bin_dano" in limpio else ""))
+              + (f" · {obj_txt} {obj_val:.3f}" if obj_val is not None else ""))
 
         estresado: dict[str, dict] = {}
         for k, corr in enumerate(corrupciones):
             rng = np.random.default_rng([args.seed, TAREAS_ORDEN.index(tarea), k])
             res, _c, _n = evaluar(sess, pares, mask_mode, n_cls, img_size,
-                                  corr, rng, etiqueta=f"{tarea} {corr} ")
+                                  corr, rng, tarea, etiqueta=f"{tarea} {corr} ")
             res.update(_delta(res, limpio))
             estresado[corr] = res
-            extra = (f" · IoU daño bin {res['iou_bin_dano']:.3f} "
-                     f"({res['delta_iou_bin_dano']:+.3f})"
-                     if "iou_bin_dano" in res else "")
+            extra = (f" · {obj_txt} {res[obj_key]:.3f} "
+                     f"({res[f'delta_{obj_key}']:+.3f})"
+                     if res.get(obj_key) is not None else "")
             print(f"     {corr:<15} mIoU {res['miou'] * 100:5.1f}% "
                   f"({res['delta_miou'] * 100:+5.1f}) · "
                   f"nitidez {res['nitidez_media']:9.1f}{extra}")
@@ -323,7 +392,8 @@ def main(argv=None) -> int:
             "modelo": str(onnx),
             "modelo_sha256_16": file_hash(onnx),
             "num_clases": n_cls,
-            "nombres_clases": nombres_clases(n_cls),
+            "nombres_clases": nombres_clases(tarea, n_cls),
+            "img_size": img_size,
             "fuente": fuente,
             "limpio": limpio,
             "estresado": estresado,

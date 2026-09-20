@@ -147,8 +147,12 @@ def main(argv=None) -> int:
         print(f"[ERROR] {e}")
         return 1
 
-    if not hasattr(cv2, "dnn_superres"):
-        print("[ERROR] Este OpenCV no tiene cv2.dnn_superres.\n"
+    # ⚠ El wheel NO-contrib expone `cv2.dnn_superres` VACÍO (sin
+    # DnnSuperResImpl_create): mirar solo el módulo dejaba pasar el guard y
+    # explotaba después con AttributeError.
+    if not (hasattr(cv2, "dnn_superres")
+            and hasattr(cv2.dnn_superres, "DnnSuperResImpl_create")):
+        print("[ERROR] Este OpenCV no tiene cv2.dnn_superres (o le falta la clase).\n"
               "        Hace falta el flavour CONTRIB:\n"
               "          pip install opencv-contrib-python          (PC)\n"
               "          pip install opencv-contrib-python-headless (Raspberry)\n"
