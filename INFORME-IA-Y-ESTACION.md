@@ -312,12 +312,20 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
   Jurado**, corredor del terreno, trayectoria GPS, panel de Muestreo, detalle
   por frame con pestañas de imágenes (vis/ens_seg/enhanced/high_res), KPIs de
   daño, afectados y pérdidas estimadas, badges de diagnóstico.
+- **Consulta Terrestre** (nueva): panel con chips de plantillas, zona dibujada
+  sobre el mapa y overlay de resultados. `GET /api/consulta` invoca por
+  subproceso el motor simbólico `cansat/consultas.py` del repo de vuelo
+  (área, conteo con buffer métrico, fracción de longitud, distancia y personas)
+  sobre las máscaras de clase por frame (`entrega/masks/`). Sin LLM como
+  respondedor: si no mapea a plantilla responde "consulta no soportada" con
+  sugerencias. Georreferenciado aproximado por FOV, declarado como tal.
 - **Datos**: `telemetry.csv` (34 col.) + `telemetry.jsonl` (incertidumbre,
   tiempos por etapa, nodata, supuestos de casualties, contam/heat) +
-  `summary.json` (schema v2) + `entrega/` (corredor, mejoras EDSR, evidencias).
+  `summary.json` (schema v3: agrega el bucket de máscaras) + `entrega/`
+  (corredor, mejoras EDSR, evidencias, máscaras de consulta).
 - **Simulacro y demo**: `tools/simulacro.py`, `tools/make_demo_mission.py`
   (mundo sintético con zonas de incendio, inundación y sismo), `CHECKLIST-SIMULACRO.md`.
-- **Verificación**: `npm run smoke` → **41 aserciones E2E en verde** (build de
+- **Verificación**: `npm run smoke` → **53 aserciones E2E en verde** (build de
   producción servido por Python, cero errores de consola).
 
 ---
@@ -326,12 +334,12 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **200 pasan** |
+| Tests de vuelo (`pytest`) | **264 pasan** |
 | Lint (`ruff check .`) | verde |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
 | Carga en `cv2.dnn` | verificada para cada ONNX de vuelo |
-| Smoke de la estación | 41 aserciones E2E verdes |
+| Smoke de la estación | 53 aserciones E2E verdes |
 | Registro de modelos | `MODELS.yaml` con métrica, fuente, hash y estado por artefacto |
 
 ---
@@ -351,6 +359,7 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `04_fuego_humo_gt_vs_pred.png` | FLAME \| GT fuego/humo \| predicción |
 | `05_bruma_metrica.png` | imagen clara vs bruma sintética con las métricas del dark channel |
 | `06_severidad_gt_vs_pred.png` | tile UAV \| GT de severidad (menor/mayor/destruido) \| predicción |
+| `07_consulta_terrestre.png` | panel de Consulta Terrestre con resultado y badge `consulta_espacial` sobre el mapa (contrato v3) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -371,6 +380,8 @@ Otras evidencias ya existentes en `cansat_seg_poc/`:
 | `07_jurado_criticos.png` | modo Jurado (frames críticos) |
 | `08_post_toast.png` | vista Post con notificación |
 | `09_detalle_frame.png` | detalle de frame con fuego/humo, bruma, humidex, estrés y colapso |
+| `10_mapa_offline.png` | trayectoria GPS sobre el basemap offline |
+| `11_consulta_terrestre.png` | consulta terrestre resuelta con badge `consulta_espacial` |
 
 Para regenerarlas: `python tools/generate_evidence.py` (IA) y
 `node tools/shots-r4.mjs` con el servidor arriba (estación).

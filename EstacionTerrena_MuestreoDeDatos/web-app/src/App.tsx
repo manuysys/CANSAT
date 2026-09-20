@@ -37,6 +37,7 @@ import { Scrubber } from '@/components/Scrubber'
 import { AltProfile } from '@/components/AltProfile'
 import { Bitacora } from '@/components/Bitacora'
 import { MapOffline } from '@/components/MapOffline'
+import { Consulta } from '@/components/Consulta'
 import { Sampling } from '@/components/Sampling'
 
 const PostView = lazy(() => import('@/components/PostView').then(m => ({ default: m.PostView })))
@@ -109,6 +110,7 @@ function VueloView() {
       </div>
       <Sampling />
       <MapOffline />
+      <Consulta />
       <div className="mission-section-heading mt-2">
         <div><span>03 / evidencia</span><h2>Explorador de misión</h2></div>
         <p>Selecciona un frame para abrir toda su evidencia</p>

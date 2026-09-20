@@ -11,6 +11,7 @@ Servidor único (solo stdlib de Python) que cumple dos roles:
 
         GET /api/mission      -> telemetry.csv parseado + summary.json + mapa de archivos
         GET /api/frame/<src>  -> una fila del CSV + rutas de imágenes disponibles
+        GET /api/consulta     -> Consulta Terrestre (q=…&poly=lon,lat;…) vía el motor simbólico
         GET /api/health       -> estado del servidor (para el indicador LIVE de la web)
         GET /img/<relpath>    -> proxy de imágenes desde la raíz del proyecto
                                  (mimetype correcto + sin caché, para live refresh)
@@ -34,6 +35,7 @@ import io
 import json
 import mimetypes
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -41,7 +43,7 @@ import traceback
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 # --------------------------------------------------------------------------- #
 # Configuración de rutas del proyecto (contrato de datos, solo lectura)
@@ -57,6 +59,11 @@ SUMMARY_JSON = ROOT / "entrega" / "summary.json"
 
 MISSION_DIR = ROOT / "outputs" / "mission"
 ENTREGA_DIR = ROOT / "entrega"
+
+# Consulta Terrestre: el motor simbólico vive en el repo de vuelo (cansat/consultas.py)
+# y se invoca por subproceso para que esta estación siga siendo stdlib-only.
+FLIGHT_ROOT = ROOT.parent / "cansat_seg_poc"
+CONSULTA_PYTHON: str | None = None      # None = venv del repo de vuelo o sys.executable
 
 # Columnas esperadas del CSV de telemetría (contrato). Si falta alguna, se
 # rellena con None y la web degrada elegantemente en lugar de romperse.
@@ -98,7 +105,12 @@ def _configure(root: Path) -> None:
     ``--root``. Antes el bloque de ``--root`` duplicaba todo a mano.
     """
     global ROOT, WEB_DIR, DIST_DIR, TELEMETRY_CSV, CORRIDOR_MAP, SUMMARY_JSON
-    global MISSION_DIR, ENTREGA_DIR, BUCKETS, TELEMETRY_JSONL
+    global MISSION_DIR, ENTREGA_DIR, BUCKETS, TELEMETRY_JSONL, FLIGHT_ROOT
+
+    # ¿El FLIGHT_ROOT era el default relativo a la ROOT vieja? Se mide ANTES de
+    # reasignar ROOT; si no, la comparación se hace contra la ROOT nueva y el
+    # default nunca se recalcula para --root.
+    era_default = FLIGHT_ROOT == ROOT.parent / "cansat_seg_poc"
 
     ROOT = root
     WEB_DIR = ROOT / "web"
@@ -109,13 +121,20 @@ def _configure(root: Path) -> None:
     TELEMETRY_JSONL = MISSION_DIR / "telemetry.jsonl"
     CORRIDOR_MAP = ROOT / "outputs" / "corridor_map.jpg"
     SUMMARY_JSON = ENTREGA_DIR / "summary.json"
+    if era_default:
+        FLIGHT_ROOT = root.parent / "cansat_seg_poc"
     BUCKETS = (
-        ("vis",      MISSION_DIR / "vis",       "_evid"),
-        ("high_res", MISSION_DIR / "high_res", ""),
-        ("full_res", MISSION_DIR / "full_res", ""),
-        ("thumb",    MISSION_DIR / "thumb",    ""),
-        ("ens_seg",  ENTREGA_DIR / "ens_seg",  "_b5"),
-        ("enhanced", ENTREGA_DIR / "enhanced", "_edsr"),
+        ("vis",            MISSION_DIR / "vis",       "_evid"),
+        ("high_res",       MISSION_DIR / "high_res",  ""),
+        ("full_res",       MISSION_DIR / "full_res",  ""),
+        ("thumb",          MISSION_DIR / "thumb",     ""),
+        ("ens_seg",        ENTREGA_DIR / "ens_seg",   "_b5"),
+        ("enhanced",       ENTREGA_DIR / "enhanced",  "_edsr"),
+        # Máscaras de clase por frame (Consulta Terrestre; ver entrega/masks).
+        ("masks_terreno",  ENTREGA_DIR / "masks",     "_terreno"),
+        ("masks_dano2",    ENTREGA_DIR / "masks",     "_dano2"),
+        ("masks_flood",    ENTREGA_DIR / "masks",     "_flood"),
+        ("masks_vias",     ENTREGA_DIR / "masks",     "_vias"),
     )
 
 
@@ -126,13 +145,18 @@ def _configure(root: Path) -> None:
 #   thumb      -> outputs/mission/thumb/<src>.*
 #   ens_seg    -> entrega/ens_seg/<src>_b5.png            (post-vuelo, opcional)
 #   enhanced   -> entrega/enhanced/<src>_edsr.jpg         (post-vuelo, opcional)
+#   masks_*    -> entrega/masks/<src>_<fuente>.png        (consulta, opcional)
 BUCKETS = (
-    ("vis",      MISSION_DIR / "vis",       "_evid"),
-    ("high_res", MISSION_DIR / "high_res", ""),
-    ("full_res", MISSION_DIR / "full_res", ""),
-    ("thumb",    MISSION_DIR / "thumb",    ""),
-    ("ens_seg",  ENTREGA_DIR / "ens_seg",  "_b5"),
-    ("enhanced", ENTREGA_DIR / "enhanced", "_edsr"),
+    ("vis",            MISSION_DIR / "vis",       "_evid"),
+    ("high_res",       MISSION_DIR / "high_res",  ""),
+    ("full_res",       MISSION_DIR / "full_res",  ""),
+    ("thumb",          MISSION_DIR / "thumb",     ""),
+    ("ens_seg",        ENTREGA_DIR / "ens_seg",   "_b5"),
+    ("enhanced",       ENTREGA_DIR / "enhanced",  "_edsr"),
+    ("masks_terreno",  ENTREGA_DIR / "masks",     "_terreno"),
+    ("masks_dano2",    ENTREGA_DIR / "masks",     "_dano2"),
+    ("masks_flood",    ENTREGA_DIR / "masks",     "_flood"),
+    ("masks_vias",     ENTREGA_DIR / "masks",     "_vias"),
 )
 
 _configure(ROOT)      # única fuente de verdad (ver la función más arriba)
@@ -314,9 +338,9 @@ def normalize_summary(raw: dict | None) -> dict | None:
                 rutas[key] = str(v)
         out["archivos"] = {"rutas": rutas, "conteos": conteos}
 
-    # El schema canónico actual es 2 (ver cansat/summary.py del proyecto de
-    # vuelo y summarySchema.ts). Antes decía 1 y contradecía al productor.
-    out.setdefault("schema_version", 2)
+    # El schema canónico actual es 3 (ver cansat/summary.py del proyecto de
+    # vuelo y summarySchema.ts): v3 agrega el bucket masks de la consulta.
+    out.setdefault("schema_version", 3)
     out.setdefault("mision", "LB135")
     out.setdefault("veredictos", {})
     return out
@@ -547,6 +571,89 @@ def build_mission_payload() -> dict:
         "build_ms": round((time.perf_counter() - t0) * 1000, 2),
     }
     return payload
+
+
+def _consulta_script() -> Path:
+    return FLIGHT_ROOT / "tools" / "consulta.py"
+
+
+def _consulta_python() -> str:
+    """Intérprete del motor: el venv del repo de vuelo si existe, si no el actual."""
+    if CONSULTA_PYTHON:
+        return CONSULTA_PYTHON
+    for cand in (FLIGHT_ROOT / "venv" / "Scripts" / "python.exe",
+                 FLIGHT_ROOT / "venv" / "bin" / "python"):
+        if cand.is_file():
+            return str(cand)
+    return sys.executable
+
+
+def _mtime_ns(p: Path) -> int:
+    try:
+        return p.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
+def run_consulta(q: str, region: list | None = None) -> dict:
+    """
+    Ejecuta una consulta espacial con el motor simbólico del repo de vuelo.
+
+    Subproceso para mantener esta estación sin numpy/cv2. La consulta viaja como
+    argumento (sin shell), así que no hay inyección. Respuesta siempre JSON.
+    """
+    script = _consulta_script()
+    if not script.is_file():
+        return {"ok": False, "consulta_espacial": False,
+                "error": f"no encontré {script}; pasá --flight-root al repo de vuelo"}
+    if not q.strip():
+        return {"ok": True, "consulta_espacial": False, "soportada": False,
+                "consulta": q, "motivo": "consulta vacía"}
+
+    cmd = [_consulta_python(), str(script), "--q", q, "--json",
+           "--masks", str(ENTREGA_DIR / "masks"),
+           "--telemetry", str(TELEMETRY_CSV)]
+    if region:
+        cmd += ["--region", json.dumps(region, ensure_ascii=False)]
+    try:
+        cp = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                            timeout=60)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "consulta_espacial": False,
+                "error": "la consulta superó 60 s"}
+    except OSError as exc:
+        return {"ok": False, "consulta_espacial": False,
+                "error": f"no pude ejecutar el motor: {exc}"}
+
+    if not cp.stdout.strip():
+        return {"ok": False, "consulta_espacial": False,
+                "error": "el motor no devolvió salida",
+                "detalle": (cp.stderr or "")[-400:]}
+    try:
+        data = json.loads(cp.stdout)
+    except json.JSONDecodeError:
+        return {"ok": False, "consulta_espacial": False,
+                "error": "salida del motor no es JSON",
+                "detalle": cp.stdout[-400:]}
+    data["ok"] = True
+    data["consulta_espacial"] = bool(data.get("soportada"))
+    data["generado"] = datetime.now(timezone.utc).isoformat()
+    return data
+
+
+def consulta_cached(q: str, region: list | None = None) -> dict:
+    """Cache por (consulta, zona) invalidada por mtime de telemetría y máscaras."""
+    sig = (_mtime_ns(TELEMETRY_CSV), _mtime_ns(ENTREGA_DIR / "masks"),
+           _mtime_ns(_consulta_script()))
+    key = (q, json.dumps(region, sort_keys=True) if region else None)
+    if _CONSULTA_CACHE.get("key") == key and _CONSULTA_CACHE.get("sig") == sig:
+        return _CONSULTA_CACHE["data"]
+    data = run_consulta(q, region)
+    _CONSULTA_CACHE.update({"key": key, "sig": sig, "data": data})
+    return data
+
+
+_CONSULTA_CACHE: dict = {"key": None, "sig": None, "data": None}
 
 
 def build_frame_payload(src: str) -> dict:
@@ -806,6 +913,7 @@ class GroundStationHandler(BaseHTTPRequestHandler):
                 "time": datetime.now(timezone.utc).isoformat(),
                 "telemetry_exists": TELEMETRY_CSV.is_file(),
                 "summary_exists": SUMMARY_JSON.is_file(),
+                "masks_exists": (ENTREGA_DIR / "masks").is_dir(),
             })
             return
 
@@ -824,6 +932,22 @@ class GroundStationHandler(BaseHTTPRequestHandler):
             data = read_jsonl_extras()
             self._send_json({"ok": True, "samples": data["extras"],
                              "resumen": data["resumen"]})
+            return
+
+        if path == "/api/consulta":
+            # Consulta Terrestre simbólica. GET con q=… y poly=[[lon,lat],…].
+            qs = parse_qs(parsed.query)
+            q = (qs.get("q") or [""])[0]
+            poly_raw = (qs.get("poly") or [""])[0]
+            region = None
+            if poly_raw:
+                try:
+                    region = json.loads(poly_raw)
+                except json.JSONDecodeError:
+                    self._send_json({"ok": False, "consulta_espacial": False,
+                                     "error": "poly no es JSON válido"}, 400)
+                    return
+            self._send_json(consulta_cached(q, region))
             return
 
         if path == "/api/events":
@@ -890,6 +1014,7 @@ def banner(payload: dict) -> str:
         f"   ({alertas} alertas / {high} HIGH)",
         f"  Post-vuelo : {'OK summary.json' if payload.get('summary') else '-- sin summary.json (seccion oculta)'}",
         f"  Corredor   : {'OK corridor_map.jpg' if payload['assets'].get('corridor_map') else '-- sin mapa'}",
+        f"  Máscaras   : {'OK entrega/masks' if (ENTREGA_DIR / 'masks').is_dir() else '-- sin máscaras (consulta limitada)'}",
         f"  Estáticos  : {static_root().relative_to(ROOT)}",
         "  " + "-" * 52,
     ]
@@ -901,7 +1026,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default="127.0.0.1", help="interfaz a escuchar (default: 127.0.0.1)")
     ap.add_argument("--port", type=int, default=8000, help="puerto HTTP (default: 8000)")
     ap.add_argument("--root", default=None, help="raíz del proyecto (default: carpeta de este script)")
+    ap.add_argument("--flight-root", default=None,
+                    help="repo de vuelo para el motor de consultas "
+                         "(default: ../cansat_seg_poc)")
+    ap.add_argument("--consulta-python", default=None,
+                    help="intérprete para tools/consulta.py "
+                         "(default: venv del repo de vuelo, si no el actual)")
     args = ap.parse_args(argv)
+
+    global FLIGHT_ROOT, CONSULTA_PYTHON
+    if args.flight_root:
+        FLIGHT_ROOT = Path(args.flight_root).resolve()
+    if args.consulta_python:
+        CONSULTA_PYTHON = args.consulta_python
 
     if args.root:
         # ARREGLADO: este bloque DUPLICABA a mano la definicion de todas las

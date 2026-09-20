@@ -21,6 +21,11 @@ export interface FrameFiles {
   thumb: string | null
   ens_seg: string | null
   enhanced: string | null
+  /* Contrato v3: máscaras de clase por frame (Consulta Terrestre). */
+  masks_terreno: string | null
+  masks_dano2: string | null
+  masks_flood: string | null
+  masks_vias: string | null
 }
 
 export interface Frame {
@@ -122,4 +127,42 @@ export interface MissionPayload {
   summary: Summary | null
   assets: { corridor_map: string | null }
   buckets: Record<string, boolean>
+}
+
+/* ── Consulta Terrestre (motor simbólico del repo de vuelo) ─────────────── */
+
+export interface ConsultaFrame {
+  src: string
+  valor: number
+  unidad: string
+  area_frame_m2?: number
+  lat?: number | null
+  lon?: number | null
+  /* Polígonos [ [ [lon, lat], … ], … ] del resultado en ese frame. */
+  poligonos?: number[][][]
+  areas_m2?: Array<number | undefined>
+}
+
+export type ConsultaTotal =
+  | number
+  | { fraccion?: number; longitud_a_m?: number; longitud_afectada_m?: number }
+  | { min_m?: number | null; media_m?: number | null }
+
+export interface ConsultaResult {
+  ok?: boolean
+  consulta_espacial?: boolean
+  consulta: string
+  soportada: boolean
+  plantilla?: string
+  operacion?: string
+  unidades?: string
+  total?: ConsultaTotal
+  n_frames?: number
+  por_frame?: ConsultaFrame[]
+  motivo?: string
+  sugerencias?: string[]
+  georref?: string | null
+  limitaciones?: string[]
+  region_declarada?: boolean
+  error?: string
 }

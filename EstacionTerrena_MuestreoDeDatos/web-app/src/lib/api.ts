@@ -1,5 +1,5 @@
 /* Capa de red: misma API de web_server.py, sin cambios. */
-import type { MissionPayload, SamplesPayload } from './types'
+import type { ConsultaResult, MissionPayload, SamplesPayload } from './types'
 
 export async function fetchMission(signal?: AbortSignal): Promise<MissionPayload> {
   const res = await fetch('/api/mission', { cache: 'no-store', signal })
@@ -13,6 +13,19 @@ export async function fetchSamples(signal?: AbortSignal): Promise<SamplesPayload
   const res = await fetch('/api/samples', { cache: 'no-store', signal })
   if (!res.ok) throw new Error('HTTP ' + res.status)
   return (await res.json()) as SamplesPayload
+}
+
+/** Consulta Terrestre simbólica. `zona` es un polígono [[lon,lat],…] opcional. */
+export async function fetchConsulta(
+  q: string,
+  zona?: [number, number][] | null,
+  signal?: AbortSignal,
+): Promise<ConsultaResult> {
+  const params = new URLSearchParams({ q })
+  if (zona && zona.length >= 3) params.set('poly', JSON.stringify(zona))
+  const res = await fetch('/api/consulta?' + params.toString(), { cache: 'no-store', signal })
+  if (!res.ok) throw new Error('HTTP ' + res.status)
+  return (await res.json()) as ConsultaResult
 }
 
 /** Ruta relativa del proyecto -> URL del proxy de imágenes del servidor. */

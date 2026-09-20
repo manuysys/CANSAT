@@ -11,7 +11,7 @@
  * archivo en el mismo commit.
  */
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export interface Alerta {
   src: string

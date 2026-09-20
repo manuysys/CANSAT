@@ -3,12 +3,13 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 const OUT = 'tools/shots/r4';
 fs.mkdirSync(OUT, { recursive: true });
+const BASE = process.env.BASE || 'http://localhost:8000';
 const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--jitless', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 const errs = [];
 page.on('console', m => { const t = m.type(); if ((t === 'error' || t === 'warning') && !/GL Driver Message|GPU stall/.test(m.text())) errs.push(`${t}: ${m.text().slice(0, 140)}`); });
 page.on('pageerror', e => errs.push('pageerror: ' + e.message.slice(0, 140)));
-await page.goto('http://localhost:8000', { waitUntil: 'networkidle' });
+await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.waitForSelector('[data-card-src]');
 if (await page.locator('#cutscene').count()) { await page.keyboard.press('Escape'); await page.waitForSelector('#cutscene', { state: 'detached' }).catch(() => {}); }
 await page.waitForSelector('.driver-popover', { timeout: 12000 }).catch(async () => {
@@ -61,6 +62,14 @@ await page.waitForTimeout(600);
 await page.getByText('Trayectoria GPS del descenso').scrollIntoViewIfNeeded();
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${OUT}/10_mapa_offline.png` });
+
+// consulta terrestre (contrato v3): chip → resultado → badge consulta_espacial
+await page.getByText('Consulta terrestre').scrollIntoViewIfNeeded();
+await page.waitForTimeout(500);
+await page.locator('[data-testid="consulta-chip"]').first().click();
+await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 }).catch(() => {});
+await page.waitForTimeout(700);
+await page.screenshot({ path: `${OUT}/11_consulta_terrestre.png` });
 
 // detalle de frame con contrato v3 (badge de tipo, colapso con fuente, modelos)
 await page.locator('[data-card-src="cap_0006"]').click();

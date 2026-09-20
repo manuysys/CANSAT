@@ -69,6 +69,8 @@ try:
 except ImportError:  # pragma: no cover
     sys.exit("[!] Este script necesita Pillow:  pip install pillow")
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "outputs"
 
@@ -668,6 +670,7 @@ def main(argv=None) -> int:
     if not args.sin_postvuelo:
         (ENTREGA / "ens_seg").mkdir(parents=True, exist_ok=True)
         (ENTREGA / "enhanced").mkdir(parents=True, exist_ok=True)
+        (ENTREGA / "masks").mkdir(parents=True, exist_ok=True)
 
     print(f"[·] Construyendo mundo sintético ({WORLD_W}×{WORLD_H})…")
     world = build_world(rng)
@@ -783,6 +786,25 @@ def main(argv=None) -> int:
         # Post-vuelo: solo un subconjunto tiene ens_seg / enhanced (a propósito,
         # para ejercitar la degradación elegante de la UI).
         if not args.sin_postvuelo:
+            # Máscaras de clase por frame (Consulta Terrestre, contrato v3).
+            # Mismas convenciones que entrega/masks de post_flight.py: PNG gris
+            # con índice de clase; el daño va como 2 sobre edificios y la vía
+            # del mundo sintético es la clase "other" (asfalto/misc).
+            cls_np = np.asarray(cls_full)
+            dmg_np = np.asarray(dmg_full)
+            edificio = cls_np == BLD
+            terreno = cls_np.astype(np.uint8)
+            dano2 = np.zeros_like(terreno)
+            dano2[edificio & (dmg_np == DMG_NONE)] = 1
+            dano2[edificio & (dmg_np != DMG_NONE)] = 2
+            flood = np.zeros_like(terreno)
+            flood[cls_np == WAT] = 2
+            flood[dmg_np == DMG_FLOOD] = 1
+            vias = (cls_np == OTH).astype(np.uint8)
+            for nombre, mascara in (("terreno", terreno), ("dano2", dano2),
+                                    ("flood", flood), ("vias", vias)):
+                Image.fromarray(mascara, mode="L").save(
+                    ENTREGA / "masks" / f"{src}_{nombre}.png")
             if i % 2 == 0:
                 render_ens_seg(cls_high, row).save(ENTREGA / "ens_seg" / f"{src}_b5.png")
             if pri == "HIGH" or i in (0, n - 1):
@@ -871,9 +893,10 @@ def main(argv=None) -> int:
     if not args.sin_corredor:
         build_corridor(rows, thumbs).save(OUT / "corridor_map.jpg", quality=88)
 
-    # ── entrega/summary.json (contrato v2) ──
+    # ── entrega/summary.json (contrato v3) ──
     # Mismo schema que post_flight.py (fuente: cansat/summary.py, SCHEMA_VERSION
-    # 2): `alertas` es list[dict] y `archivos` va separado en {rutas, conteos}.
+    # 3): `alertas` es list[dict], `archivos` va separado en {rutas, conteos} y
+    # se agrega el bucket de máscaras de la consulta terrestre.
     # Antes la demo escribía el formato legacy plano y el frontend tipaba
     # `alertas: unknown[]` y solo usaba `.length`: la estación se probaba contra
     # un contrato que no era el que produce el vuelo real.
@@ -884,7 +907,7 @@ def main(argv=None) -> int:
         perd_est = sum(r["perdidas_est"] for r in rows)
         frames_con_dano = sum(1 for r in rows if r["danado_pct"] > 0)
         summary = {
-            "schema_version": 2,
+            "schema_version": 3,
             "mision": "LB135",
             "n_frames": len(rows),
             "alt_max_m": round(max(r["alt_m"] for r in rows), 2),
@@ -928,6 +951,7 @@ def main(argv=None) -> int:
                     "vis": "outputs/mission/vis",
                     "ens_seg": "entrega/ens_seg",
                     "enhanced": "entrega/enhanced",
+                    "masks": "entrega/masks",
                 },
                 "conteos": {
                     "vis": len(rows),
@@ -936,6 +960,7 @@ def main(argv=None) -> int:
                     "thumb": len(rows),
                     "ens_seg": len(list((ENTREGA / "ens_seg").glob("*_b5.png"))),
                     "enhanced": len(list((ENTREGA / "enhanced").glob("*_edsr.jpg"))),
+                    "masks": len(list((ENTREGA / "masks").glob("*.png"))),
                 },
             },
             "generado": datetime.now(timezone.utc).isoformat(),

@@ -86,13 +86,14 @@ sin error; sin `telemetry.csv` la app queda en estados vacíos con el dot ámbar
 
 ---
 
-## 4. API (web_server.py, sin cambios de contrato)
+## 4. API (web_server.py, contrato v3 con consulta terrestre)
 
 | Endpoint | Descripción |
 |---|---|
 | `GET /api/mission` | CSV parseado + `summary.json` + mapa de archivos por frame |
 | `GET /api/frame/<src>` | Una fila + rutas de imágenes disponibles |
 | `GET /api/samples` | Campos por frame del JSONL que **no** están en el CSV (incertidumbre, `ms_seg/ms_dmg/ms_total`, `nodata_pct`) + agregados del panel de Muestreo |
+| `GET /api/consulta?q=…&poly=…` | **Consulta Terrestre**: consultas simbólicas sobre las máscaras de clase (área, conteo con buffer, fracción de longitud, distancia, personas). `poly` es un polígono `[[lon,lat],…]` opcional |
 | `GET /api/events` | **SSE**: push al instante cuando cambian `telemetry.csv` o `summary.json` (el polling de 3 s queda de red) |
 | `GET /api/summary` · `GET /api/health` | contrato crudo · estado del servidor |
 | `GET /img/<relpath>` | Proxy de imágenes sin caché (vuelos live) |
@@ -101,6 +102,14 @@ sin error; sin `telemetry.csv` la app queda en estados vacíos con el dot ámbar
 Notas: caché interna invalidada por `mtime` (el polling de 3 s no re-escanea el
 árbol); `Cache-Control: no-store` en `/api/*` e `/img/*`; anti path-traversal en
 ambas raíces estáticas; `--root` permite servir otra copia del proyecto.
+
+La consulta no corre en este proceso: el servidor invoca por subproceso
+`tools/consulta.py` del repo de vuelo (así la estación sigue siendo stdlib-only)
+con el venv de `../cansat_seg_poc` o el intérprete actual. `--flight-root` y
+`--consulta-python` permiten apuntar a otra copia. Si no hay
+`entrega/masks/*.png` (post-vuelo sin `--no-masks`), las consultas que dependen
+de máscaras responden "consulta no soportada" con sugerencias; el resto de la
+estación funciona igual.
 
 ---
 
@@ -127,7 +136,7 @@ node tools/smoke-v4.mjs
 node tools/smoke.mjs
 ```
 
-`smoke-v4.mjs` verifica (**41 aserciones**, cero errores de consola): tour una sola
+`smoke-v4.mjs` verifica (**53 aserciones**, cero errores de consola): tour una sola
 vez y reabrible, resumen narrativo, mismo detalle desde corredor/tabla/alertas/
 curva/galería, tabs de imagen degradadas, teclado (`↑↓ A / Enter Esc 1-2-3`),
 export CSV del filtro, vistas Post-vuelo e Informe con firmas, modo presentación

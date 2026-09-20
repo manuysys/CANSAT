@@ -127,6 +127,26 @@ if (nMapa >= 1) {
   check(await page.locator('svg polyline').count() >= 2, 'trazo SVG sobre el basemap');
 }
 
+// Consulta Terrestre (contrato v3): motor simbólico + panel + badge
+check(await page.getByText('Consulta terrestre').count() >= 1, 'panel de consulta presente');
+const rConsulta = await page.evaluate(async () =>
+  (await fetch('/api/consulta?q=' + encodeURIComponent('área de edificios inundados'))).json());
+check(rConsulta.soportada === true && rConsulta.consulta_espacial === true,
+  'endpoint de consulta: área de edificios inundados soportada');
+check(typeof rConsulta.total === 'number' && rConsulta.total >= 0,
+  `total numérico de la consulta (${rConsulta.total} m2)`);
+const rNo = await page.evaluate(async () =>
+  (await fetch('/api/consulta?q=' + encodeURIComponent('¿cuántas heladerías hay?'))).json());
+check(rNo.soportada === false && (rNo.sugerencias || []).length > 0,
+  'consulta no soportada con sugerencias (sin LLM respondedor)');
+await page.getByText('Consulta terrestre').scrollIntoViewIfNeeded();
+await page.locator('[data-testid="consulta-chip"]').first().click();
+await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 }).catch(() => {});
+const totalTxt = await page.locator('[data-testid="consulta-total"]').innerText().catch(() => '');
+check(/m2/.test(totalTxt), `resultado visible en el panel (${totalTxt || '—'})`);
+check(await page.locator('[data-testid="consulta-badge"]').count() >= 1,
+  'badge consulta_espacial visible');
+
 // Política fire_only_v1: badge SOLO cuando el modelo confirmó incendio.
 const samples = await page.evaluate(async () => (await fetch('/api/samples')).json());
 const vals = Object.values(samples.samples || {});

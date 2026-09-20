@@ -8,7 +8,7 @@
  * Degradación elegante: si el tile central no existe (vuelo en otra zona, o
  * PC sin la carpeta de tiles), cae al scatter sin basemap (GpsTrack), que
  * funciona siempre. Click en un punto → selecciona ese frame. */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type PointerEvent } from 'react'
 import { motion } from 'motion/react'
 import { MapPin } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -36,8 +36,20 @@ function latApx(lat: number, z: number): number {
 export function MapOffline() {
   const frames = useMission(s => s.frames)
   const select = useMission(s => s.select)
+  const selected = useMission(s => s.selected)
+  const consulta = useMission(s => s.consulta)
+  const zona = useMission(s => s.consultaZona)
+  const dibujando = useMission(s => s.dibujandoZona)
+  const setZona = useMission(s => s.setConsultaZona)
   const puntos = useMemo(() => gpsDe(frames), [frames])
   const [sinTiles, setSinTiles] = useState(false)
+
+  /* Polígonos del resultado de consulta para el frame seleccionado. */
+  const poligonosResultado = useMemo(() => {
+    if (!consulta?.soportada || !selected) return []
+    const fr = consulta.por_frame?.find(f => f.src === selected)
+    return fr?.poligonos ?? []
+  }, [consulta, selected])
 
   const geo = useMemo(() => {
     if (puntos.length < 2) return null
@@ -70,7 +82,7 @@ export function MapOffline() {
     const track = puntos.map(p => ({ ...p, x: px(p.lon), y: py(p.lat) }))
     const cx = track.reduce((a, p) => a + p.x, 0) / track.length
     const cy = track.reduce((a, p) => a + p.y, 0) / track.length
-    return { z, grid, w, h, track, cx, cy }
+    return { z, grid, w, h, track, cx, cy, px, py }
   }, [puntos])
 
   /* Chequeo del tile central: si no existe, no hay basemap para esta zona. */
@@ -97,6 +109,19 @@ export function MapOffline() {
 
   if (sinTiles || !geo) return <GpsTrack />
 
+  /* Clic en el mapa dibujando zona: píxel → lon/lat (inversa Web Mercator). */
+  const agregarVertice = (e: PointerEvent<HTMLDivElement>) => {
+    if (!dibujando) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left + geo.grid.x0 * TILE
+    const y = e.clientY - rect.top + geo.grid.y0 * TILE
+    const escala = (1 << geo.z) * TILE
+    const lon = (x / escala) * 360 - 180
+    const lat = (180 / Math.PI) * Math.atan(
+      Math.sinh(Math.PI - (2 * Math.PI * y) / escala))
+    setZona([...zona, [Number(lon.toFixed(7)), Number(lat.toFixed(7))]])
+  }
+
   const conAlerta = geo.track.filter(p => p.alert).length
   const poly = geo.track.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
 
@@ -121,7 +146,9 @@ export function MapOffline() {
             className="absolute"
             style={{ left: `calc(50% - ${geo.cx.toFixed(1)}px)`,
                      top: `calc(50% - ${geo.cy.toFixed(1)}px)`,
-                     width: geo.w, height: geo.h }}
+                     width: geo.w, height: geo.h,
+                     cursor: dibujando ? 'crosshair' : undefined }}
+            onPointerDown={agregarVertice}
           >
             {Array.from({ length: geo.grid.x1 - geo.grid.x0 + 1 }, (_, ix) =>
               Array.from({ length: geo.grid.y1 - geo.grid.y0 + 1 }, (_, iy) => {
@@ -171,12 +198,39 @@ export function MapOffline() {
                   stroke="#0b1017"
                   strokeWidth={1}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => select(p.src)}
+                  onClick={() => { if (!dibujando) select(p.src) }}
                 >
                   <title>
                     {`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · ${p.alt.toFixed(0)} m${p.alert ? ' · ALERTA' : ''}`}
                   </title>
                 </circle>
+              ))}
+              {zona.length > 0 && (
+                <polygon
+                  points={zona.map(([lon, lat]) =>
+                    `${geo.px(lon).toFixed(1)},${geo.py(lat).toFixed(1)}`).join(' ')}
+                  fill="rgba(61,220,132,0.10)"
+                  stroke="#3ddc84"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  pointerEvents="none"
+                />
+              )}
+              {zona.map(([lon, lat], i) => (
+                <circle key={`z${i}`} cx={geo.px(lon)} cy={geo.py(lat)} r={3}
+                        fill="#3ddc84" stroke="#0b1017" strokeWidth={1}
+                        pointerEvents="none" />
+              ))}
+              {poligonosResultado.map((poly, i) => (
+                <polygon
+                  key={`r${i}`}
+                  points={poly.map(([lon, lat]) =>
+                    `${geo.px(lon).toFixed(1)},${geo.py(lat).toFixed(1)}`).join(' ')}
+                  fill="rgba(255,159,67,0.22)"
+                  stroke="#ff9f43"
+                  strokeWidth={1.2}
+                  pointerEvents="none"
+                />
               ))}
             </svg>
           </div>
@@ -184,7 +238,9 @@ export function MapOffline() {
         <p className="border-t border-border/50 px-5 py-2 text-[10.5px] text-muted-foreground/70">
           Basemap offline (tiles locales z{Z_MIN}-{Z_MAX} · © OpenStreetMap) ·
           arriba = norte · el punto es la posición de cada frame, en rojo las
-          alertas · click abre ese frame.
+          alertas · click abre ese frame · con «Dibujar zona» el click agrega
+          vértices y los polígonos ámbar son el resultado de la consulta del
+          frame seleccionado.
         </p>
       </Card>
     </motion.div>

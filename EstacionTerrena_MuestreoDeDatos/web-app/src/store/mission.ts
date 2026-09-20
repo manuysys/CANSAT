@@ -5,8 +5,8 @@ import { hashStr, intOr } from '@/lib/format'
 import { validarPayload } from '@/lib/validate'
 import { apogeo, missionPhase } from '@/lib/missionState'
 import { diagSev, isAlertFrame } from '@/lib/vocab'
-import type { Frame, ImgKey, MissionPayload, SampleExtra, SamplePri, SamplesResumen,
-              SortKey, Summary, ViewId } from '@/lib/types'
+import type { ConsultaResult, Frame, ImgKey, MissionPayload, SampleExtra, SamplePri,
+              SamplesResumen, SortKey, Summary, ViewId } from '@/lib/types'
 
 export interface Filters {
   pri: Set<SamplePri>
@@ -59,6 +59,11 @@ interface MissionState {
   alertsCollapsed: boolean
   tableCollapsed: boolean
   present: { on: boolean; idx: number }
+  /* Consulta Terrestre (motor simbólico; ver cansat/consultas.py) */
+  consulta: ConsultaResult | null
+  consultaCargando: boolean
+  consultaZona: [number, number][]
+  dibujandoZona: boolean
 
   applyPayload: (p: MissionPayload) => void
   setSamples: (s: Record<string, SampleExtra>, r: SamplesResumen | null) => void
@@ -85,6 +90,10 @@ interface MissionState {
   startPresent: () => void
   stopPresent: () => void
   setPresentIdx: (i: number) => void
+  setConsulta: (c: ConsultaResult | null) => void
+  setConsultaCargando: (b: boolean) => void
+  setConsultaZona: (z: [number, number][]) => void
+  setDibujandoZona: (b: boolean) => void
 }
 
 const emptyFilters = (): Filters => ({ pri: new Set(), alertOnly: false, diag: '', verdict: '', q: '' })
@@ -117,6 +126,10 @@ export const useMission = create<MissionState>((set, get) => ({
   alertsCollapsed: false,
   tableCollapsed: false,
   present: { on: false, idx: 0 },
+  consulta: null,
+  consultaCargando: false,
+  consultaZona: [],
+  dibujandoZona: false,
 
   /** Fusiona el payload del servidor. Si la firma no cambia, no toca nada:
       así el polling de 3 s no re-anima ni parpadea (solo diff real). */
@@ -251,6 +264,11 @@ export const useMission = create<MissionState>((set, get) => ({
   },
   stopPresent: () => set({ present: { on: false, idx: 0 } }),
   setPresentIdx: i => set({ present: { on: true, idx: i } }),
+
+  setConsulta: c => set({ consulta: c }),
+  setConsultaCargando: b => set({ consultaCargando: b }),
+  setConsultaZona: z => set({ consultaZona: z }),
+  setDibujandoZona: b => set({ dibujandoZona: b }),
 }))
 
 /* ── Selectores puros (se usan con useMission(selector) o fuera de React) ── */
