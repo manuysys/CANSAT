@@ -1,0 +1,110 @@
+{
+  "media_ponderada": 0.2483,
+  "eventos": [
+    {
+      "evento": "crasar:Champlain",
+      "n_test": 56,
+      "acc": 0.0,
+      "clase_dominante": "otro",
+      "pred_mayoria": "huracan"
+    },
+    {
+      "evento": "crasar:Cocodrie",
+      "n_test": 63,
+      "acc": 0.3016,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "crasar:MussettBayouFire",
+      "n_test": 280,
+      "acc": 0.0,
+      "clase_dominante": "incendio",
+      "pred_mayoria": "huracan"
+    },
+    {
+      "evento": "crasar:Steinhatchee",
+      "n_test": 38,
+      "acc": 0.0263,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "kate_pd:turkiye",
+      "n_test": 675,
+      "acc": 0.277,
+      "clase_dominante": "sismo",
+      "pred_mayoria": "huracan"
+    },
+    {
+      "evento": "rescuenet:huracan",
+      "n_test": 938,
+      "acc": 0.1269,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "xbd:hurricane-florence",
+      "n_test": 44,
+      "acc": 0.1818,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "inundacion"
+    },
+    {
+      "evento": "xbd:hurricane-harvey",
+      "n_test": 37,
+      "acc": 0.1081,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "inundacion"
+    },
+    {
+      "evento": "xbd:hurricane-matthew",
+      "n_test": 30,
+      "acc": 0.1,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "xbd:hurricane-michael",
+      "n_test": 42,
+      "acc": 0.1429,
+      "clase_dominante": "huracan",
+      "pred_mayoria": "inundacion"
+    },
+    {
+      "evento": "xbd:mexico-earthquake",
+      "n_test": 121,
+      "acc": 0.0248,
+      "clase_dominante": "sismo",
+      "pred_mayoria": "inundacion"
+    },
+    {
+      "evento": "xbd:midwest-flooding",
+      "n_test": 244,
+      "acc": 0.0,
+      "clase_dominante": "inundacion",
+      "pred_mayoria": "huracan"
+    },
+    {
+      "evento": "xbd:palu-tsunami",
+      "n_test": 111,
+      "acc": 0.0631,
+      "clase_dominante": "inundacion",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "xbd:santa-rosa-wildfire",
+      "n_test": 219,
+      "acc": 0.7123,
+      "clase_dominante": "incendio",
+      "pred_mayoria": "incendio"
+    },
+    {
+      "evento": "xbd:socal-fire",
+      "n_test": 408,
+      "acc": 0.7549,
+      "clase_dominante": "incendio",
+      "pred_mayoria": "incendio"
+    }
+  ]
+}
