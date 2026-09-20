@@ -49,7 +49,7 @@ MISION: str = "LB135"
 
 # Buckets de imagen del contrato. Deben coincidir con BUCKETS en web_server.py
 # y con FrameFiles en web-app/src/lib/types.ts.
-BUCKETS: tuple = ("vis", "high_res", "full_res", "thumb", "ens_seg", "enhanced")
+BUCKETS: tuple = ("vis", "high_res", "full_res", "thumb", "ens_seg", "enhanced", "masks")
 
 
 @dataclass

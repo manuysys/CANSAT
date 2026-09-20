@@ -6,6 +6,7 @@ Sobre la carpeta de frames recuperada genera ``entrega/``:
   · ``corridor_map.jpg``
   · ``enhanced/``  EDSR sobre los frames más nítidos
   · ``ens_seg/`` o ``b5_seg/``  overlays de la segunda pasada de alta calidad
+  · ``masks/``  máscaras de clase por frame (PNG gris, consulta terrestre)
   · ``summary.json``  ← CONTRATO con la app de visualización
 
 El schema de ``summary.json`` está definido en ``cansat/summary.py`` y es el
@@ -59,6 +60,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import cv2
 from cansat import indices as IDX
+from cansat import masks as MK
 from cansat import nodata as ND
 from cansat import onnxio
 from cansat import preprocess as PP
@@ -181,6 +183,39 @@ def frame_sort_key(row: dict, idx: int) -> tuple:
     return (t, str(row.get("src") or ""), idx)
 
 
+def _guardar_mascaras(
+    destino: Path,
+    src: str,
+    shape_nativa: tuple[int, int],
+    mascaras: dict[str, tuple[np.ndarray | None, np.ndarray | None]],
+) -> int:
+    """
+    Persiste máscaras de clase a resolución NATIVA (nearest) para la consulta.
+
+    ``mascaras``: nombre → (mapa de índices a resolución de modelo, máscara
+    booleana de válidos a la misma resolución). Los píxeles inválidos van a
+    ``MK.NODATA`` para que el motor de consultas no los cuente como clase.
+    """
+    h, w = shape_nativa
+    n = 0
+    for nombre, (m, val) in mascaras.items():
+        if m is None:
+            continue
+        out = np.asarray(m).astype(np.uint8)
+        if val is not None:
+            v = np.asarray(val).astype(bool)
+            if v.shape != out.shape:
+                v = cv2.resize(v.astype(np.uint8), (out.shape[1], out.shape[0]),
+                               interpolation=cv2.INTER_NEAREST).astype(bool)
+            out = out.copy()
+            out[~v] = MK.NODATA
+        if out.shape != (h, w):
+            out = cv2.resize(out, (w, h), interpolation=cv2.INTER_NEAREST)
+        MK.save_mask(destino / f"{src}_{nombre}.png", out)
+        n += 1
+    return n
+
+
 def frame_path(frames_dir: Path, src: str) -> Path | None:
     """Busca el frame original por ``src`` con cualquier extensión de imagen."""
     for ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"):
@@ -231,6 +266,9 @@ def main(argv=None) -> int:
     ap.add_argument("--edsr-frames", type=int, default=3,
                     help="cuántos frames pasar por EDSR (es lento: minutos c/u)")
     ap.add_argument("--no-edsr", action="store_true", help="saltear EDSR (iterar rápido)")
+    ap.add_argument("--no-masks", action="store_true",
+                    help="no persistir las máscaras de clase por frame "
+                         "(entrega/masks/, consulta terrestre)")
     ap.add_argument("--no-enhance", action="store_true",
                     help="no aplicar denoise+unsharp en el pipeline de misión "
                          "(el --enhance estaba hardcodeado y no se podía apagar)")
@@ -254,6 +292,13 @@ def main(argv=None) -> int:
     entrega = Path("entrega")
     enh_dir = entrega / "enhanced"
     enh_dir.mkdir(parents=True, exist_ok=True)
+    # Máscaras de clase (consulta terrestre). Se limpia el directorio: si el
+    # post-vuelo se re-corre con menos frames, no deben quedar máscaras viejas
+    # sin telemetría que las respalde.
+    masks_dir = entrega / "masks"
+    if not args.no_masks:
+        shutil.rmtree(masks_dir, ignore_errors=True)
+        masks_dir.mkdir(parents=True, exist_ok=True)
 
     # ── [1/5] Pipeline de misión ────────────────────────────────────────
     if args.no_pipeline:
@@ -384,6 +429,7 @@ def main(argv=None) -> int:
         pd1 = np.argmax(sess_d.run({"input": tensor})[0], axis=0)
         pct_dan = float(((pd1 == 2) & valid).sum()) / n_valid * 100.0
 
+        pd2 = pf = pfr = psv = None
         pct_dan2 = pct_siam = 0.0
         if sess_d2:
             pd2 = np.argmax(sess_d2.run({"input": tensor})[0], axis=0)
@@ -418,6 +464,16 @@ def main(argv=None) -> int:
             humo[src] = round(pct_smoke, 1)
         if colapso_pct is not None:
             colapso[src] = round(colapso_pct, 1)
+
+        if not args.no_masks:
+            _guardar_mascaras(masks_dir, src, img.shape[:2], {
+                "terreno": (seg_t if sess_terr else None, valid),
+                "dano": (pd1, valid),
+                "dano2": (pd2, valid),
+                "flood": (pf, valid),
+                "fuego": (pfr, valid),
+                "sev": (psv, valid),
+            })
 
         dan[src] = round(max(pct_dan, pct_dan2, pct_siam), 1)
         pcts = [float(r.get(k) or 0.0) for k in ("veg", "bui", "wat", "bare", "oth")]
@@ -530,9 +586,19 @@ def main(argv=None) -> int:
                     for i, k in enumerate(("veg", "bui", "wat", "bare", "oth"))
                 }
                 cv2.imwrite(str(b5_dir / f"{src}_b5.png"), color_seg(seg, img))
+                if not args.no_masks:
+                    # El terreno B5 es la máscara de mejor calidad: reemplaza
+                    # la del pase rápido si existe.
+                    terr = seg.astype(np.uint8).copy()
+                    terr[~valid_nat] = MK.NODATA
+                    MK.save_mask(masks_dir / f"{src}_terreno.png", terr)
             print(f"      {len(b5_pct)} frames → {b5_dir}")
     else:
         print("[5/5] Segunda pasada B5 salteada (usá --b5 para activarla).")
+
+    if not args.no_masks:
+        print(f"      máscaras de clase: {len(list(masks_dir.glob('*.png')))} "
+              f"→ {masks_dir}")
 
     # ── summary.json (schema canónico) ──────────────────────────────────
     rutas.update({
@@ -540,6 +606,7 @@ def main(argv=None) -> int:
         "enhanced": enhanced[0] if enhanced else None,
         "evidencias": "outputs/mission/vis",
         "ens_seg": b5_dir_rel,
+        "masks": "entrega/masks" if not args.no_masks else None,
     })
     conteos = {
         "vis": _count("outputs/mission/vis", "*_evid.jpg"),
@@ -548,6 +615,7 @@ def main(argv=None) -> int:
         "thumb": _count("outputs/mission/thumb", "*"),
         "enhanced": len(enhanced),
         "ens_seg": len(b5_pct),
+        "masks": len(list(masks_dir.glob("*.png"))) if not args.no_masks else 0,
     }
 
     # Enriquecemos las filas con el diagnóstico de consenso recién calculado,
