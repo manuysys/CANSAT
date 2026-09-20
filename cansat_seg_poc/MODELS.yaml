@@ -527,6 +527,33 @@ post_vuelo:
       en vuelo eso rompía el post-vuelo justo en el paso que genera las imágenes
       "mejoradas con IA" que pide el DPD. Precargar en models/ antes de viajar.
 
+  vias_consulta:
+    onnx: "outputs/cansat_vias_floodnet.onnx"
+    checkpoint: "outputs/best_vias_floodnet.pth"
+    entrenado_por: "prepare_vias.py + train_road_specialist.py --dominios floodnet --epochs 12 (2026-09-20)"
+    arquitectura: "DeepLabV3+ MobileNetV2 (2 clases: no_via / via)"
+    clases: 2
+    nombres_clases: [no_via, via]
+    entrada: "[1, 3, 320, 320]"
+    dataset: "FloodNet Track 1: road-flooded + road-non-flooded; split 80/20 seed 42 (las MISMAS 80 de val que el especialista de inundación)"
+    estado: "POST-VUELO (consulta terrestre; NO vuela)"
+    metricas:
+      iou_via_floodnet_val: 0.515
+      iou_via_loveda_val_crossdomain: 0.169   # 400 imgs; dominio satelital distinto
+      gate: "IoU FloodNet val >= 0.50 → PASA (0.515)"
+      variante_mixta: "FloodNet+LoveDA: 0.489 FloodNet (NO pasaba) / 0.532 LoveDA"
+    notas: |
+      Especialista de VÍAS para la Consulta Terrestre (length(road∩flood)/
+      length(road), dist(a, road), conteos con buffer sobre vías). NO se ejecuta
+      a bordo: sólo en post_flight.py (--vias-onnx, default si el ONNX existe) y
+      la máscara va a entrega/masks/<src>_vias.png (contrato v3).
+      Gate de honestidad acordado: si el IoU de vía en FloodNet val no llegaba a
+      0.50, la consulta de vías quedaba "no soportada" y no se integraba nada.
+      La variante mixta con LoveDA empeoraba el dominio UAV sin mejorar lo
+      suficiente el satelital, así que se integra la FloodNet-only.
+      ⚠ Cross-domain LoveDA 0.169: los números de vía sobre frames satelitales u
+      oblicuos son INDICATIVOS; el dominio medido y válido es UAV/inundación.
+
 # ── Validación INT8 (umbrales que publica el informe) ──────────────────────
 # Los usa validate_int8_mission.py; antes el docstring decía que "los publica
 # MODELS.yaml" pero no estaban en ningún lado.

@@ -80,6 +80,9 @@ FLOOD_ONNX = "outputs/cansat_flood_specialist_224.onnx"   # F3: 224 px, IoU 0.48
 FIRE_ONNX = "outputs/cansat_fire_smoke.onnx"              # F3: fuego/humo
 SEVERITY_ONNX = "outputs/cansat_severity.onnx"            # F2b: colapso medido
 TERRAIN_V2 = "outputs/cansat_seg_terrain_v2.onnx"
+# Vías para la consulta terrestre (NO vuela: sólo pase post-vuelo). Gate medido:
+# IoU 0.515 en FloodNet val (dominio de entrenamiento); cross-domain LoveDA 0.169.
+VIAS_ONNX = "outputs/cansat_vias_floodnet.onnx"
 
 # Candidatos de SegFormer B5 en orden de preferencia. El anterior hardcodeaba
 # uno que NO existe en el repo y se salteaba todo en silencio.
@@ -277,6 +280,9 @@ def main(argv=None) -> int:
     ap.add_argument("--siamese-onnx", default=None,
                     help="siamés de cambio pre/post. Desactivado por defecto: los "
                          "pesos del repo están ROTO (ver MODELS.yaml).")
+    ap.add_argument("--vias-onnx", default=None,
+                    help="especialista de vías para la consulta terrestre "
+                         f"(default: {VIAS_ONNX} si existe; sólo post-vuelo)")
     ap.add_argument("--pop-density", type=float, default=1500.0,
                     help="hab/km² para la estimación de pérdidas humanas")
     ap.add_argument("--occupancy", type=float, default=0.6)
@@ -387,6 +393,8 @@ def main(argv=None) -> int:
     sess_fire = onnxio.load_optional(FIRE_ONNX, "fuego/humo")
     sess_sev = onnxio.load_optional(SEVERITY_ONNX, "severidad")
     sess_terr = onnxio.load_optional(TERRAIN_V2, "terreno (para máscaras)")
+    sess_vias = onnxio.load_optional(args.vias_onnx or VIAS_ONNX,
+                                     "vías (consulta terrestre)")
     if not sess_terr:
         print("  [WARN] sin el modelo de terreno: el daño se calcula sin máscara "
               "de edificios ni de píxeles válidos (no comparable con el vuelo).")
@@ -429,7 +437,7 @@ def main(argv=None) -> int:
         pd1 = np.argmax(sess_d.run({"input": tensor})[0], axis=0)
         pct_dan = float(((pd1 == 2) & valid).sum()) / n_valid * 100.0
 
-        pd2 = pf = pfr = psv = None
+        pd2 = pf = pfr = psv = pvias = None
         pct_dan2 = pct_siam = 0.0
         if sess_d2:
             pd2 = np.argmax(sess_d2.run({"input": tensor})[0], axis=0)
@@ -459,6 +467,10 @@ def main(argv=None) -> int:
             n_ed = int((psv >= 1).sum())
             if n_ed:
                 colapso_pct = float((psv >= 3).sum()) / n_ed * 100.0
+        if sess_vias:
+            sz = sess_vias.size_px or 320
+            t_v = tensor if sz == 320 else PP.preprocess_bgr(img, sz)
+            pvias = np.argmax(sess_vias.run({"input": t_v})[0], axis=0)
         if pct_fire is not None:
             fuego[src] = round(pct_fire, 1)
             humo[src] = round(pct_smoke, 1)
@@ -473,6 +485,7 @@ def main(argv=None) -> int:
                 "flood": (pf, valid),
                 "fuego": (pfr, valid),
                 "sev": (psv, valid),
+                "vias": (pvias, valid),
             })
 
         dan[src] = round(max(pct_dan, pct_dan2, pct_siam), 1)

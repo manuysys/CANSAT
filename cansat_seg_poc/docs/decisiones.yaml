@@ -233,9 +233,16 @@ decisiones:
       centrado en (lat, lon), norte arriba, sin heading (la telemetría no trae
       IMU). Las personas se cuentan por frame (no hay posición por detección) y
       la longitud es ±10 % por esqueletización.
-      Las consultas de vías dependen de train_road_specialist.py: si su IoU de
-      vía en FloodNet val no supera 0.50, quedan "no soportadas" y se documenta
-      la técnica como no funcionó (no se integra un modelo peor al pipeline).
+      Las consultas de vías tienen especialista propio (train_road_specialist.py,
+      2 clases sobre FloodNet road, split 80/20 seed 42 idéntico al del flood).
+      Gate acordado: IoU de vía en FloodNet val ≥ 0.50. Resultado: FloodNet-only
+      PASA con 0.515; la variante mixta FloodNet+LoveDA daba 0.489 (no pasaba)
+      y 0.532 en LoveDA, o sea que mezclar dominios empeoraba el dominio UAV de
+      medición sin ganar lo suficiente, así que se integra la FloodNet-only.
+      ⚠ Cross-domain LoveDA medido: 0.169 — los números de vía sobre frames
+      satelitales/oblicuos son indicativos; el dominio válido es UAV/inundación.
+      El modelo NO vuela: corre en post_flight (--vias-onnx) y su máscara va a
+      entrega/masks/<src>_vias.png (contrato v3).
 
   - id: mil-tipo-desastre
     estado: vigente
