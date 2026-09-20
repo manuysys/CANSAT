@@ -413,28 +413,32 @@ vuelo:
     politica: |
       fire_only_v1 (2026-09-20, cansat/tipos.py): el sistema SOLO afirma
       "incendio" cuando el top-1 es incendio Y la confianza >= umbral
-      (--type-umbral-incendio). RESULTADO CONFORMAL (2026-09-20, sobre LOEO:
-      907 tiles de incendio / 2 399 de calibración, cansat/conformal.py): NO
-      existe umbral útil — con FPR<=5% el recall es 0.000; con FPR<=20% es
-      0.072. Conclusión honesta: la señal de incendio del clasificador NO es
-      calibrable cross-evento; el default 0.70 queda como fail-safe (en la
-      práctica abstiene siempre) y el incendio se confirma con el modelo
-      MEDIDO cansat_fire_smoke.onnx (0.791). Cualquier
+      (--type-umbral-incendio). RESULTADO CONFORMAL v2 (2026-09-20, LOEO con
+      xBD Tier 3: 1 200 tiles de incendio / 3 921 de calibración): con el
+      dataset ampliado SÍ hay punto de operación válido — FPR<=5% → recall
+      0.291 (τ=0.990); FPR<=10% → recall 0.347 (τ=0.894); FPR<=20% → recall
+      0.471 (τ=0.330). Antes (15 eventos) no existía umbral útil (recall 0.000
+      con FPR<=5%): la mejora viene de los 3 incendios nuevos. Umbral sugerido:
+      0.99 para campaña (precisión alta) o 0.33 si se prioriza recall. El
+      incendio además se confirma con el modelo MEDIDO
+      cansat_fire_smoke.onnx (0.791). Cualquier
       otra clase o incendio bajo umbral → abstención auditada en el JSONL
       (tipo_estado, tipo_es_confiable, tipo_notas, tipo_modelo_hash). La UI solo
       muestra badge con tipo_estado=confirmado_por_modelo. No reemplaza a la
       señal de fuego medida (cansat_fire_smoke.onnx, fire 0.791): son
       independientes y miden cosas distintas.
     metricas:
-      acc_val: 0.978
-      loeo_media_ponderada: 0.248
-      loeo_eventos: "15 (leave-one-event-out, 6 épocas por fold, 3 306 tiles)"
-      caveat: "⚠ El 0.978 es con split ALEATORIO (no por evento): tiles del
-               mismo evento caen en train y val → fuga. La métrica honesta es
-               LOEO (leave-one-event-out): 0.248 ponderada. Solo los INCENDIOS
-               generalizan (socal-fire 0.755, santa-rosa 0.712); huracanes
-               0.10-0.18, inundaciones 0.00-0.06, sismo 0.03-0.28, CRASAR
-               0.00-0.30. Es una pista de contexto, NO un clasificador
+      acc_val: 0.989
+      loeo_media_ponderada: 0.3681
+      loeo_eventos: "24 (leave-one-event-out, 6 épocas por fold, 5 121 tiles)"
+      caveat: "⚠ El acc_val es con split ALEATORIO (fuga de evento); la métrica
+               honesta es LOEO: 0.3681 ponderada, subió de 0.248 al sumar xBD
+               Tier 3 (+3 tornados, +volcán, +Nepal/Sunda, +3 incendios).
+               TORNADO (clase antes huérfana): moore 0.770, joplin 0.324,
+               tuscaloosa 0.250 — parcialmente distinguible. INCENDIO fuerte
+               (woolsey 1.000, socal 0.972, santa-rosa 0.479, pinery 0.306,
+               portugal 0.186). Inundación: Nepal 0.835. Volcán sigue mal
+               (puna 0.049). Es una pista de contexto, NO un clasificador
                confiable en eventos nuevos. Ver outputs/disaster_type_loeo.json."
       loeo_json: "outputs/disaster_type_loeo.json"
       muestras: "3 355 balanceadas (huracán 1200, incendio 907, sismo 796,

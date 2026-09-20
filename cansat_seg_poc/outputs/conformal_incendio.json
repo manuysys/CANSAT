@@ -1,6 +1,6 @@
 {
-  "n_incendio": 907,
-  "n_no_incendio": 2399,
+  "n_incendio": 1200,
+  "n_no_incendio": 3921,
   "eventos": [
     "crasar:Champlain",
     "crasar:Cocodrie",
@@ -12,52 +12,61 @@
     "xbd:hurricane-harvey",
     "xbd:hurricane-matthew",
     "xbd:hurricane-michael",
+    "xbd:joplin-tornado",
+    "xbd:lower-puna-volcano",
     "xbd:mexico-earthquake",
     "xbd:midwest-flooding",
+    "xbd:moore-tornado",
+    "xbd:nepal-flooding",
     "xbd:palu-tsunami",
+    "xbd:pinery-bushfire",
+    "xbd:portugal-wildfire",
     "xbd:santa-rosa-wildfire",
-    "xbd:socal-fire"
+    "xbd:socal-fire",
+    "xbd:sunda-tsunami",
+    "xbd:tuscaloosa-tornado",
+    "xbd:woolsey-fire"
   ],
   "filas": [
     {
       "alpha": 0.01,
-      "umbral_tau": 1.0,
-      "recall_incendio": 0.0,
-      "confirmados": 0,
-      "tiles_incendio": 907,
-      "fpr_calibracion": 0.0167,
-      "fp": 40,
-      "n_calibracion": 2399
+      "umbral_tau": 0.9999,
+      "recall_incendio": 0.2242,
+      "confirmados": 269,
+      "tiles_incendio": 1200,
+      "fpr_calibracion": 0.0099,
+      "fp": 39,
+      "n_calibracion": 3921
     },
     {
       "alpha": 0.05,
-      "umbral_tau": 1.0,
-      "recall_incendio": 0.0,
-      "confirmados": 0,
-      "tiles_incendio": 907,
-      "fpr_calibracion": 0.0517,
-      "fp": 124,
-      "n_calibracion": 2399
+      "umbral_tau": 0.9899,
+      "recall_incendio": 0.2908,
+      "confirmados": 349,
+      "tiles_incendio": 1200,
+      "fpr_calibracion": 0.05,
+      "fp": 196,
+      "n_calibracion": 3921
     },
     {
       "alpha": 0.1,
-      "umbral_tau": 0.9999,
-      "recall_incendio": 0.0022,
-      "confirmados": 2,
-      "tiles_incendio": 907,
+      "umbral_tau": 0.8936,
+      "recall_incendio": 0.3467,
+      "confirmados": 416,
+      "tiles_incendio": 1200,
       "fpr_calibracion": 0.1,
-      "fp": 240,
-      "n_calibracion": 2399
+      "fp": 392,
+      "n_calibracion": 3921
     },
     {
       "alpha": 0.2,
-      "umbral_tau": 0.996,
-      "recall_incendio": 0.0717,
-      "confirmados": 65,
-      "tiles_incendio": 907,
-      "fpr_calibracion": 0.2001,
-      "fp": 480,
-      "n_calibracion": 2399
+      "umbral_tau": 0.3298,
+      "recall_incendio": 0.4708,
+      "confirmados": 565,
+      "tiles_incendio": 1200,
+      "fpr_calibracion": 0.1999,
+      "fp": 784,
+      "n_calibracion": 3921
     }
   ],
   "nota": "τ garantiza FPR<=alpha en muestra finita; el recall es MEDIDO en eventos de incendio held-out, no garantizado. Con 2 eventos de incendio la incertidumbre del recall es alta: no extrapolar."
