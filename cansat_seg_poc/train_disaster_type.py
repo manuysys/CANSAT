@@ -163,15 +163,20 @@ def _entrenar_fold(train, test, args, device, epochs=6):
     correct = total = 0
     preds: collections.Counter = collections.Counter()
     reales: collections.Counter = collections.Counter()
+    idx_fuego = CLASES.index("incendio")
+    filas_probs: list[tuple[int, float]] = []  # (y, p_incendio)
     with torch.no_grad():
         for x, y in te_dl:
-            p = model(x.to(device)).argmax(1).cpu()
+            pr = torch.softmax(model(x.to(device)), dim=1).cpu()
+            p = pr.argmax(1)
             correct += int((p == y).sum())
             total += len(y)
-            for pi, yi in zip(p.tolist(), y.tolist(), strict=True):
+            for pi, yi, pf in zip(p.tolist(), y.tolist(),
+                                  pr[:, idx_fuego].tolist(), strict=True):
                 preds[CLASES[pi]] += 1
                 reales[CLASES[yi]] += 1
-    return correct / max(1, total), preds, reales
+                filas_probs.append((yi, pf))
+    return correct / max(1, total), preds, reales, filas_probs
 
 
 def loeo(args) -> int:
@@ -187,13 +192,16 @@ def loeo(args) -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"LOEO: {len(eventos)} eventos, {len(filas)} muestras")
     res: list[dict] = []
+    filas_csv: list[tuple[str, int, float]] = []
     for ev in eventos:
         test = [(p, c) for p, c, e in filas if e == ev]
         train = [(p, c) for p, c, e in filas if e != ev]
         if len(test) < 30 or len(train) < 200:
             print(f"[skip] {ev}: test {len(test)} / train {len(train)}")
             continue
-        acc, preds, reales = _entrenar_fold(train, test, args, device)
+        acc, preds, reales, probs = _entrenar_fold(train, test, args, device)
+        for yi, pf in probs:
+            filas_csv.append((ev, 1 if CLASES[yi] == "incendio" else 0, pf))
         dom = max(reales, key=reales.get)
         pmay = max(preds, key=preds.get)
         res.append({"evento": ev, "n_test": len(test), "acc": round(acc, 4),
@@ -209,6 +217,15 @@ def loeo(args) -> int:
             {"media_ponderada": round(media, 4), "eventos": res},
             indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[OK] {out}")
+        if args.guardar_probs and filas_csv:
+            import csv as _csv
+            with Path(args.guardar_probs).open("w", newline="",
+                                               encoding="utf-8") as fh:
+                wcsv = _csv.writer(fh)
+                wcsv.writerow(["evento", "es_incendio", "p_incendio"])
+                for ev, es, pf in filas_csv:
+                    wcsv.writerow([ev, es, f"{pf:.6f}"])
+            print(f"[OK] {args.guardar_probs} ({len(filas_csv)} tiles)")
     return 0
 
 
@@ -218,6 +235,10 @@ def main() -> int:
     ap.add_argument("--loeo", action="store_true",
                     help="evaluar leave-one-event-out en vez de entrenar el "
                          "modelo final (métrica honesta, ~6 épocas por fold)")
+    ap.add_argument("--guardar-probs", default=None,
+                    help="con --loeo: CSV (evento,es_incendio,p_incendio) por "
+                         "tile para calibrar el umbral conformal "
+                         "(cansat/conformal.py)")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--size", type=int, default=224)
     ap.add_argument("--lr", type=float, default=3e-4)
