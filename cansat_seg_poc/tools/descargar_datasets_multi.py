@@ -38,7 +38,8 @@ MAX_GPX_POR_ARCHIVO = 0.6
 MAX_ARCHIVOS_POR_EVENTO = 3
 
 
-def descargar_crasar(destino: Path) -> None:
+def descargar_crasar(destino: Path, max_gpx: float = MAX_GPX_POR_ARCHIVO,
+                     eventos: list[str] | None = None) -> None:
     print("[CRASAR] anotaciones (todas)...")
     snapshot_download(repo_id=CRASAR, repo_type="dataset",
                       local_dir=str(destino),
@@ -47,15 +48,16 @@ def descargar_crasar(destino: Path) -> None:
     data = urllib.request.urlopen(STATS_URL, timeout=60).read().decode("utf-8")
     rows = list(csv.DictReader(io.StringIO(data)))
     uas = [r for r in rows if "UAS" in (r["Source"] or "").upper()]
+    lista = eventos if eventos else PRIORIDAD
     elegidos: dict[str, int] = {}
     total_gpx = 0.0
-    for ev in PRIORIDAD:
+    for ev in lista:
         for r in sorted((x for x in uas if x["Event"] == ev),
                         key=lambda x: float(x["Gigapixels Counted"] or 1e9)):
             if elegidos.get(ev, 0) >= MAX_ARCHIVOS_POR_EVENTO:
                 break
             gpx = float(r["Gigapixels Counted"] or 0)
-            if gpx > MAX_GPX_POR_ARCHIVO:
+            if gpx > max_gpx:
                 continue
             split = r["Train/Test"].strip().lower()
             rel = f"{split}/imagery/UAS/{r['Orthomosaic']}"
@@ -64,7 +66,7 @@ def descargar_crasar(destino: Path) -> None:
                                 filename=rel, local_dir=str(destino))
                 elegidos[ev] = elegidos.get(ev, 0) + 1
                 total_gpx += gpx
-                print(f"  ✓ {ev}: {r['Orthomosaic']} ({gpx:.3f} Gpx)")
+                print(f"  OK {ev}: {r['Orthomosaic']} ({gpx:.3f} Gpx)")
             except Exception as e:
                 print(f"  [WARN] {rel}: {type(e).__name__}: {e}")
     print(f"[CRASAR] {sum(elegidos.values())} ortomosaicos sUAS "
@@ -80,10 +82,14 @@ def descargar_kate(destino: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--solo-crasar", action="store_true")
+    ap.add_argument("--max-gpx", type=float, default=MAX_GPX_POR_ARCHIVO,
+                    help="gigapíxeles máximos por ortomosaico a descargar")
+    ap.add_argument("--eventos", nargs="*", default=None,
+                    help="eventos CRASAR a bajar (default: lista de prioridad)")
     args = ap.parse_args()
     if not args.solo_crasar:
         descargar_kate(ROOT / "dataset/kate_pd")
-    descargar_crasar(ROOT / "dataset/crasar")
+    descargar_crasar(ROOT / "dataset/crasar", args.max_gpx, args.eventos)
     return 0
 
 

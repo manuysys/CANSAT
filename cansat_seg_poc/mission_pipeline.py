@@ -176,6 +176,10 @@ TTA_UNCERT_REF = 0.05
 # Zero v1 el erode a resolución completa costaría segundos por frame.
 STRESS_MAX_SIDE = 320.0
 
+# Clases del clasificador de tipo de desastre (train_disaster_type.py).
+DISASTER_CLASSES = ["huracan", "inundacion", "sismo", "incendio", "volcan",
+                    "tornado", "otro"]
+
 
 def _hash8(path: str | Path) -> str:
     """
@@ -514,6 +518,9 @@ def build_parser():
                      help="severidad del daño (5 clases, F2b 2026-09-18). Si "
                           "está, la fracción de colapso es MEDIDA y reemplaza "
                           "el supuesto 0.3 de casualties. Opcional.")
+    mod.add_argument("--type-onnx", default="outputs/cansat_disaster_type.onnx",
+                     help="clasificador de TIPO de desastre (7 clases, F2 v3). "
+                          "Opcional; agrega tipo_desastre/tipo_conf al JSONL.")
     mod.add_argument("--no-stress", action="store_true",
                      help="apagar el estrés ambiental por imagen (bruma/dark "
                           "channel); el humidex usa igual los sensores")
@@ -715,7 +722,7 @@ def main(argv=None):
         cv2.setNumThreads(1)
 
     damage_on = not args.no_damage
-    sess_d = sess_d2 = sess_siam = sess_f = sess_fire = sess_sev = None
+    sess_d = sess_d2 = sess_siam = sess_f = sess_fire = sess_sev = sess_type = None
     if damage_on:
         sess_d = onnxio.load_required(args.damage_onnx, "daño principal",
                                       hint="Corré export_damage_onnx.py.")
@@ -728,6 +735,7 @@ def main(argv=None):
         sess_f = onnxio.load_optional(args.flood_onnx, "flood specialist")
         sess_fire = onnxio.load_optional(args.fire_onnx, "fuego/humo")
         sess_sev = onnxio.load_optional(args.severity_onnx, "severidad")
+        sess_type = onnxio.load_optional(args.type_onnx, "tipo de desastre")
 
     # Trazabilidad (F6): hashes de los artefactos que realmente corren.
     model_ids = {"seg": _hash8(seg_path)}
@@ -1064,6 +1072,7 @@ def main(argv=None):
             pct_flood = pct_fw = None
             pct_fire = pct_smoke = None
             colapso_pct = None
+            tipo_desastre = tipo_conf = None
             dan_max = 0.0
             if damage_on:
                 t_dmg = time.perf_counter()
@@ -1134,6 +1143,20 @@ def main(argv=None):
                     n_edif_sev = int((pred_sev >= 1).sum())
                     if n_edif_sev:
                         colapso_pct = float((pred_sev >= 3).sum()) / n_edif_sev * 100.0
+
+                # Tipo de desastre (F2 v3): etiqueta débil del evento, pista de
+                # contexto para el informe/estación (no altera el diagnóstico).
+                if sess_type:
+                    size_tp = sess_type.size_px or 224
+                    tensor_tp = (tensor if size_tp == args.img_size
+                                 else PP.preprocess_bgr(bgr, size_tp))
+                    lg_tp = np.ravel(sess_type.run({"input": tensor_tp}))
+                    e_tp = np.exp(lg_tp - lg_tp.max())
+                    probs_tp = e_tp / e_tp.sum()
+                    k_tp = int(probs_tp.argmax())
+                    tipo_desastre = (DISASTER_CLASSES[k_tp]
+                                     if k_tp < len(DISASTER_CLASSES) else str(k_tp))
+                    tipo_conf = round(float(probs_tp[k_tp]), 3)
 
                 dan_max = max(v for v in (pct_dan, pct_dan2, pct_siam)
                               if v is not None)
@@ -1251,6 +1274,9 @@ def main(argv=None):
                 "perdidas_max": est.perdidas_max,
                 "colapso_pct": _rnum(colapso_pct),
                 "colapso_fuente": est.colapso_fuente,
+                # Tipo de desastre (clasificador, etiqueta débil del evento).
+                "tipo_desastre": tipo_desastre,
+                "tipo_conf": tipo_conf,
                 # Densidad poblacional del frame y de dónde salió (DPD: pérdidas).
                 "pop_density": round(dens_pob, 1),
                 "pop_fuente": pob_fuente,

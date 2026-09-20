@@ -399,6 +399,32 @@ vuelo:
       el RescueNet-only (0.633); este queda como alternativa multi-desastre
       (entrenamiento cortado en época 1: cada época tarda ~8 min).
 
+  tipo_desastre:
+    # F2 v3 (2026-09-19): clasificador de tipo de desastre (extensión).
+    onnx: "outputs/cansat_disaster_type.onnx"
+    checkpoint: "outputs/best_disaster_type.pth"
+    entrenado_por: "train_disaster_type.py --epochs 12"
+    arquitectura: "MobileNetV3-Small (7 clases)"
+    clases: 7
+    nombres_clases: [huracan, inundacion, sismo, incendio, volcan, tornado, otro]
+    entrada: "[1, 3, 224, 224]"
+    dataset: "xBD + RescueNet + KATE-PD + CRASAR (etiqueta de EVENTO como supervisión débil)"
+    estado: "OPCIONAL (pista de contexto; no altera el diagnóstico)"
+    metricas:
+      acc_val: 0.978
+      caveat: "⚠ split ALEATORIO (no por evento): tiles del mismo evento caen en
+               train y val, así que la accuracy está inflada. La evaluación
+               honesta sería leave-one-event-out (pendiente)."
+      muestras: "3 355 balanceadas (huracán 1200, incendio 907, sismo 796,
+                 inundación 355, volcán 41, otro 56, tornado 0 — Mayfield es
+                 test y sus ortomosaicos grandes se bajaron después)"
+    notas: |
+      Etiqueta el TIPO de desastre del frame (huracán/inundación/sismo/incendio/
+      volcán/tornado/otro) a partir de la etiqueta del EVENTO — es una pista de
+      contexto, no una clasificación fina. Integrado en el pipeline
+      (`--type-onnx`, opcional) y en el JSONL como `tipo_desastre`/`tipo_conf`.
+      Pasa la auditoría IMX500 y carga en cv2.dnn.
+
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"
     framework: "ultralytics"
