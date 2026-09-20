@@ -390,6 +390,14 @@ vuelo:
       `colapso_fuente` ("medido"/"supuesto"). Entrenamiento en dos corridas
       (10 épocas + resume 15, mejor época 12; ~10 min/época porque decodifica
       las imágenes originales 3000×4000). El ONNX pasa la auditoría IMX500.
+      ALTERNATIVA MULTI-DESASTRE (2026-09-19): `outputs/cansat_severity_multi.onnx`
+      (checkpoint `best_severity_multi.pth`) = fine-tune del anterior con
+      RescueNet (1500) + **CRASAR** (1086 tiles de 10 desastres sUAS: tornado
+      Mayfield, volcán Kilauea, incendio Mussett, huracanes, colapso).
+      Época 1: **RescueNet 0.578 / CRASAR test 0.32** — gana en tipos de
+      desastre nuevos a cambio de ~5 pts en RescueNet. El de vuelo sigue siendo
+      el RescueNet-only (0.633); este queda como alternativa multi-desastre
+      (entrenamiento cortado en época 1: cada época tarda ~8 min).
 
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"

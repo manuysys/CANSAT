@@ -173,6 +173,12 @@ red de seguridad para daño fuerte.
   *"según su magnitud"* del DPD.
 - Entrenado en dos corridas (10 + 15 épocas con `--resume`, mejor época 12);
   ~10 min/época porque decodifica las imágenes originales 3000×4000.
+- **Alternativa multi-desastre** (`cansat_severity_multi.onnx`, 2026-09-19):
+  fine-tune con RescueNet (1500) + **CRASAR** (1086 tiles de 10 desastres sUAS:
+  tornado Mayfield, volcán Kilauea, incendio Mussett, huracanes, colapso).
+  Época 1: **RescueNet 0.578 / CRASAR test 0.32** — gana en tipos de desastre
+  nuevos a cambio de ~5 pts en RescueNet. El de vuelo sigue siendo el
+  RescueNet-only (0.633); el multi queda como alternativa.
 
 ### 4.6 Personas y vehículos
 
