@@ -394,10 +394,10 @@ vuelo:
       (checkpoint `best_severity_multi.pth`) = fine-tune del anterior con
       RescueNet (1500) + **CRASAR** (1086 tiles de 10 desastres sUAS: tornado
       Mayfield, volcán Kilauea, incendio Mussett, huracanes, colapso).
-      Época 1: **RescueNet 0.578 / CRASAR test 0.32** — gana en tipos de
-      desastre nuevos a cambio de ~5 pts en RescueNet. El de vuelo sigue siendo
-      el RescueNet-only (0.633); este queda como alternativa multi-desastre
-      (entrenamiento cortado en época 1: cada época tarda ~8 min).
+      Época 4 (resume, 2026-09-20): **RescueNet 0.608 / CRASAR test 0.42** —
+      sube ambos respecto de la época 1 (0.578 / 0.32). El de vuelo sigue siendo
+      el RescueNet-only (0.633, un punto más en su dominio); este queda como
+      alternativa multi-desastre (pasa la auditoría IMX500 y carga en cv2.dnn).
 
   tipo_desastre:
     # F2 v3 (2026-09-19): clasificador de tipo de desastre (extensión).

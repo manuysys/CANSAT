@@ -176,9 +176,10 @@ red de seguridad para daño fuerte.
 - **Alternativa multi-desastre** (`cansat_severity_multi.onnx`, 2026-09-19):
   fine-tune con RescueNet (1500) + **CRASAR** (1086 tiles de 10 desastres sUAS:
   tornado Mayfield, volcán Kilauea, incendio Mussett, huracanes, colapso).
-  Época 1: **RescueNet 0.578 / CRASAR test 0.32** — gana en tipos de desastre
-  nuevos a cambio de ~5 pts en RescueNet. El de vuelo sigue siendo el
-  RescueNet-only (0.633); el multi queda como alternativa.
+  Época 4 (resume, 2026-09-20): **RescueNet 0.608 / CRASAR test 0.42** — sube
+  ambos respecto de la época 1 (0.578 / 0.32). El de vuelo sigue siendo el
+  RescueNet-only (0.633, un punto más en su dominio); el multi queda como
+  alternativa para tipos de desastre nuevos.
 
 ### 4.6 Personas y vehículos
 
