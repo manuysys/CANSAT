@@ -412,9 +412,16 @@ vuelo:
     estado: "OPCIONAL (pista de contexto; no altera el diagnóstico)"
     metricas:
       acc_val: 0.978
-      caveat: "⚠ split ALEATORIO (no por evento): tiles del mismo evento caen en
-               train y val, así que la accuracy está inflada. La evaluación
-               honesta sería leave-one-event-out (pendiente)."
+      loeo_media_ponderada: 0.248
+      loeo_eventos: "15 (leave-one-event-out, 6 épocas por fold, 3 306 tiles)"
+      caveat: "⚠ El 0.978 es con split ALEATORIO (no por evento): tiles del
+               mismo evento caen en train y val → fuga. La métrica honesta es
+               LOEO (leave-one-event-out): 0.248 ponderada. Solo los INCENDIOS
+               generalizan (socal-fire 0.755, santa-rosa 0.712); huracanes
+               0.10-0.18, inundaciones 0.00-0.06, sismo 0.03-0.28, CRASAR
+               0.00-0.30. Es una pista de contexto, NO un clasificador
+               confiable en eventos nuevos. Ver outputs/disaster_type_loeo.json."
+      loeo_json: "outputs/disaster_type_loeo.json"
       muestras: "3 355 balanceadas (huracán 1200, incendio 907, sismo 796,
                  inundación 355, volcán 41, otro 56, tornado 0 — Mayfield es
                  test y sus ortomosaicos grandes se bajaron después)"
@@ -424,6 +431,9 @@ vuelo:
       contexto, no una clasificación fina. Integrado en el pipeline
       (`--type-onnx`, opcional) y en el JSONL como `tipo_desastre`/`tipo_conf`.
       Pasa la auditoría IMX500 y carga en cv2.dnn.
+      LOEO (`train_disaster_type.py --loeo`) confirma que en eventos NO vistos
+      el modelo no es confiable salvo para incendios: usarlo solo como etiqueta
+      débil y con la confianza a la vista.
 
   deteccion_personas:
     pesos: "models/yolov8n_visdrone.pt"

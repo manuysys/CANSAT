@@ -59,10 +59,16 @@ CRASAR_TIPO = {
 }
 
 
-def recolectar(max_por_clase: int = 1200, seed: int = 42) -> list[tuple[str, int]]:
-    """(ruta_imagen, clase) desde todos los manifests disponibles."""
+def recolectar_eventos(max_por_clase: int = 1200,
+                       seed: int = 42) -> list[tuple[str, int, str]]:
+    """(ruta_imagen, clase, evento) desde todos los manifests disponibles.
+
+    El EVENTO (nombre del desastre/fuente) es lo que permite evaluar
+    leave-one-event-out: sin él, un split aleatorio deja tiles del mismo evento
+    en train y val y la accuracy sale inflada (fuga de evento).
+    """
     rng = random.Random(seed)
-    por_clase: dict[int, list[str]] = {i: [] for i in range(len(CLASES))}
+    por_clase: dict[int, list[tuple[str, str]]] = {i: [] for i in range(len(CLASES))}
 
     xbd = ROOT / "dataset/xbd_masks/manifest.csv"
     if xbd.is_file():
@@ -70,17 +76,17 @@ def recolectar(max_por_clase: int = 1200, seed: int = 42) -> list[tuple[str, int
             ev = r["name"].split("_", 1)[0]
             tipo = XBD_EVENTO.get(ev)
             if tipo:
-                por_clase[TIPO[tipo]].append(r["image"])
+                por_clase[TIPO[tipo]].append((r["image"], f"xbd:{ev}"))
 
     kate = ROOT / "dataset/kate_pd_tiles/manifest_train.csv"
     if kate.is_file():
         for r in csv.DictReader(kate.open(encoding="utf-8")):
-            por_clase[TIPO["sismo"]].append(r["image"])
+            por_clase[TIPO["sismo"]].append((r["image"], "kate_pd:turkiye"))
 
     rescue = ROOT / "dataset/rescuenet_tiles/manifest_train_sub8000.csv"
     if rescue.is_file():
         for r in csv.DictReader(rescue.open(encoding="utf-8")):
-            por_clase[TIPO["huracan"]].append(r["image"])
+            por_clase[TIPO["huracan"]].append((r["image"], "rescuenet:huracan"))
 
     crasar = ROOT / "dataset/crasar_tiles/manifest_train.csv"
     crasar_test = ROOT / "dataset/crasar_tiles/manifest_test.csv"
@@ -88,18 +94,22 @@ def recolectar(max_por_clase: int = 1200, seed: int = 42) -> list[tuple[str, int
         if not man.is_file():
             continue
         for r in csv.DictReader(man.open(encoding="utf-8")):
-            tipo = next((t for sub, t in CRASAR_TIPO.items()
-                         if sub in r["name"]), None)
-            if tipo:
-                por_clase[TIPO[tipo]].append(r["image"])
+            hit = next((sub for sub in CRASAR_TIPO if sub in r["name"]), None)
+            if hit:
+                por_clase[TIPO[CRASAR_TIPO[hit]]].append((r["image"], f"crasar:{hit}"))
 
-    filas: list[tuple[str, int]] = []
-    for cls, rutas in por_clase.items():
-        rng.shuffle(rutas)
-        for p in rutas[:max_por_clase]:
-            filas.append((p, cls))
+    filas: list[tuple[str, int, str]] = []
+    for cls, pares in por_clase.items():
+        rng.shuffle(pares)
+        for p, ev in pares[:max_por_clase]:
+            filas.append((p, cls, ev))
     rng.shuffle(filas)
     return filas
+
+
+def recolectar(max_por_clase: int = 1200, seed: int = 42) -> list[tuple[str, int]]:
+    """(ruta_imagen, clase) desde todos los manifests disponibles."""
+    return [(p, c) for p, c, _e in recolectar_eventos(max_por_clase, seed)]
 
 
 class TipoDS(Dataset):
@@ -128,9 +138,86 @@ def modelo(n_clases: int):
     return m
 
 
+def _entrenar_fold(train, test, args, device, epochs=6):
+    """Entrena un modelo en ``train`` y lo evalúa en ``test`` (un evento).
+
+    Devuelve (acc, preds, reales). Sin checkpoints: es una evaluación LOEO,
+    no un modelo de producción.
+    """
+    import collections
+
+    model = modelo(len(CLASES)).to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    dl = DataLoader(TipoDS(train, args.size, aug=True), batch_size=args.batch,
+                    shuffle=True, num_workers=4, persistent_workers=True)
+    for _ in range(epochs):
+        model.train()
+        for x, y in dl:
+            x, y = x.to(device), y.to(device)
+            opt.zero_grad()
+            F.cross_entropy(model(x), y).backward()
+            opt.step()
+    model.eval()
+    te_dl = DataLoader(TipoDS(test, args.size), batch_size=args.batch,
+                       num_workers=4)
+    correct = total = 0
+    preds: collections.Counter = collections.Counter()
+    reales: collections.Counter = collections.Counter()
+    with torch.no_grad():
+        for x, y in te_dl:
+            p = model(x.to(device)).argmax(1).cpu()
+            correct += int((p == y).sum())
+            total += len(y)
+            for pi, yi in zip(p.tolist(), y.tolist()):
+                preds[CLASES[pi]] += 1
+                reales[CLASES[yi]] += 1
+    return correct / max(1, total), preds, reales
+
+
+def loeo(args) -> int:
+    """Leave-one-event-out: la métrica honesta del clasificador de tipo.
+
+    Con split aleatorio, tiles del mismo evento caen en train y val (fuga) y la
+    accuracy sale inflada. Acá se entrena SIN el evento y se evalúa SOLO en él.
+    """
+    import json
+
+    filas = recolectar_eventos(args.max_por_clase, args.seed)
+    eventos = sorted({e for _p, _c, e in filas})
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"LOEO: {len(eventos)} eventos, {len(filas)} muestras")
+    res: list[dict] = []
+    for ev in eventos:
+        test = [(p, c) for p, c, e in filas if e == ev]
+        train = [(p, c) for p, c, e in filas if e != ev]
+        if len(test) < 30 or len(train) < 200:
+            print(f"[skip] {ev}: test {len(test)} / train {len(train)}")
+            continue
+        acc, preds, reales = _entrenar_fold(train, test, args, device)
+        dom = max(reales, key=reales.get)
+        pmay = max(preds, key=preds.get)
+        res.append({"evento": ev, "n_test": len(test), "acc": round(acc, 4),
+                    "clase_dominante": dom, "pred_mayoria": pmay})
+        print(f"  {ev}: acc {acc:.3f} (n={len(test)}, dom {dom} → {pmay})")
+    if res:
+        w = sum(r["n_test"] for r in res)
+        media = sum(r["acc"] * r["n_test"] for r in res) / w
+        print(f"[OK] LOEO media ponderada: {media:.3f} "
+              f"({len(res)} eventos, {w} tiles)")
+        out = ROOT / "outputs/disaster_type_loeo.json"
+        out.write_text(json.dumps(
+            {"media_ponderada": round(media, 4), "eventos": res},
+            indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[OK] {out}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Clasificador de tipo de desastre")
     ap.add_argument("--epochs", type=int, default=12)
+    ap.add_argument("--loeo", action="store_true",
+                    help="evaluar leave-one-event-out en vez de entrenar el "
+                         "modelo final (métrica honesta, ~6 épocas por fold)")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--size", type=int, default=224)
     ap.add_argument("--lr", type=float, default=3e-4)
@@ -140,6 +227,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     set_seed(args.seed)
+
+    if args.loeo:
+        return loeo(args)
 
     filas = recolectar(args.max_por_clase, args.seed)
     import collections
