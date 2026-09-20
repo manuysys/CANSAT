@@ -49,6 +49,13 @@ XBD_EVENTO = {
     "midwest-flooding": "inundacion", "palu-tsunami": "inundacion",
     "mexico-earthquake": "sismo", "guatemala-volcano": "volcan",
     "socal-fire": "incendio", "santa-rosa-wildfire": "incendio",
+    # Tier 3 (2026-09-20, Kaggle xview2 tier-3-data): llena la clase tornado
+    # (0 -> 3 eventos), suma volcán, Nepal/Sunda y 3 incendios.
+    "joplin-tornado": "tornado", "moore-tornado": "tornado",
+    "tuscaloosa-tornado": "tornado", "lower-puna-volcano": "volcan",
+    "nepal-flooding": "inundacion", "sunda-tsunami": "inundacion",
+    "pinery-bushfire": "incendio", "portugal-wildfire": "incendio",
+    "woolsey-fire": "incendio",
 }
 # Subcadenas del nombre del ortomosaico CRASAR → tipo de desastre.
 CRASAR_TIPO = {
