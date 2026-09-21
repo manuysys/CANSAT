@@ -104,10 +104,22 @@ def buffer_mask(mask: np.ndarray, radio_px: float) -> np.ndarray:
 
     Kernel elíptico de lado ``2·radio+1`` (la aproximación estándar de buffer
     en imagen; el error es subpíxel para radios ≥ 2).
+
+    ⚠ El radio se acota a la diagonal del frame: una consulta de "200 m" sobre
+    un frame cuya huella mide 8 m daría un kernel de cientos de miles de píxeles
+    (memoria/tiempo irrecuperables). Si el radio alcanza para cubrir el frame
+    completo desde cualquier píxel, el buffer ES el frame entero.
     """
+    m = (np.asarray(mask) != 0).astype(np.uint8)
+    if radio_px <= 0:
+        return m
+    h, w = m.shape
+    diagonal = float(np.hypot(h, w))
+    if radio_px >= diagonal:
+        return np.ones_like(m)
     r = max(1, int(round(radio_px)))
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
-    return cv2.dilate((np.asarray(mask) != 0).astype(np.uint8), k)
+    return cv2.dilate(m, k)
 
 
 def distancia_a(mask: np.ndarray) -> np.ndarray:

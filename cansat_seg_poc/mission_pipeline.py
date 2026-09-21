@@ -1269,6 +1269,14 @@ def main(argv=None):
                 "ndvi": round(env["gvi"], 3),   # clave legacy del contrato
                 "verdict": env["verdict"],
                 "people": people, "vehicles": veh,
+                # Consulta Terrestre v2: posiciones por detección (cajas en
+                # píxeles del frame nativo, mismas que las máscaras del
+                # post-vuelo). Las consume cansat/consultas.py desde el JSONL.
+                "detecciones": [
+                    {"tipo": ("persona" if c in pids else "vehiculo"),
+                     "xyxy": [int(bx1), int(by1), int(bx2), int(by2)]}
+                    for (bx1, by1, bx2, by2, c) in (boxes or [])
+                ],
                 "danado_pct": _rnum(pct_dan),
                 "danado2_pct": _rnum(pct_dan2),
                 "danado2_edif_pct": _rnum(pct_dan2_edif),

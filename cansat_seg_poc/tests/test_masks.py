@@ -58,6 +58,14 @@ def test_buffer_metrica():
     assert MK.area_px(b) > MK.area_px(m)
 
 
+def test_buffer_radio_gigante_cubre_todo():
+    # Un radio mayor que la diagonal (p.ej. 200 m sobre un frame de 8 m)
+    # no debe intentar construir un kernel gigante: el buffer es todo el frame.
+    m = np.zeros((8, 8), np.uint8)
+    m[0, 0] = 1
+    assert MK.buffer_mask(m, 10_000).all()
+
+
 def test_distancia_a():
     m = np.zeros((7, 7), np.uint8)
     m[0, 0] = 1

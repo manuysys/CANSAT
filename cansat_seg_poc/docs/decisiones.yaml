@@ -233,15 +233,25 @@ decisiones:
       las máscaras de clase por frame. El post-vuelo ahora las persiste en
       entrega/masks/ (PNG gris de índices, 255 = sin dato; se apaga con
       --no-masks y suma el bucket del contrato v3). Motor: cansat/consultas.py
-      (plantillas en español → área, conteo con buffer métrico, fracción de
-      longitud por esqueleto, distancia y personas de la telemetría). NO hay
-      LLM como respondedor: lo que no mapea devuelve "consulta no soportada"
-      con sugerencias. El servidor de la estación lo invoca por subproceso
-      (tools/consulta.py), así sigue siendo stdlib-only.
+      (plantillas en español e inglés → área, conteo con buffer métrico,
+      fracción de longitud por esqueleto, distancia, existencia y personas).
+      NO hay LLM como respondedor: lo que no mapea devuelve "consulta no
+      soportada" con sugerencias. El servidor de la estación lo invoca por
+      subproceso (tools/consulta.py), así sigue siendo stdlib-only.
       Georreferenciado declarado APROXIMADO: cuadrado de lado sqrt(area_m2)
       centrado en (lat, lon), norte arriba, sin heading (la telemetría no trae
-      IMU). Las personas se cuentan por frame (no hay posición por detección) y
-      la longitud es ±10 % por esqueletización.
+      IMU). La longitud es ≈ ±10 % por esqueletización.
+      v2 (2026-09-21): el pipeline persiste las DETECCIONES por frame en
+      telemetry.jsonl (tipo + xyxy en píxeles nativos). Con eso el motor
+      responde conteo de personas por posición (dentro de la zona dibujada),
+      personas a ≤ r metros de un objeto y distancia mínima/media
+      persona→objeto. Convención: punto de apoyo = centro-abajo del bbox (sin
+      pose ni orientación, declarado en la respuesta). Si la misión no trae
+      detecciones, el conteo cae al total por frame del CSV y las consultas con
+      posición se rechazan explícitamente; la demo sintética las genera.
+      El radio del buffer se acota a la diagonal del frame: una consulta de
+      "200 m" sobre frames de pocos metros devuelve el frame completo, no un
+      kernel gigante (bug real detectado con la demo y corregido).
       Las consultas de vías tienen especialista propio (train_road_specialist.py,
       2 clases sobre FloodNet road, split 80/20 seed 42 idéntico al del flood).
       Gate acordado: IoU de vía en FloodNet val ≥ 0.50. Resultado: FloodNet-only

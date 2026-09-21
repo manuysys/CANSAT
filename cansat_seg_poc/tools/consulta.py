@@ -30,6 +30,8 @@ def main(argv=None) -> int:
     ap.add_argument("--masks", default="entrega/masks",
                     help="carpeta con las máscaras <src>_<fuente>.png")
     ap.add_argument("--telemetry", default="outputs/mission/telemetry.csv")
+    ap.add_argument("--jsonl", default="outputs/mission/telemetry.jsonl",
+                    help="JSONL con detecciones (posiciones de personas)")
     ap.add_argument("--region", default=None,
                     help="polígono lon/lat como JSON [[lon,lat],...] o @archivo.json")
     ap.add_argument("--json", action="store_true", help="JSON compacto (sin indentar)")
@@ -47,7 +49,7 @@ def main(argv=None) -> int:
                              ensure_ascii=False))
             return 1
 
-    datos = DatosMision.cargar(args.masks, args.telemetry)
+    datos = DatosMision.cargar(args.masks, args.telemetry, args.jsonl)
     res = responder(args.q, datos, region)
     print(json.dumps(res, ensure_ascii=False,
                      indent=(None if args.json else 2)))

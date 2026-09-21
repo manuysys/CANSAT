@@ -12,7 +12,13 @@ Operaciones soportadas:
   · ``count``            componentes conexas de A∩B∩buffer(C, r metros)
   · ``length_fraction``  longitud(A∩B)/longitud(A) por esqueleto
   · ``distance``         distancia mínima/media de A a B, en metros
-  · ``personas``         suma del conteo por frame (opcionalmente por zona)
+  · ``exists``           presencia de A (o A∩B) por frame
+  · ``personas``         conteo de personas: por POSICIÓN si la misión persistió
+                         detecciones (``telemetry.jsonl``) o, si no, por frame
+                         desde la telemetría (fuente declarada en la respuesta)
+  · ``dist_personas``    distancia mínima/media de cada persona (punto de apoyo
+                         del bbox) a una máscara (vía, agua, inundación…)
+  · ``count_personas_buffer``  personas a ≤ r metros de una máscara
 
 Zona (opcional): polígono en lon/lat dibujado en la estación. El
 georreferenciado es APROXIMADO y se declara en cada respuesta:
@@ -26,6 +32,7 @@ Uso desde la estación (subproceso) o CLI:
 from __future__ import annotations
 
 import csv
+import json
 import math
 import re
 import unicodedata
@@ -109,6 +116,8 @@ SUGERENCIAS: list[str] = [
     "¿qué fracción de las vías está inundada?",
     "distancia entre edificios y agua",
     "¿cuántas personas hay en la zona?",
+    "¿cuántas personas hay a menos de 20 m de una vía?",
+    "distancia entre personas y agua",
 ]
 
 GEOREF_NOTA = (
@@ -118,8 +127,9 @@ GEOREF_NOTA = (
 )
 LIMITACIONES: list[str] = [
     GEOREF_NOTA,
-    "las personas se cuentan por frame: la telemetría no guarda la posición de "
-    "cada detección, sólo el total.",
+    "las personas con posición usan el punto de apoyo del bbox (centro-abajo, "
+    "sin pose ni orientación); si el pipeline no persistió detecciones sólo hay "
+    "conteo por frame desde la telemetría.",
     "la longitud se estima por esqueletización (≈ ±10 %).",
 ]
 
@@ -127,6 +137,7 @@ _FLAG_INUNDACION = (
     r"(?:inundad|anegad|bajo agua|bajo el agua|flood|flooded|flooding|under water)"
 )
 _FLAG_DANO = r"(?:con dano|danad|destruid|derrumb|damaged|destroyed|collapsed)"
+_PERSONAS = r"(?:personas?|people|persons?)"
 _ALT = "|".join(sorted({s for sins in SUJETOS.values() for s in sins},
                        key=len, reverse=True))
 
@@ -159,9 +170,18 @@ def _buscar_sujeto(t: str, desde: int = 0) -> tuple[str | None, int, int]:
 def _disponible(canon: str, disponibles: set[str]) -> bool:
     if canon == "persona":
         return True
+    if canon == "persona_pos":
+        # Posiciones de personas: requieren detecciones persistidas (telemetry.jsonl).
+        return "detecciones" in disponibles
     if canon == "dano":
         return bool(set(PREFERENCIA_DANO) & disponibles)
     return FUENTES[canon][0] in disponibles
+
+
+def _etiqueta(canon: str) -> str:
+    if canon == "persona_pos":
+        return "detecciones de personas (telemetry.jsonl)"
+    return canon
 
 
 def _spec(
@@ -181,7 +201,8 @@ def _spec(
         return {
             "soportada": False,
             "consulta": texto,
-            "motivo": f"esta misión no tiene máscara de: {', '.join(faltan)}",
+            "motivo": ("esta misión no tiene: "
+                       + ", ".join(_etiqueta(s) for s in faltan)),
             "sugerencias": SUGERENCIAS,
         }
     return {
@@ -277,7 +298,11 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
     m = re.search(r"\b(?:cuant[oa]s?|numero de|conteo de|cantidad de"
                   r"|how many|number of|count of|amount of)\b", t)
     if m:
-        if re.search(r"\b(?:personas?|people|persons?)\b", t):
+        if re.search(_PERSONAS, t):
+            c, buffer_m = _buffer(t, m.end())
+            if c:
+                return _spec("count_personas_buffer", "count_personas",
+                             "persona_pos", None, t, disp, c=c, buffer_m=buffer_m)
             return _spec("personas", "personas", "persona", None, t, disp)
         a, _, fin = _buscar_sujeto(t, m.end())
         if a:
@@ -287,8 +312,14 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
                 return _spec("count", "count", a, b, t, disp, c=c, buffer_m=buffer_m)
             return _spec("count", "count", a, b, t, disp)
 
-    # 4) distancia entre A y B
+    # 4) distancia entre A y B (o de las personas a B)
     if re.search(r"\b(?:distancia|distance)\b", t):
+        m_p = re.search(rf"\b{_PERSONAS}\b", t)
+        if m_p:
+            b, _, _ = _buscar_sujeto(t, m_p.end())
+            if b:
+                return _spec("dist_personas", "dist_personas",
+                             "persona_pos", b, t, disp)
         a, _, fin = _buscar_sujeto(t)
         if a:
             b, _, _ = _buscar_sujeto(t, fin)
@@ -297,7 +328,11 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
 
     # 5) existencia (preguntas Yes/No de EarthVQA: 'Is there any X?', '¿hay X?')
     if re.search(r"\b(?:hay|is there|are there|existe|existen)\b", t):
-        if re.search(r"\b(?:personas?|people|persons?)\b", t):
+        if re.search(_PERSONAS, t):
+            c, buffer_m = _buffer(t, 0)
+            if c:
+                return _spec("count_personas_buffer", "count_personas",
+                             "persona_pos", None, t, disp, c=c, buffer_m=buffer_m)
             return _spec("personas", "personas", "persona", None, t, disp)
         a, _, fin = _buscar_sujeto(t)
         if a:
@@ -305,7 +340,7 @@ def parsear(consulta: str, disponibles: set[str] | None = None) -> dict:
             return _spec("exists", "exists", a, b, t, disp)
 
     # 6) personas sueltas ("¿cuántas personas hay?" / "how many people?")
-    if re.search(r"\b(?:personas?|people|persons?)\b", t) and re.search(
+    if re.search(_PERSONAS, t) and re.search(
             r"\b(?:cuant|numero|conteo|cantidad|hay|how many|number of)\b", t):
         return _spec("personas", "personas", "persona", None, t, disp)
 
@@ -330,29 +365,70 @@ def _flotante(v) -> float | None:
 
 @dataclass
 class DatosMision:
-    """Máscaras por frame + telemetría, con cache de lectura."""
+    """Máscaras por frame + telemetría + detecciones (posiciones), con cache."""
 
     masks_dir: Path
     telemetry_csv: Path
+    jsonl_path: Path | None = None
     filas: list[dict] = field(default_factory=list)
     _mascaras: dict = field(default_factory=dict)
     _fuentes: set[str] = field(default_factory=set)
+    _detecciones: dict = field(default_factory=dict)
 
     @classmethod
-    def cargar(cls, masks_dir: str | Path, telemetry_csv: str | Path) -> DatosMision:
+    def cargar(cls, masks_dir: str | Path, telemetry_csv: str | Path,
+               jsonl_path: str | Path | None = None) -> DatosMision:
         p = Path(telemetry_csv)
         filas: list[dict] = []
         if p.is_file():
             with p.open("r", encoding="utf-8-sig", newline="") as fh:
                 filas = [r for r in csv.DictReader(fh) if r.get("src")]
-        datos = cls(Path(masks_dir), p, filas)
+        jl = Path(jsonl_path) if jsonl_path else None
+        datos = cls(Path(masks_dir), p, jl, filas)
         mdir = datos.masks_dir
         if mdir.is_dir():
             datos._fuentes = {
                 suf for suf in SUFIJOS
                 if next(mdir.glob(f"*_{suf}.png"), None) is not None
             }
+        datos._detecciones = datos._leer_detecciones()
         return datos
+
+    def _leer_detecciones(self) -> dict[str, list[dict]]:
+        """``telemetry.jsonl`` → {src: [{tipo, xyxy}]}, tolerante a líneas rotas."""
+        out: dict[str, list[dict]] = {}
+        p = self.jsonl_path
+        if p is None or not p.is_file():
+            return out
+        try:
+            with p.open("r", encoding="utf-8") as fh:
+                for linea in fh:
+                    linea = linea.strip()
+                    if not linea:
+                        continue
+                    try:
+                        pkt = json.loads(linea)
+                    except json.JSONDecodeError:
+                        continue
+                    src = str(pkt.get("src") or "")
+                    dets = pkt.get("detecciones")
+                    if not src or not isinstance(dets, list):
+                        continue
+                    limpias = []
+                    for d in dets:
+                        if not isinstance(d, dict):
+                            continue
+                        xy = d.get("xyxy")
+                        if isinstance(xy, list) and len(xy) == 4:
+                            limpias.append({
+                                "tipo": str(d.get("tipo") or "persona"),
+                                "xyxy": [float(v) for v in xy],
+                            })
+                    if limpias:
+                        out[src] = limpias
+        except OSError:
+            return out
+        return out
 
     @property
     def fuentes(self) -> set[str]:
@@ -392,6 +468,24 @@ class DatosMision:
     def personas(self, src: str) -> int:
         v = _flotante(self.fila(src).get("people"))
         return int(round(v)) if v is not None else 0
+
+    def tiene_detecciones(self) -> bool:
+        return bool(self._detecciones)
+
+    def personas_puntos(self, src: str) -> list[tuple[float, float]]:
+        """
+        Punto de apoyo de cada persona: centro-abajo del bbox.
+
+        Es la convención estándar para "dónde está parada" una persona sin
+        pose/orientación; se declara en las limitaciones de la respuesta.
+        """
+        out = []
+        for d in self._detecciones.get(src, []):
+            if d["tipo"] != "persona":
+                continue
+            x1, _y1, x2, y2 = d["xyxy"]
+            out.append(((x1 + x2) / 2.0, y2))
+        return out
 
     def tiene_geo(self) -> bool:
         for r in self.filas:
@@ -490,20 +584,88 @@ def ejecutar(spec: dict, datos: DatosMision,
     a_nombre = spec.get("a")
     por_frame: list[dict] = []
     acum = {"area_m2": 0.0, "count": 0, "len_a_m": 0.0, "len_ab_m": 0.0,
-            "d_min": [], "d_media": [], "personas": 0}
+            "d_min": [], "d_media": [], "personas": 0, "n_personas": 0}
 
     for fila in datos.filas:
         src = str(fila.get("src"))
         area_frame = datos.area_frame(src)
+        entrada = {"src": src, "area_frame_m2": round(area_frame, 2),
+                   "lat": _flotante(fila.get("lat")),
+                   "lon": _flotante(fila.get("lon"))}
 
-        if op == "personas":
-            if region is not None and not region_toca_frame(region, fila):
+        if op in ("personas", "dist_personas", "count_personas"):
+            if not datos.tiene_detecciones():
+                # Fallback honesto: sólo queda el conteo por frame del CSV.
+                if region is not None and not region_toca_frame(region, fila):
+                    continue
+                v = datos.personas(src)
+                acum["personas"] += v
+                entrada.update(valor=v, unidad="personas")
+                por_frame.append(entrada)
                 continue
-            v = datos.personas(src)
-            acum["personas"] += v
-            por_frame.append({"src": src, "valor": v, "unidad": "personas",
-                              "lat": _flotante(fila.get("lat")),
-                              "lon": _flotante(fila.get("lon"))})
+
+            # Máscara de referencia (da la resolución nativa del frame).
+            if op == "dist_personas":
+                ref = datos.mascara_sujeto(src, spec["b"])
+            elif op == "count_personas":
+                ref = datos.mascara_sujeto(src, spec["c"])
+            else:
+                ref = datos.mascara(src, "terreno")
+            if ref is None or not ref.any():
+                continue
+            shape = ref.shape
+            puntos = datos.personas_puntos(src)
+
+            if region is not None:
+                rp = poligono_a_pixeles(region, fila, shape)
+                if rp is None:
+                    continue
+                rm = MK.mascara_poligono(shape, rp)
+                puntos = [(x, y) for x, y in puntos
+                          if 0 <= int(round(y)) < shape[0]
+                          and 0 <= int(round(x)) < shape[1]
+                          and rm[int(round(y)), int(round(x))] == 1]
+
+            if op == "personas":
+                acum["personas"] += len(puntos)
+                entrada.update(
+                    valor=len(puntos), unidad="personas",
+                    personas_geo=(pixeles_a_geo(np.array(puntos), fila, shape)
+                                  if puntos else []))
+            elif op == "count_personas":
+                esc = MK.pixel_scale_m(area_frame, shape)
+                if esc <= 0:
+                    continue
+                buf = MK.buffer_mask(ref, (spec.get("buffer_m") or 0.0) / esc)
+                dentro = [(x, y) for x, y in puntos
+                          if 0 <= int(round(y)) < shape[0]
+                          and 0 <= int(round(x)) < shape[1]
+                          and buf[int(round(y)), int(round(x))] == 1]
+                acum["personas"] += len(dentro)
+                entrada.update(
+                    valor=len(dentro), unidad="personas",
+                    personas_geo=(pixeles_a_geo(np.array(dentro), fila, shape)
+                                  if dentro else []))
+            else:  # dist_personas
+                if not puntos:
+                    continue
+                d = MK.distancia_a(ref)
+                vals = [float(d[int(round(y)), int(round(x))])
+                        for x, y in puntos
+                        if 0 <= int(round(y)) < shape[0]
+                        and 0 <= int(round(x)) < shape[1]]
+                vals = [v for v in vals if math.isfinite(v)]
+                if not vals:
+                    continue
+                esc = MK.pixel_scale_m(area_frame, shape)
+                vmin, vmed = min(vals) * esc, (sum(vals) / len(vals)) * esc
+                acum["d_min"].append(vmin)
+                acum["d_media"].append(vmed)
+                acum["n_personas"] += len(vals)
+                entrada.update(valor=round(vmin, 2), unidad="m",
+                               distancia_media_m=round(vmed, 2),
+                               n_personas=len(vals))
+            por_frame.append(entrada)
             continue
 
         a = datos.mascara_sujeto(src, a_nombre)
@@ -521,9 +683,6 @@ def ejecutar(spec: dict, datos: DatosMision,
             a = MK.interseccion(a, rm)
             if b is not None:
                 b = MK.interseccion(b, rm)
-
-        entrada = {"src": src, "area_frame_m2": round(area_frame, 2),
-                   "lat": _flotante(fila.get("lat")), "lon": _flotante(fila.get("lon"))}
 
         if op == "area":
             objetivo = a if b is None else MK.interseccion(a, b)
@@ -612,8 +771,30 @@ def _resultado(spec: dict, acum: dict, por_frame: list[dict],
             if acum["d_media"] else None,
         }
         unidades = "m"
+    elif op == "dist_personas":
+        total = {
+            "min_m": round(min(acum["d_min"]), 2) if acum["d_min"] else None,
+            "media_m": round(float(np.mean(acum["d_media"])), 2)
+            if acum["d_media"] else None,
+            "n_personas": acum["n_personas"],
+        }
+        unidades = "m"
+    elif op == "count_personas":
+        total, unidades = acum["personas"], "personas"
     else:
         total, unidades = acum["personas"], "personas"
+
+    extra: dict = {}
+    if op in ("personas", "dist_personas", "count_personas"):
+        por_pos = bool(spec.get("personas_por_posicion"))
+        extra["fuente_personas"] = ("posiciones (telemetry.jsonl)" if por_pos
+                                    else "telemetria por frame")
+        if op in ("dist_personas", "count_personas") or por_pos:
+            extra["nota_personas"] = (
+                "posición = punto de apoyo del bbox (centro-abajo); sin pose ni "
+                "orientación. Si el pipeline no persistió detecciones, las "
+                "consultas con posición no se responden."
+            )
 
     return {
         "consulta": spec["texto"],
@@ -629,15 +810,32 @@ def _resultado(spec: dict, acum: dict, por_frame: list[dict],
         "region_declarada": bool(region is not None),
         "georref": GEOREF_NOTA if region is not None else None,
         "limitaciones": LIMITACIONES,
+        **extra,
     }
 
 
 def responder(consulta: str, datos: DatosMision,
               region: list | np.ndarray | None = None) -> dict:
     """Parsea y ejecuta una consulta. Nunca lanza por consulta no soportada."""
-    spec = parsear(consulta, datos.fuentes)
+    disp = datos.fuentes
+    if datos.tiene_detecciones():
+        disp = disp | {"detecciones"}
+    spec = parsear(consulta, disp)
     if not spec.get("soportada"):
         return spec
+
+    op = spec["operacion"]
+    if op in ("personas", "dist_personas", "count_personas"):
+        spec["personas_por_posicion"] = datos.tiene_detecciones()
+    if (op == "personas" and region is not None
+            and not datos.tiene_detecciones()):
+        return {
+            "consulta": consulta,
+            "soportada": False,
+            "motivo": ("la zona dibujada requiere posiciones de personas y esta "
+                       "misión no persistió detecciones (telemetry.jsonl)"),
+            "sugerencias": SUGERENCIAS,
+        }
     if region is not None and not datos.tiene_geo():
         return {
             "consulta": consulta,
