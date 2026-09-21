@@ -23,7 +23,10 @@ repos:
       - id: check-case-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    # Misma versión que el CI (.github/workflows/ci.yml) y que el ruff local:
+    # antes estaba en v0.5.7 y el CI instalaba la última, así que el pre-commit
+    # daba verde y el CI rojo por reglas nuevas (RUF046/RUF059).
+    rev: v0.16.8
     hooks:
       - id: ruff
         args: ["--fix"]

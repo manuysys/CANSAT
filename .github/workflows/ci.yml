@@ -36,11 +36,21 @@ jobs:
       - name: Dependencias mínimas (sin torch)
         run: |
           python -m pip install --upgrade pip
-          pip install numpy PyYAML pytest ruff
+          pip install numpy PyYAML pytest ruff==0.16.8
           pip install opencv-python-headless onnx onnxruntime
 
+      # La versión de ruff está FIJADA a la misma del pre-commit (.pre-commit-config.yaml):
+      # con "ruff" a secas, CI instalaba la última y destapaba reglas nuevas
+      # (RUF046/RUF059) que el pre-commit viejo no veía.
       - name: Ruff (lint)
-        run: ruff check .
+        run: |
+          if ! ruff check . --output-format concise > ruff.log 2>&1; then
+            tail -n 40 ruff.log
+            detalle=$(tail -n 30 ruff.log | tr '\n' ' ' | sed 's/%/%25/g' | head -c 900)
+            echo "::error title=Ruff falló::$detalle"
+            exit 1
+          fi
+          tail -n 3 ruff.log
 
       - name: Compilación de todos los .py
         run: python -m compileall -q . && echo "todos los .py compilan"
@@ -101,7 +111,16 @@ jobs:
         run: npm run lint
 
       - name: Type-check + build (Vite)
-        run: npm run build
+        run: |
+          # Si falla, publica el error en una ANOTACIÓN del check (los logs de
+          # Actions piden login; las anotaciones son públicas y quedan en la API).
+          if ! npm run build > build.log 2>&1; then
+            tail -n 40 build.log
+            detalle=$(tail -n 40 build.log | tr '\n' ' ' | sed 's/%/%25/g' | head -c 900)
+            echo "::error title=Vite build falló::$detalle"
+            exit 1
+          fi
+          tail -n 3 build.log
 
       - uses: actions/setup-python@v5
         with:

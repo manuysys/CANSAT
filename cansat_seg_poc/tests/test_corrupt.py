@@ -63,7 +63,7 @@ def test_solo_escala_toca_la_mascara():
 
 def test_escala_conserva_clases_y_factor():
     img, mask = _texturada(), _mascara()
-    out, mask_out, meta = COR.aplicar("escala", img, mask, np.random.default_rng(3))
+    _out, mask_out, meta = COR.aplicar("escala", img, mask, np.random.default_rng(3))
     assert np.array_equal(np.unique(mask_out), np.array([0, 1, 2], np.uint8))
     assert mask_out[40, 40] == 1 and mask_out[70, 70] == 2
     assert COR.ESCALA_RANGO[0] <= meta["factor"] <= COR.ESCALA_RANGO[1]
@@ -71,7 +71,7 @@ def test_escala_conserva_clases_y_factor():
 
 def test_niebla_registra_bruma():
     img = _texturada()
-    out, meta = COR.niebla(img, np.random.default_rng(0))
+    _out, meta = COR.niebla(img, np.random.default_rng(0))
     limpio = ST.haze_metrics(img)
     assert meta["haze_pct"] > limpio["haze_pct"]
     assert meta["visibility"] < limpio["visibility"]

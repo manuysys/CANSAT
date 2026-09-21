@@ -104,8 +104,8 @@ def lluvia(bgr: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, dict]
     brillo = rng.integers(200, 256, n)
     ang = np.deg2rad(LLUVIA_ANGULO)
     for i in range(n):
-        dx = int(round(float(largo[i]) * np.sin(ang)))
-        dy = int(round(float(largo[i]) * np.cos(ang)))
+        dx = round(float(largo[i]) * np.sin(ang))
+        dy = round(float(largo[i]) * np.cos(ang))
         color = (float(brillo[i]),) * 3
         cv2.line(capa, (int(x0[i]), int(y0[i])),
                  (int(x0[i]) + dx, int(y0[i]) + dy), color, 1, cv2.LINE_AA)
@@ -175,7 +175,7 @@ def escala(
     """
     h, w = bgr.shape[:2]
     f = float(rng.uniform(*ESCALA_RANGO))
-    pw, ph = max(1, int(round(w * f))), max(1, int(round(h * f)))
+    pw, ph = max(1, round(w * f)), max(1, round(h * f))
     chico = cv2.resize(bgr, (pw, ph), interpolation=cv2.INTER_AREA)
     out = cv2.resize(chico, (w, h), interpolation=cv2.INTER_LINEAR)
 

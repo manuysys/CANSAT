@@ -117,7 +117,7 @@ def buffer_mask(mask: np.ndarray, radio_px: float) -> np.ndarray:
     diagonal = float(np.hypot(h, w))
     if radio_px >= diagonal:
         return np.ones_like(m)
-    r = max(1, int(round(radio_px)))
+    r = max(1, round(radio_px))
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
     return cv2.dilate(m, k)
 

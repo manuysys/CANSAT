@@ -467,7 +467,7 @@ class DatosMision:
 
     def personas(self, src: str) -> int:
         v = _flotante(self.fila(src).get("people"))
-        return int(round(v)) if v is not None else 0
+        return round(v) if v is not None else 0
 
     def tiene_detecciones(self) -> bool:
         return bool(self._detecciones)
@@ -622,9 +622,9 @@ def ejecutar(spec: dict, datos: DatosMision,
                     continue
                 rm = MK.mascara_poligono(shape, rp)
                 puntos = [(x, y) for x, y in puntos
-                          if 0 <= int(round(y)) < shape[0]
-                          and 0 <= int(round(x)) < shape[1]
-                          and rm[int(round(y)), int(round(x))] == 1]
+                          if 0 <= round(y) < shape[0]
+                          and 0 <= round(x) < shape[1]
+                          and rm[round(y), round(x)] == 1]
 
             if op == "personas":
                 acum["personas"] += len(puntos)
@@ -638,9 +638,9 @@ def ejecutar(spec: dict, datos: DatosMision,
                     continue
                 buf = MK.buffer_mask(ref, (spec.get("buffer_m") or 0.0) / esc)
                 dentro = [(x, y) for x, y in puntos
-                          if 0 <= int(round(y)) < shape[0]
-                          and 0 <= int(round(x)) < shape[1]
-                          and buf[int(round(y)), int(round(x))] == 1]
+                          if 0 <= round(y) < shape[0]
+                          and 0 <= round(x) < shape[1]
+                          and buf[round(y), round(x)] == 1]
                 acum["personas"] += len(dentro)
                 entrada.update(
                     valor=len(dentro), unidad="personas",
@@ -650,10 +650,10 @@ def ejecutar(spec: dict, datos: DatosMision,
                 if not puntos:
                     continue
                 d = MK.distancia_a(ref)
-                vals = [float(d[int(round(y)), int(round(x))])
+                vals = [float(d[round(y), round(x)])
                         for x, y in puntos
-                        if 0 <= int(round(y)) < shape[0]
-                        and 0 <= int(round(x)) < shape[1]]
+                        if 0 <= round(y) < shape[0]
+                        and 0 <= round(x) < shape[1]]
                 vals = [v for v in vals if math.isfinite(v)]
                 if not vals:
                     continue
