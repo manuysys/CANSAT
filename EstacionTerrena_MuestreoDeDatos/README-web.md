@@ -93,7 +93,7 @@ sin error; sin `telemetry.csv` la app queda en estados vacíos con el dot ámbar
 | `GET /api/mission` | CSV parseado + `summary.json` + mapa de archivos por frame |
 | `GET /api/frame/<src>` | Una fila + rutas de imágenes disponibles |
 | `GET /api/samples` | Campos por frame del JSONL que **no** están en el CSV (incertidumbre, `ms_seg/ms_dmg/ms_total`, `nodata_pct`) + agregados del panel de Muestreo |
-| `GET /api/consulta?q=…&poly=…` | **Consulta Terrestre**: consultas simbólicas sobre las máscaras de clase (área, conteo con buffer, fracción de longitud, distancia, personas). `poly` es un polígono `[[lon,lat],…]` opcional |
+| `GET /api/consulta?q=…&poly=…` | **Consulta Terrestre**: consultas simbólicas sobre las máscaras de clase (área, conteo con buffer, fracción de longitud, distancia, existencia y personas con posición desde `telemetry.jsonl`). `poly` es un polígono `[[lon,lat],…]` opcional |
 | `GET /api/events` | **SSE**: push al instante cuando cambian `telemetry.csv` o `summary.json` (el polling de 3 s queda de red) |
 | `GET /api/summary` · `GET /api/health` | contrato crudo · estado del servidor |
 | `GET /img/<relpath>` | Proxy de imágenes sin caché (vuelos live) |
@@ -109,7 +109,10 @@ con el venv de `../cansat_seg_poc` o el intérprete actual. `--flight-root` y
 `--consulta-python` permiten apuntar a otra copia. Si no hay
 `entrega/masks/*.png` (post-vuelo sin `--no-masks`), las consultas que dependen
 de máscaras responden "consulta no soportada" con sugerencias; el resto de la
-estación funciona igual.
+estación funciona igual. Las consultas de **personas con posición** usan las
+detecciones de `outputs/mission/telemetry.jsonl` (tipo + `xyxy` por frame); sin
+ese archivo el conteo cae al total por frame del CSV y las consultas de
+distancia/zona se rechazan con motivo.
 
 ---
 
@@ -136,7 +139,7 @@ node tools/smoke-v4.mjs
 node tools/smoke.mjs
 ```
 
-`smoke-v4.mjs` verifica (**54 aserciones**, cero errores de consola): tour una sola
+`smoke-v4.mjs` verifica (**56 aserciones**, cero errores de consola): tour una sola
 vez y reabrible, resumen narrativo, mismo detalle desde corredor/tabla/alertas/
 curva/galería, tabs de imagen degradadas, teclado (`↑↓ A / Enter Esc 1-2-3`),
 export CSV del filtro, vistas Post-vuelo e Informe con firmas, modo presentación

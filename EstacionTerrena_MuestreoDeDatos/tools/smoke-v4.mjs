@@ -143,6 +143,15 @@ const rHay = await page.evaluate(async () =>
   (await fetch('/api/consulta?q=' + encodeURIComponent('¿hay agua en la zona?'))).json());
 check(rHay.soportada === true && rHay.operacion === 'exists',
   'consulta de existencia soportada (¿hay agua?)');
+const rPersonas = await page.evaluate(async () =>
+  (await fetch('/api/consulta?q=' + encodeURIComponent('¿cuántas personas hay a menos de 200 m de una vía?'))).json());
+check(rPersonas.soportada === true && rPersonas.operacion === 'count_personas',
+  `consulta de personas con posición soportada (${rPersonas.total} personas)`);
+const rDist = await page.evaluate(async () =>
+  (await fetch('/api/consulta?q=' + encodeURIComponent('distancia entre personas y agua'))).json());
+check(rDist.soportada === true && rDist.operacion === 'dist_personas'
+  && rDist.total?.n_personas >= 0,
+  `distancia personas-agua con posiciones (mín ${rDist.total?.min_m} m)`);
 await page.getByText('Consulta terrestre').scrollIntoViewIfNeeded();
 await page.locator('[data-testid="consulta-chip"]').first().click();
 await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 }).catch(() => {});

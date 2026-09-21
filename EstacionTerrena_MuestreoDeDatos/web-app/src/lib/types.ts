@@ -140,6 +140,8 @@ export interface ConsultaFrame {
   lon?: number | null
   /* Polígonos [ [ [lon, lat], … ], … ] del resultado en ese frame. */
   poligonos?: number[][][]
+  /* Posiciones de personas [[lon, lat], …] (punto de apoyo del bbox). */
+  personas_geo?: number[][]
   areas_m2?: Array<number | undefined>
 }
 
@@ -165,5 +167,7 @@ export interface ConsultaResult {
   georref?: string | null
   limitaciones?: string[]
   region_declarada?: boolean
+  fuente_personas?: string
+  nota_personas?: string
   error?: string
 }

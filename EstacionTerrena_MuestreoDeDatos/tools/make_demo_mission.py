@@ -11,15 +11,22 @@ tools/make_demo_mission.py — Generador de MISIÓN DE DEMOSTRACIÓN (LB135)
 Genera un conjunto de artefactos *sintéticos pero coherentes* que respetan el
 contrato de datos del proyecto:
 
-    outputs/mission/telemetry.csv          1 fila por frame (28 columnas: 23 + 5 DPD)
+    outputs/mission/telemetry.csv          1 fila por frame (34 columnas: 23 base
+                                           + 11 extensiones DPD/F3/estrés/v3)
+    outputs/mission/telemetry.jsonl        por frame: detecciones (personas y
+                                           vehículos con xyxy) e incertidumbre
     outputs/mission/vis/<src>_evid.jpg     frame anotado (overlay + cajas + HUD)
     outputs/mission/high_res/<src>.jpg
     outputs/mission/full_res/<src>.jpg
     outputs/mission/thumb/<src>.jpg
-    outputs/corridor_map.jpg               corredor apilado (tira horizontal)
-    entrega/summary.json                   contrato de post-vuelo
+    outputs/corridor_map.jpg               corredor apilado (imagen HORIZONTAL;
+                                           la vista Corredor de la UI dibuja su
+                                           propio perfil vertical aparte)
+    entrega/summary.json                   contrato de post-vuelo (v3)
     entrega/ens_seg/<src>_b5.png           solo para un subconjunto (degradación)
     entrega/enhanced/<src>_edsr.jpg        solo para un subconjunto (degradación)
+    entrega/masks/<src>_<fuente>.png       máscaras de clase (consulta terrestre):
+                                           terreno/dano2/flood/vias
 
 Cómo se construye la coherencia (importante para que la demo "tenga sentido"):
   1. Se dibuja un MUNDO aéreo de 2000×1500 px con: zona rural sana, río, lago,
@@ -712,6 +719,15 @@ def main(argv=None) -> int:
         alert = 1 if (diag in (INUND_SEV, SISMO) or danado >= 50) else 0
 
         people, vehs = detections(rng, pct, HIGH)
+        # Consulta Terrestre v2: posiciones en píxeles del frame NATIVO. Las
+        # máscaras se guardan a FULL, así que las cajas HIGH se escalan.
+        esc_full = FULL[0] / HIGH[0]
+        dets_full = (
+            [{"tipo": "persona",
+              "xyxy": [round(v * esc_full, 1) for v in b]} for b in people]
+            + [{"tipo": "vehiculo",
+                "xyxy": [round(v * esc_full, 1) for v in b]} for b in vehs]
+        )
         mix = class_mix(pct)
         pri, score = sample_priority(danado, diag, alert, sharp, len(people), usi, mix, rng)
 
@@ -775,6 +791,7 @@ def main(argv=None) -> int:
             # internos (no van al CSV)
             "_expuestas": round(expuestas, 1),
             "_cls_res": cls_high,
+            "_dets": dets_full,
         }
 
         # ── Archivos del frame ──
@@ -853,6 +870,7 @@ def main(argv=None) -> int:
                             + rng.uniform(-0.03, 0.06)), 3)
             fh.write(json.dumps({
                 "src": r["src"], "uncert": unc,
+                "detecciones": r.get("_dets", []),
                 "ms_seg": int(160 + rng.uniform(-20, 60)),
                 "ms_dmg": int(40 + rng.uniform(-10, 30)),
                 "ms_total": int(230 + rng.uniform(-30, 90)),

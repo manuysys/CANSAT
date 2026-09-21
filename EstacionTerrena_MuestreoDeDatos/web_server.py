@@ -612,7 +612,10 @@ def run_consulta(q: str, region: list | None = None) -> dict:
 
     cmd = [_consulta_python(), str(script), "--q", q, "--json",
            "--masks", str(ENTREGA_DIR / "masks"),
-           "--telemetry", str(TELEMETRY_CSV)]
+           "--telemetry", str(TELEMETRY_CSV),
+           # Detecciones con posición (Consulta v2). Si no existe, el motor
+           # cae al conteo por frame de la telemetría y lo declara.
+           "--jsonl", str(TELEMETRY_JSONL)]
     if region:
         cmd += ["--region", json.dumps(region, ensure_ascii=False)]
     try:
@@ -914,6 +917,7 @@ class GroundStationHandler(BaseHTTPRequestHandler):
                 "telemetry_exists": TELEMETRY_CSV.is_file(),
                 "summary_exists": SUMMARY_JSON.is_file(),
                 "masks_exists": (ENTREGA_DIR / "masks").is_dir(),
+                "detections_exists": TELEMETRY_JSONL.is_file(),
             })
             return
 

@@ -20,6 +20,8 @@ const SUGERENCIAS = [
   'distancia entre edificios y agua',
   '¿cuántas personas hay en la zona?',
   '¿hay agua en la zona?',
+  '¿cuántas personas hay a menos de 200 m de una vía?',
+  'distancia entre personas y agua',
 ]
 
 function totalTexto(c: ConsultaResult | null): string {
@@ -113,12 +115,12 @@ export function Consulta() {
           </form>
 
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {SUGERENCIAS.map((s, i) => (
+            {SUGERENCIAS.map(s => (
               <button
                 key={s}
                 type="button"
                 onClick={() => void correr(s)}
-                data-testid={i === 0 ? 'consulta-chip' : undefined}
+                data-testid="consulta-chip"
                 className="rounded-md border border-border/50 bg-muted/10 px-2 py-0.5 text-left text-[10.5px] transition-colors hover:border-[#3ddc84]/60"
               >
                 {s}
@@ -192,6 +194,12 @@ export function Consulta() {
                       ? 'Zona georreferenciada de forma aproximada (FOV declarado, sin heading).'
                       : consulta.limitaciones?.[0]}
                   </p>
+                  {consulta.fuente_personas && (
+                    <p className="mt-1 text-[10px] text-muted-foreground/80">
+                      Personas: {consulta.fuente_personas}
+                      {consulta.nota_personas ? ` · ${consulta.nota_personas}` : ''}
+                    </p>
+                  )}
                 </>
               ) : (
                 <div>

@@ -71,6 +71,12 @@ await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 })
 await page.waitForTimeout(700);
 await page.screenshot({ path: `${OUT}/11_consulta_terrestre.png` });
 
+// consulta v2: personas con posición (puntos verdes sobre el mapa)
+await page.locator('[data-testid="consulta-chip"]').nth(6).click();
+await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 }).catch(() => {});
+await page.waitForTimeout(700);
+await page.screenshot({ path: `${OUT}/12_consulta_personas.png` });
+
 // detalle de frame con contrato v3 (badge de tipo, colapso con fuente, modelos)
 await page.locator('[data-card-src="cap_0006"]').click();
 await page.waitForTimeout(800);

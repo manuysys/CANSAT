@@ -51,6 +51,13 @@ export function MapOffline() {
     return fr?.poligonos ?? []
   }, [consulta, selected])
 
+  /* Posiciones de personas del resultado (punto de apoyo del bbox). */
+  const personasResultado = useMemo(() => {
+    if (!consulta?.soportada || !selected) return []
+    const fr = consulta.por_frame?.find(f => f.src === selected)
+    return fr?.personas_geo ?? []
+  }, [consulta, selected])
+
   const geo = useMemo(() => {
     if (puntos.length < 2) return null
     const latMin = Math.min(...puntos.map(p => p.lat))
@@ -232,6 +239,20 @@ export function MapOffline() {
                   pointerEvents="none"
                 />
               ))}
+              {personasResultado.map(([lon, lat], i) => (
+                <circle
+                  key={`pp${i}`}
+                  cx={geo.px(lon)}
+                  cy={geo.py(lat)}
+                  r={3.5}
+                  fill="#3ddc84"
+                  stroke="#0b1017"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                >
+                  <title>{`persona ${i + 1} · ${lat.toFixed(5)}, ${lon.toFixed(5)}`}</title>
+                </circle>
+              ))}
             </svg>
           </div>
         </div>
@@ -239,8 +260,8 @@ export function MapOffline() {
           Basemap offline (tiles locales z{Z_MIN}-{Z_MAX} · © OpenStreetMap) ·
           arriba = norte · el punto es la posición de cada frame, en rojo las
           alertas · click abre ese frame · con «Dibujar zona» el click agrega
-          vértices y los polígonos ámbar son el resultado de la consulta del
-          frame seleccionado.
+          vértices; los polígonos ámbar son el resultado de la consulta del
+          frame seleccionado y los puntos verdes, las personas detectadas.
         </p>
       </Card>
     </motion.div>
