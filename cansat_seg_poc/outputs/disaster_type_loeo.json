@@ -1,5 +1,5 @@
 {
-  "media_ponderada": 0.3681,
+  "media_ponderada": 0.3302,
   "eventos": [
     {
       "evento": "crasar:Champlain",
@@ -11,7 +11,7 @@
     {
       "evento": "crasar:Cocodrie",
       "n_test": 63,
-      "acc": 0.5556,
+      "acc": 0.7778,
       "clase_dominante": "huracan",
       "pred_mayoria": "huracan"
     },
@@ -25,42 +25,42 @@
     {
       "evento": "crasar:Steinhatchee",
       "n_test": 38,
-      "acc": 0.1316,
+      "acc": 0.0789,
       "clase_dominante": "huracan",
       "pred_mayoria": "incendio"
     },
     {
       "evento": "kate_pd:turkiye",
       "n_test": 675,
-      "acc": 0.1081,
+      "acc": 0.0711,
       "clase_dominante": "sismo",
       "pred_mayoria": "huracan"
     },
     {
       "evento": "rescuenet:huracan",
       "n_test": 938,
-      "acc": 0.3539,
+      "acc": 0.3102,
       "clase_dominante": "huracan",
       "pred_mayoria": "incendio"
     },
     {
       "evento": "xbd:hurricane-florence",
       "n_test": 44,
-      "acc": 0.3409,
+      "acc": 0.1591,
       "clase_dominante": "huracan",
       "pred_mayoria": "volcan"
     },
     {
       "evento": "xbd:hurricane-harvey",
       "n_test": 37,
-      "acc": 0.1622,
+      "acc": 0.0811,
       "clase_dominante": "huracan",
       "pred_mayoria": "tornado"
     },
     {
       "evento": "xbd:hurricane-matthew",
       "n_test": 30,
-      "acc": 0.0667,
+      "acc": 0.1,
       "clase_dominante": "huracan",
       "pred_mayoria": "incendio"
     },
@@ -74,70 +74,70 @@
     {
       "evento": "xbd:joplin-tornado",
       "n_test": 148,
-      "acc": 0.3243,
+      "acc": 0.3784,
       "clase_dominante": "tornado",
       "pred_mayoria": "huracan"
     },
     {
       "evento": "xbd:lower-puna-volcano",
       "n_test": 183,
-      "acc": 0.0492,
+      "acc": 0.071,
       "clase_dominante": "volcan",
       "pred_mayoria": "inundacion"
     },
     {
       "evento": "xbd:mexico-earthquake",
       "n_test": 121,
-      "acc": 0.0413,
+      "acc": 0.0165,
       "clase_dominante": "sismo",
       "pred_mayoria": "inundacion"
     },
     {
       "evento": "xbd:midwest-flooding",
       "n_test": 244,
-      "acc": 0.2213,
+      "acc": 0.2828,
       "clase_dominante": "inundacion",
       "pred_mayoria": "tornado"
     },
     {
       "evento": "xbd:moore-tornado",
       "n_test": 222,
-      "acc": 0.7703,
+      "acc": 0.8514,
       "clase_dominante": "tornado",
       "pred_mayoria": "tornado"
     },
     {
       "evento": "xbd:nepal-flooding",
       "n_test": 576,
-      "acc": 0.8351,
+      "acc": 0.4653,
       "clase_dominante": "inundacion",
       "pred_mayoria": "inundacion"
     },
     {
       "evento": "xbd:palu-tsunami",
       "n_test": 111,
-      "acc": 0.1712,
+      "acc": 0.3063,
       "clase_dominante": "inundacion",
       "pred_mayoria": "incendio"
     },
     {
       "evento": "xbd:pinery-bushfire",
       "n_test": 193,
-      "acc": 0.3057,
+      "acc": 0.2124,
       "clase_dominante": "incendio",
-      "pred_mayoria": "incendio"
+      "pred_mayoria": "huracan"
     },
     {
       "evento": "xbd:portugal-wildfire",
       "n_test": 446,
-      "acc": 0.1861,
+      "acc": 0.2175,
       "clase_dominante": "incendio",
       "pred_mayoria": "huracan"
     },
     {
       "evento": "xbd:santa-rosa-wildfire",
       "n_test": 94,
-      "acc": 0.4787,
+      "acc": 0.7021,
       "clase_dominante": "incendio",
       "pred_mayoria": "incendio"
     },
@@ -151,14 +151,14 @@
     {
       "evento": "xbd:sunda-tsunami",
       "n_test": 105,
-      "acc": 0.219,
+      "acc": 0.2095,
       "clase_dominante": "inundacion",
       "pred_mayoria": "sismo"
     },
     {
       "evento": "xbd:tuscaloosa-tornado",
       "n_test": 288,
-      "acc": 0.25,
+      "acc": 0.2847,
       "clase_dominante": "tornado",
       "pred_mayoria": "inundacion"
     },

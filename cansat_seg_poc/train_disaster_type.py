@@ -170,19 +170,17 @@ def _entrenar_fold(train, test, args, device, epochs=6):
     correct = total = 0
     preds: collections.Counter = collections.Counter()
     reales: collections.Counter = collections.Counter()
-    idx_fuego = CLASES.index("incendio")
-    filas_probs: list[tuple[int, float]] = []  # (y, p_incendio)
+    filas_probs: list[tuple[int, list[float]]] = []  # (y, probs de las 7 clases)
     with torch.no_grad():
         for x, y in te_dl:
             pr = torch.softmax(model(x.to(device)), dim=1).cpu()
             p = pr.argmax(1)
             correct += int((p == y).sum())
             total += len(y)
-            for pi, yi, pf in zip(p.tolist(), y.tolist(),
-                                  pr[:, idx_fuego].tolist(), strict=True):
+            for pi, yi, probs in zip(p.tolist(), y.tolist(), pr.tolist(), strict=True):
                 preds[CLASES[pi]] += 1
                 reales[CLASES[yi]] += 1
-                filas_probs.append((yi, pf))
+                filas_probs.append((yi, probs))
     return correct / max(1, total), preds, reales, filas_probs
 
 
@@ -198,8 +196,10 @@ def loeo(args) -> int:
     eventos = sorted({e for _p, _c, e in filas})
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"LOEO: {len(eventos)} eventos, {len(filas)} muestras")
+    idx_fuego = CLASES.index("incendio")
     res: list[dict] = []
     filas_csv: list[tuple[str, int, float]] = []
+    filas_todas: list[tuple[str, int, list[float]]] = []
     for ev in eventos:
         test = [(p, c) for p, c, e in filas if e == ev]
         train = [(p, c) for p, c, e in filas if e != ev]
@@ -207,8 +207,10 @@ def loeo(args) -> int:
             print(f"[skip] {ev}: test {len(test)} / train {len(train)}")
             continue
         acc, preds, reales, probs = _entrenar_fold(train, test, args, device)
-        for yi, pf in probs:
-            filas_csv.append((ev, 1 if CLASES[yi] == "incendio" else 0, pf))
+        for yi, vector in probs:
+            p_fuego = vector[idx_fuego]
+            filas_csv.append((ev, 1 if CLASES[yi] == "incendio" else 0, p_fuego))
+            filas_todas.append((ev, yi, vector))
         dom = max(reales, key=reales.get)
         pmay = max(preds, key=preds.get)
         res.append({"evento": ev, "n_test": len(test), "acc": round(acc, 4),
@@ -233,6 +235,15 @@ def loeo(args) -> int:
                 for ev, es, pf in filas_csv:
                     wcsv.writerow([ev, es, f"{pf:.6f}"])
             print(f"[OK] {args.guardar_probs} ({len(filas_csv)} tiles)")
+        if args.probs_todas and filas_todas:
+            import csv as _csv
+            with Path(args.probs_todas).open("w", newline="",
+                                             encoding="utf-8") as fh:
+                wcsv = _csv.writer(fh)
+                wcsv.writerow(["evento", "y"] + [f"p_{c}" for c in CLASES])
+                for ev, yi, vector in filas_todas:
+                    wcsv.writerow([ev, yi] + [f"{v:.6f}" for v in vector])
+            print(f"[OK] {args.probs_todas} ({len(filas_todas)} tiles)")
     return 0
 
 
@@ -246,6 +257,10 @@ def main() -> int:
                     help="con --loeo: CSV (evento,es_incendio,p_incendio) por "
                          "tile para calibrar el umbral conformal "
                          "(cansat/conformal.py)")
+    ap.add_argument("--probs-todas", default=None,
+                    help="con --loeo: CSV (evento,y,p_<clase>...) con las 7 "
+                         "probabilidades por tile, para ECE/temperatura y sets "
+                         "adaptativos (cansat/calibracion.py)")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--size", type=int, default=224)
     ap.add_argument("--lr", type=float, default=3e-4)

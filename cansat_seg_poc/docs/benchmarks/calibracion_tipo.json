@@ -1,0 +1,88 @@
+{
+  "n_total": 5121,
+  "n_eventos": 24,
+  "eventos_calibracion": [
+    "crasar:Champlain",
+    "crasar:MussettBayouFire",
+    "kate_pd:turkiye",
+    "xbd:hurricane-florence",
+    "xbd:hurricane-matthew",
+    "xbd:joplin-tornado",
+    "xbd:mexico-earthquake",
+    "xbd:moore-tornado",
+    "xbd:palu-tsunami",
+    "xbd:portugal-wildfire",
+    "xbd:socal-fire",
+    "xbd:tuscaloosa-tornado"
+  ],
+  "eventos_evaluacion": [
+    "crasar:Cocodrie",
+    "crasar:Steinhatchee",
+    "rescuenet:huracan",
+    "xbd:hurricane-harvey",
+    "xbd:hurricane-michael",
+    "xbd:lower-puna-volcano",
+    "xbd:midwest-flooding",
+    "xbd:nepal-flooding",
+    "xbd:pinery-bushfire",
+    "xbd:santa-rosa-wildfire",
+    "xbd:sunda-tsunami",
+    "xbd:woolsey-fire"
+  ],
+  "temperatura_global": 13.107,
+  "ece_evaluacion_antes": 0.4726,
+  "ece_evaluacion_despues": 0.1228,
+  "nll_evaluacion_antes": 3.3888,
+  "nll_evaluacion_despues": 1.6551,
+  "mejora_ece": 0.3497,
+  "por_dominio": {
+    "crasar": {
+      "n_calibracion": 175,
+      "temperatura": 20.0,
+      "nll_antes": 12.2023,
+      "nll_despues": 2.1621,
+      "n_evaluacion": 101,
+      "ece_antes": 0.8988,
+      "ece_despues": 0.2032
+    },
+    "kate_pd": {
+      "n_calibracion": 675,
+      "temperatura": 20.0,
+      "nll_antes": 10.465,
+      "nll_despues": 2.1176
+    },
+    "xbd": {
+      "n_calibracion": 1589,
+      "temperatura": 5.629,
+      "nll_antes": 3.564,
+      "nll_despues": 1.5039,
+      "n_evaluacion": 1643,
+      "ece_antes": 0.4638,
+      "ece_despues": 0.0526
+    }
+  },
+  "aps": {
+    "alpha_0.01": {
+      "tau": 1.0,
+      "cobertura_evaluacion": 1.0,
+      "set_promedio": 7.0,
+      "n_evaluacion": 2682
+    },
+    "alpha_0.05": {
+      "tau": 1.0,
+      "cobertura_evaluacion": 1.0,
+      "set_promedio": 7.0,
+      "n_evaluacion": 2682
+    },
+    "alpha_0.1": {
+      "tau": 1.0,
+      "cobertura_evaluacion": 0.9996,
+      "set_promedio": 6.845,
+      "n_evaluacion": 2682
+    }
+  },
+  "nota": "T se ajusta sobre eventos de calibración y se evalúa en eventos held-out (el CSV ya es LOEO). APS: cobertura y tamaño MEDIDOS. Si mejora_ece ≤ 0 la temperatura no aporta y no se adopta.",
+  "generado": "2026-09-21T21:06:20.827778+00:00",
+  "script": "cansat/calibracion.py",
+  "fuente": "outputs\\loeo_probs_todas.csv"
+}

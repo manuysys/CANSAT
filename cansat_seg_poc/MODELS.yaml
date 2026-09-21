@@ -417,7 +417,9 @@ vuelo:
       xBD Tier 3: 1 200 tiles de incendio / 3 921 de calibración): con el
       dataset ampliado SÍ hay punto de operación válido — FPR<=5% → recall
       0.291 (τ=0.990); FPR<=10% → recall 0.347 (τ=0.894); FPR<=20% → recall
-      0.471 (τ=0.330). Antes (15 eventos) no existía umbral útil (recall 0.000
+      0.471 (τ=0.330). Re-run 2026-09-21 (mismo protocolo): FPR<=5% → recall
+      0.260 con τ=0.998; la diferencia es varianza run-to-run, no cambio de
+      método. Antes (15 eventos) no existía umbral útil (recall 0.000
       con FPR<=5%): la mejora viene de los 3 incendios nuevos. Umbral sugerido:
       0.99 para campaña (precisión alta) o 0.33 si se prioriza recall. El
       incendio además se confirma con el modelo MEDIDO
@@ -430,6 +432,16 @@ vuelo:
     metricas:
       acc_val: 0.989
       loeo_media_ponderada: 0.3681
+      loeo_rerun_2026_09_21: 0.330
+      loeo_varianza_run_to_run: "±0.04 aprox: mismo protocolo y semilla, la
+                                 corrida 2026-09-21 dio 0.330 vs 0.3681 previo
+                                 (no-determinismo de GPU). Cualquier comparación
+                                 contra este baseline tiene que declarar esa banda."
+      calibracion_ece: "0.473 → 0.123 con temperature scaling (T=13.1 global,
+                        xbd 5.63); NLL 3.39 → 1.66. La temperatura es MONÓTONA
+                        sobre p_incendio: la política conformal no cambia
+                        (mismo recall/FPR, solo τ 0.998 → 0.690). JSON:
+                        docs/benchmarks/calibracion_tipo.json"
       loeo_eventos: "24 (leave-one-event-out, 6 épocas por fold, 5 121 tiles)"
       caveat: "⚠ El acc_val es con split ALEATORIO (fuga de evento); la métrica
                honesta es LOEO: 0.3681 ponderada, subió de 0.248 al sumar xBD

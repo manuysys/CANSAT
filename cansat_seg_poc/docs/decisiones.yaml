@@ -273,7 +273,10 @@ decisiones:
       con atención gatada) probado contra el clasificador por tile con el MISMO
       LOEO (24 eventos, seed 42): media ponderada de accuracy por bolsa 0.3277
       vs 0.3681 del baseline por tile. NO lo supera: se documenta como técnica
-      que no funcionó y el clasificador por tile queda. Caveat registrado: la
+      que no funcionó y el clasificador por tile queda. Re-run del baseline el
+      2026-09-21: 0.330 (varianza run-to-run ±0.04 por no-determinismo de GPU),
+      así que MIL 0.3277 queda DENTRO de la banda del baseline: tampoco gana con
+      la referencia más nueva. Caveat registrado: la
       métrica de bolsa (accuracy por bolsa, ponderada por bolsas) no es idéntica
       a la de tile (ponderada por tiles); 6 épocas y K=8 con eventos chicos de
       alta varianza. JSON: outputs/mil_loeo.json. Per-eventos donde sí gana:
@@ -327,6 +330,25 @@ limitaciones:
       sale como "suelo expuesto". Tampoco hay un veredicto propio para agua;
       cae en ZONA SALUDABLE, que es discutible y conviene revisar si el jurado
       lo pregunta.
+
+  - id: calibracion-tipo
+    estado: vigente
+    texto: |
+      Calibración del clasificador de tipo (cansat/calibracion.py sobre el LOEO
+      con las 7 probabilidades por tile, `--probs-todas`). ECE de evaluación
+      0.473 → 0.123 con temperature scaling (T=13.1 global; por dominio xbd
+      5.63, crasar y kate_pd saturan el techo del grid), NLL 3.39 → 1.66: las
+      probabilidades crudas están muy sobre-confiadas (accuracy LOEO 0.33 con
+      confianza ~0.9). HALLAZGO: para la política de incendio (score binario
+      p_incendio) la temperatura es MONÓTONA, así que NO cambia la decisión:
+      τ pasa de 0.998 a 0.690 pero el conjunto aceptado es idéntico (recall
+      0.260 y FPR 5.0 % en ambos). Mejora las confianzas que se muestran, no la
+      política validada; por eso no se cablea al vuelo. Los sets adaptativos
+      (APS) con este clasificador dan set medio = 7 (todas las clases): la
+      cobertura se cumple trivialmente y confirman que el cuello es la accuracy
+      del tipo, no la calibración. Evidencia:
+      docs/benchmarks/calibracion_tipo.json. Baseline LOEO re-medido en la
+      misma corrida: 0.330 (ver `mil-tipo-desastre`).
 
   - id: ood-drift
     estado: vigente

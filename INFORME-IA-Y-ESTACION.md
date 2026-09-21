@@ -337,7 +337,7 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **330 pasan** en local; en CI: 316 + 2 skip (torch) + 1 deselected (equivalencia cv2/ORT, necesita el ONNX de vuelo) |
+| Tests de vuelo (`pytest`) | **365 pasan** en local; en CI: 347 + 3 skip (torch) + 1 deselected (equivalencia cv2/ORT, necesita el ONNX de vuelo) |
 | Lint (`ruff check .`) | verde |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
@@ -365,6 +365,7 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `06_severidad_gt_vs_pred.png` | tile UAV \| GT de severidad (menor/mayor/destruido) \| predicción |
 | `07_consulta_terrestre.png` | panel de Consulta Terrestre con resultado y badge `consulta_espacial` sobre el mapa (contrato v3) |
 | `08_consulta_personas.png` | consulta v2 con personas y posiciones (punto de apoyo del bbox) |
+| `09_ood_drift.png` | badge "fuera de distribución" (OOD/drift contra la referencia de LoveDA Val) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -388,6 +389,7 @@ Otras evidencias ya existentes en `cansat_seg_poc/`:
 | `10_mapa_offline.png` | trayectoria GPS sobre el basemap offline |
 | `11_consulta_terrestre.png` | consulta terrestre resuelta con badge `consulta_espacial` |
 | `12_consulta_personas.png` | consulta de personas por posición (v2) |
+| `13_ood_drift.png` | frame marcado fuera de la referencia de entrenamiento (OOD) |
 
 Para regenerarlas: `python tools/generate_evidence.py` (IA) y
 `node tools/shots-r4.mjs` con el servidor arriba (estación).
