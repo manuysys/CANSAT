@@ -11,7 +11,7 @@ Generado: 2026-09-21 por `generate_report.py`.
 - DeepLabV3+ MobileNetV2 (output stride 8, ASPP, decoder stride-4), 5 clases.
 - Clases: vegetation, building, water, bare_ground, other.
 - Entrada: `[1, 3, 320, 320]`.
-- ONNX: `outputs\cansat_seg_terrain_v2.onnx` (51.0 MB).
+- ONNX: `C:\Users\manuy\PROYECTOS_Y_ESTUDIOS\CANSAT\cansat_seg_poc\outputs\cansat_seg_terrain_v2.onnx` (51.0 MB).
 - Precisión de vuelo: **FP32**.
 
 > FP32 confirmado por medición: los `*_int8.onnx` existentes son cuantización

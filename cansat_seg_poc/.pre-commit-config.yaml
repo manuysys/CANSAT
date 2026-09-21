@@ -22,6 +22,18 @@ repos:
       - id: debug-statements       # breakpoint() / pdb olvidados
       - id: check-case-conflict
 
+  - repo: local
+    hooks:
+      # El "informe al día" se verifica ACÁ y no en CI: depende de outputs/ y
+      # entrega/ (no versionados) y del mtime local. Si cambia una decisión o
+      # una métrica, el hook regenera y compara.
+      - id: generate-report-check
+        name: informe de pruebas al día (generate_report --check)
+        entry: python cansat_seg_poc/generate_report.py --check
+        language: system
+        pass_filenames: false
+        files: ^cansat_seg_poc/(docs/decisiones\.yaml|docs/reporte_pruebas\.md|MODELS\.yaml|outputs/metrics/.*\.json)$
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Misma versión que el CI (.github/workflows/ci.yml) y que el ruff local:
     # antes estaba en v0.5.7 y el CI instalaba la última, así que el pre-commit

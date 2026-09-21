@@ -4,7 +4,7 @@
 #  ⚠ Este workflow estaba en `cansat_seg_poc/.github/` y GitHub NUNCA lo corría:
 #  los workflows tienen que estar en `.github/workflows/` de la RAÍZ del repo.
 #  Ahora corre:
-#    · vuelo    — lint + compileall + tests + imports + informe al día
+#    · vuelo    — lint + compileall + tests + imports + generador del informe
 #    · vuelo-deps — que las dependencias de vuelo resuelvan sin torch
 #    · estacion — build del frontend React de la estación + py_compile
 #  NO corre entrenamiento, GPU ni datasets.
@@ -62,8 +62,17 @@ jobs:
         run: |
           python -c "from cansat import indices, metrics, nodata, onnxio, checkpoints, protocol, summary, paths, seed, preprocess, crf, xbd, casualties, masks, consultas; print('cansat importa')"
 
-      - name: El informe está al día
-        run: python generate_report.py --check
+      # El --check estricto es LOCAL (pre-commit): necesita outputs/ y entrega/,
+      # que no se versionan. En CI solo se valida que el generador corra.
+      - name: El generador del informe corre
+        run: |
+          if ! python generate_report.py --out /tmp/reporte_ci.md > reporte.log 2>&1; then
+            tail -n 30 reporte.log
+            detalle=$(tail -n 20 reporte.log | tr '\n' ' ' | sed 's/%/%25/g' | head -c 900)
+            echo "::error title=generate_report.py falló::$detalle"
+            exit 1
+          fi
+          echo "generador OK (la comparación --check es local: requiere outputs/ y entrega/)"
 
   vuelo-deps:
     name: Vuelo — dependencias (smoke)

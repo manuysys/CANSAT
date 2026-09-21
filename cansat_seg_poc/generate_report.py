@@ -29,7 +29,10 @@ el informe dice **que falta** en vez de inventar un número.
 
 Uso:
     python generate_report.py
-    python generate_report.py --check      # no escribe; avisa si el .md está viejo
+    python generate_report.py --check      # no escribe; avisa si el .md está
+                                           # viejo (LOCAL: requiere outputs/ y
+                                           # entrega/; en CI solo se valida que
+                                           # el generador corra)
 """
 from __future__ import annotations
 
@@ -47,8 +50,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cansat import indices as IDX
 from cansat import paths as PROJ
 
-OUT_MD = Path("docs/reporte_pruebas.md")
-DECISIONES_YAML = Path("docs/decisiones.yaml")
+# Absolutas desde la raíz del proyecto: antes eran relativas al CWD y el script
+# solo funcionaba corriendo desde cansat_seg_poc/ (el hook de pre-commit corre
+# desde la raíz del repo).
+OUT_MD = PROJ.DOCS / "reporte_pruebas.md"
+DECISIONES_YAML = PROJ.DOCS / "decisiones.yaml"
 
 
 # ══════════════════════════════════════════════════════════════════════ #
@@ -105,7 +111,9 @@ def section_modelo(L: list[str], dec: dict) -> None:
     if mv.get("entrada"):
         L.append(f"- Entrada: `{mv['entrada']}`.")
     if mv.get("onnx"):
-        p = Path(str(mv["onnx"]))
+        # Relativa a la RAÍZ del proyecto: si no, el resultado depende del CWD
+        # (corriendo desde la raíz el ONNX "no existía" y el informe cambiaba).
+        p = PROJ.p(str(mv["onnx"]))
         if p.is_file():
             L.append(f"- ONNX: `{p}` ({p.stat().st_size / 1e6:.1f} MB).")
         else:
