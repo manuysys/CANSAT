@@ -26,7 +26,10 @@ scipy>=1.10.0
 # ── Imagen ─────────────────────────────────────────────────────────────────
 # El flavour CONTRIB es obligatorio: cv2.dnn_superres (EDSR) y cv2.ximgproc
 # (guided filter del CRF-lite) NO están en opencv-python común.
-opencv-contrib-python>=4.8.0
+# ⚠ PIN <5 MEDIDO (2026-09-21): OpenCV 5.0.0 da logits absurdos en cv2.dnn con
+#   el ONNX de vuelo (acuerdo 0.01 vs ORT; con 4.13 es >0.99). Ver
+#   decisiones.yaml `opencv-5-dnn`.
+opencv-contrib-python>=4.8.0,<5
 
 # ── Descargas de datasets ──────────────────────────────────────────────────
 requests>=2.31.0

@@ -43,6 +43,9 @@ def _toy_onnx(path, size: int = 16) -> None:
     relu = helper.make_node("Relu", ["c"], ["logits"])
     graph = helper.make_graph([conv, relu], "toy", [inp], [out], [w])
     model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+    # `onnx` nuevo genera IR 14 por default y el ORT del CI (1.30) solo soporta
+    # hasta IR 13: sin fijarlo, quantize_static falla al recargar el modelo.
+    model.ir_version = 9
     onnx.save(model, str(path))
 
 

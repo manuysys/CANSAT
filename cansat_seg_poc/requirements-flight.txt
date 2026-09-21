@@ -39,7 +39,11 @@ numpy>=1.24.0
 #   CONTRIB por cv2.dnn_superres:
 #       pip install opencv-contrib-python-headless
 #   En su lugar reemplaza al de abajo (no instalar los dos).
-opencv-python-headless>=4.8.0; platform_machine != "armv6l"
+# ⚠ PIN <5 MEDIDO (2026-09-21): con OpenCV 5.0.0 el backend cv2.dnn devuelve
+#   logits absurdos (~1e14, argmax coincide 0.01 con ORT) sobre
+#   cansat_seg_terrain_v2.onnx; con 4.13 el acuerdo es >0.99. La Pi Zero v1 usa
+#   cv2.dnn, así que 5.x es un riesgo de vuelo. Ver decisiones.yaml `opencv-5-dnn`.
+opencv-python-headless>=4.8.0,<5; platform_machine != "armv6l"
 
 # Motor de inferencia principal de la PC y de las Pi de 64 bits.
 # En ARMv6 no hay wheels: cansat/onnxio.py usa cv2.dnn automáticamente.

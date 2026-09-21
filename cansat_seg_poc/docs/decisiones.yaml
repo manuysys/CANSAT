@@ -350,6 +350,18 @@ limitaciones:
       docs/benchmarks/earthvqa_parser.json y la muestra adjudicada a mano
       docs/benchmarks/earthvqa_parser_muestra_51.csv.
 
+  - id: opencv-5-dnn
+    texto: |
+      OpenCV 5.0.0 NO es confiable con el backend cv2.dnn del proyecto. Medido
+      el 2026-09-21 sobre cansat_seg_terrain_v2.onnx: logits absurdos (~1e14,
+      argmax coincide 0.01 con onnxruntime y diferencia máxima 5.8e14), mientras
+      que OpenCV 4.13 coincide >0.99. Como la Pi Zero v1 usa cv2.dnn (no hay
+      wheels de onnxruntime para ARMv6), requirements-flight.txt y
+      requirements.txt fijan opencv<5 y cansat/onnxio.py avisa al cargar el
+      backend con cv2>=5. El pin es requisito de vuelo, no estética; el test de
+      equivalencia entre backends queda marcado slow porque necesita el ONNX de
+      vuelo (no versionado).
+
   - id: pseudo-labels-descartado
     texto: |
       Regenerar pseudo-labels y re-destilar NO se persigue. Evidencia: la

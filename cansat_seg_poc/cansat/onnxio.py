@@ -27,6 +27,24 @@ def _name_score(logical: str, real: str) -> int:
     return 1 if ln in rn else 0
 
 
+def _aviso_cv2_dnn(cv2_mod) -> str | None:
+    """
+    Aviso si el OpenCV instalado es 5.x (medido: cv2.dnn divergente).
+
+    Devuelve el texto del aviso o ``None``. Separado de ``_init_cv2`` para
+    poder testearlo sin un modelo real.
+    """
+    try:
+        major = int(cv2_mod.__version__.split(".")[0])
+    except (AttributeError, ValueError):
+        return None
+    if major >= 5:
+        return (f"cv2 {cv2_mod.__version__} con backend DNN. Se midió que 5.0.0 "
+                f"difiere del ONNX de vuelo (argmax 0.01 vs ORT); con 4.x el "
+                f"acuerdo es >0.99. Validar en la placa o fijar opencv<5.")
+    return None
+
+
 def map_feed(
     input_names: Sequence[str], feed: dict[str, np.ndarray], label: str = "model"
 ) -> tuple[dict[str, str], bool]:
@@ -165,6 +183,10 @@ class OnnxModel:
                 f"[{self.label}] OpenCV DNN no pudo cargar {self.path.name}: {detalle}{pista}"
             ) from e
         self.backend = "opencv-dnn"
+        # ⚠ Medición 2026-09-21: OpenCV 5.0.0 da logits absurdos en cv2.dnn con
+        # el ONNX de vuelo. requirements-flight.txt fija <5; esto avisa igual.
+        if aviso := _aviso_cv2_dnn(cv2):
+            print(f"  [WARN] {self.label}: {aviso}")
         try:
             self.output_names = list(self._net.getUnconnectedOutLayersNames())
         except cv2.error:  # pragma: no cover
