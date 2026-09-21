@@ -231,6 +231,16 @@ Preguntas para vos antes de implementar: 1) ¿Prioridad fuego/humo vs subir dañ
 
 ## V5. Tests + CI (agujeros)
 
+> ✅ **PARCIALMENTE RESUELTO (2026-09-21)**: el CI estaba muerto (workflow en
+> `cansat_seg_poc/.github/`, GitHub solo corre `.github/workflows/` de la raíz)
+> y ahora corre 3 jobs verdes. Cobertura agregada: `post_flight.resolve_b5`,
+> `sliding_logits` con frame < ventana, `build_evidence`, `detect_objects` con
+> stub, `terrain_percentages`, `_green_patches`, `enhance_image.ensure_model`
+> (sin red) y el guard de `cv2.dnn_superres`, `quantize_onnx` QDQ estático
+> end-to-end con un modelo de juguete, y `export_onnx` en tests `slow`
+> (torch). Sigue sin cubrir: entrenamiento real, YOLO con ultralytics,
+> `picamera2`/UART (requieren hardware o datasets).
+
 - 12 tests solo `cansat.*` + geometría + sampler. **Cero cobertura:** entrenamiento, `export_onnx.py:111-259`, quantize, YOLO/VisDrone, `picamera2`/UART real, B5 fallback `post_flight.py:80-85`, EDSR `enhance_image.py:55-157` (requiere `contrib` + red). Marcas `slow/gpu/dataset` declaradas en `pyproject.toml:103-106` pero ningún test las usa.
 - `.github/workflows/ci.yml:72-93` job `frontend` **siempre rojo**: `working-directory: estacion_terrena/web-app:77` no existe (`Test-Path False`). Eliminar o re-agregar.
 - Duplicado a hashear: `models/yolov8n.pt` vs `yolov8n_base.pt` mismo tamaño 6549796 + `yolo11n.pt` raíz vs `models/yolo11n_visdrone.pt`.
