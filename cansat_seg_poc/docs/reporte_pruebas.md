@@ -1,6 +1,6 @@
 # CanSat La Base (CONAE 135) — Reporte de pruebas de misión secundaria
 
-Generado: 2026-09-20 por `generate_report.py`.
+Generado: 2026-09-21 por `generate_report.py`.
 
 > Las secciones 1–5 salen de **artefactos medidos** en disco. Las 7–9
 > salen de `docs/decisiones.yaml`, que es editable sin tocar código.
@@ -21,7 +21,7 @@ validacion_int8. El único camino INT8 viable es QDQ estático verificado en
 la placa.
 
 ## 2. Métricas cuantitativas (Val, modelo ONNX)
-- Fuente: `C:\Users\manuy\PROYECTOS_Y_ESTUDIOS\CANSAT\cansat_seg_poc\outputs\metrics\val_20260917_200724.json` — generada 2026-09-17T23:07:24.445387+00:00
+- Fuente: `outputs/metrics/val_20260917_200724.json` — generada 2026-09-17T23:07:24.445387+00:00
 - Modelo: `outputs/cansat_seg_terrain_v2.onnx`
 - Muestra: 1669 imágenes de Val (semilla 42).
 - Muestra completa.
@@ -48,7 +48,7 @@ la placa.
   `validate_int8_mission.py`.
 
 ## 4. Simulacro de descenso (prueba de integridad N.º 6 del DPD)
-- Fuente: `C:\Users\manuy\PROYECTOS_Y_ESTUDIOS\CANSAT\cansat_seg_poc\outputs\mission\telemetry.csv` (3 paquetes).
+- Fuente: `outputs/mission/telemetry.csv` (3 paquetes).
 - Altitud: 250 m → 244 m.
 - Veredictos: ZONA SALUDABLE: 2, ALTO ESTRÉS URBANO: 1.
 - Diagnósticos: SIN DESASTRE: 3.

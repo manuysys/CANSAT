@@ -116,6 +116,19 @@ def section_modelo(L: list[str], dec: dict) -> None:
         L.append(f"\n> {str(mv['nota_precision']).strip()}")
 
 
+def _rel(p) -> str:
+    """Ruta relativa a la raíz del proyecto (portable Windows/Linux).
+
+    ⚠ El informe se regenera en CI (generate_report.py --check) y en otra
+    máquina: si embebe rutas absolutas de Windows, el texto difiere y el check
+    falla aunque el contenido sea el mismo.
+    """
+    try:
+        return Path(p).resolve().relative_to(PROJ.ROOT.resolve()).as_posix()
+    except (ValueError, OSError):
+        return str(p)
+
+
 def section_val(L: list[str], dec: dict | None = None) -> None:
     """Métricas de Val, leídas del JSON que escribe ``evaluate.py``."""
     L.append("\n## 2. Métricas cuantitativas (Val, modelo ONNX)")
@@ -138,7 +151,7 @@ def section_val(L: list[str], dec: dict | None = None) -> None:
         conf = np.load(conf_p)
         from cansat.metrics import from_confusion
         m = from_confusion(conf)
-        L.append(f"- Fuente: `{conf_p}` (matriz de confusión cruda, sin metadata")
+        L.append(f"- Fuente: `{_rel(conf_p)}` (matriz de confusión cruda, sin metadata")
         L.append("  de checkpoint ni de tamaño de muestra — no se sabe de qué corrida es).")
         L.append("")
         L.append("| Clase | IoU | Precisión | Recall |")
@@ -152,7 +165,7 @@ def section_val(L: list[str], dec: dict | None = None) -> None:
 
     data = json.loads(latest.read_text(encoding="utf-8"))
     met = data.get("metrics") or data
-    L.append(f"- Fuente: `{latest}` — generada {data.get('generado', '?')}")
+    L.append(f"- Fuente: `{_rel(latest)}` — generada {data.get('generado', '?')}")
     L.append(f"- Modelo: `{data.get('modelo', data.get('onnx', '?'))}`")
     L.append(f"- Muestra: {data.get('n_images', '?')} imágenes de Val "
              f"(semilla {data.get('seed', '?')}).")
@@ -186,7 +199,7 @@ def section_int8(L: list[str]) -> None:
     d = json.loads(latest.read_text(encoding="utf-8"))
     icon = {"APTO": "✅", "MARGINAL": "⚠️", "NO APTO": "❌"}.get(
         d.get("veredicto_validacion", ""), "•")
-    L.append(f"- Fuente: `{latest}` — generada {d.get('generado', '?')}")
+    L.append(f"- Fuente: `{_rel(latest)}` — generada {d.get('generado', '?')}")
     L.append(f"- FP32 `{d.get('fp32')}` vs INT8 `{d.get('int8')}` "
              f"sobre **{d.get('n_frames')} frames crudos**.")
     L.append("")
@@ -229,7 +242,7 @@ def section_simulacro(L: list[str]) -> None:
     n_alert = sum(1 for r in rows if str(r.get("alert")) == "1")
     pri = Counter(r.get("sample_pri") for r in rows if r.get("sample_pri"))
 
-    L.append(f"- Fuente: `{src}` ({len(rows)} paquetes).")
+    L.append(f"- Fuente: `{_rel(src)}` ({len(rows)} paquetes).")
     if alts:
         L.append(f"- Altitud: {max(alts):.0f} m → {min(alts):.0f} m.")
     if ver:
