@@ -5,7 +5,10 @@ Sobre la carpeta de frames recuperada genera ``entrega/``:
   · telemetría del pipeline de misión
   · ``corridor_map.jpg``
   · ``enhanced/``  EDSR sobre los frames más nítidos
-  · ``ens_seg/`` o ``b5_seg/``  overlays de la segunda pasada de alta calidad
+  · ``ens_seg/``  overlays de la segunda pasada de alta calidad (siempre esta
+    carpeta; ``--ensemble`` elige la MEZCLA de modelos, no el directorio: antes
+    sin ``--ensemble`` escribía en ``b5_seg/`` y la estación no lo veía porque
+    su bucket mira sólo ``ens_seg/``)
   · ``masks/``  máscaras de clase por frame (PNG gris, consulta terrestre)
   · ``summary.json``  ← CONTRATO con la app de visualización
 
@@ -530,7 +533,9 @@ def main(argv=None) -> int:
                           "el ensemble queda en B5 + flood.")
                 sess_f2 = sess_f
 
-            b5_dir = entrega / ("ens_seg" if args.ensemble else "b5_seg")
+            # Siempre entrega/ens_seg: si se escribía en b5_seg/ la estación
+            # no encontraba los overlays (su bucket sólo mira ens_seg/).
+            b5_dir = entrega / "ens_seg"
             b5_dir.mkdir(parents=True, exist_ok=True)
             b5_dir_rel = b5_dir.as_posix()
 

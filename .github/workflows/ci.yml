@@ -1,0 +1,112 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  CI — CanSat LB135
+# ═══════════════════════════════════════════════════════════════════════════
+#  ⚠ Este workflow estaba en `cansat_seg_poc/.github/` y GitHub NUNCA lo corría:
+#  los workflows tienen que estar en `.github/workflows/` de la RAÍZ del repo.
+#  Ahora corre:
+#    · vuelo    — lint + compileall + tests + imports + informe al día
+#    · vuelo-deps — que las dependencias de vuelo resuelvan sin torch
+#    · estacion — build del frontend React de la estación + py_compile
+#  NO corre entrenamiento, GPU ni datasets.
+# ═══════════════════════════════════════════════════════════════════════════
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  vuelo:
+    name: Vuelo — lint + tests + informe
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cansat_seg_poc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: cansat_seg_poc/requirements*.txt
+
+      - name: Dependencias mínimas (sin torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy PyYAML pytest ruff
+          pip install opencv-python-headless onnx onnxruntime
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Compilación de todos los .py
+        run: python -m compileall -q . && echo "todos los .py compilan"
+
+      - name: Tests unitarios
+        run: pytest -q -m "not slow and not gpu and not dataset"
+
+      - name: Imports de la biblioteca compartida
+        run: |
+          python -c "from cansat import indices, metrics, nodata, onnxio, checkpoints, protocol, summary, paths, seed, preprocess, crf, xbd, casualties, masks, consultas; print('cansat importa')"
+
+      - name: El informe está al día
+        run: python generate_report.py --check
+
+  vuelo-deps:
+    name: Vuelo — dependencias (smoke)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cansat_seg_poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: El requirements de vuelo resuelve (sin descargar torch)
+        run: |
+          python -m pip install --upgrade pip
+          # --dry-run verifica que TODAS las dependencias tengan versión
+          # instalable sin bajar 2 GB de torch/ultralytics en cada push.
+          pip install --dry-run -r requirements-flight.txt
+      - name: Las deps livianas de vuelo instalan y el script arranca
+        run: |
+          pip install numpy opencv-python-headless onnxruntime pyserial PyYAML
+          python mission_pipeline.py --help > /dev/null && echo "mission_pipeline.py --help OK"
+      - name: El protocolo y los índices importan sin torch
+        run: python -c "from cansat import protocol, indices; print('OK')"
+
+  estacion:
+    name: Estación — build del frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: EstacionTerrena_MuestreoDeDatos/web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: EstacionTerrena_MuestreoDeDatos/web-app/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint del frontend
+        run: npm run lint
+
+      - name: Type-check + build (Vite)
+        run: npm run build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: El servidor y las tools compilan
+        working-directory: EstacionTerrena_MuestreoDeDatos
+        run: python -m py_compile web_server.py tools/make_demo_mission.py tools/simulacro.py tools/bajar_tiles.py

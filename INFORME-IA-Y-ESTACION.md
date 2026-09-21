@@ -365,7 +365,7 @@ Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
 `outputs/demo_damage.jpg`, `outputs/degradados_compare.jpg`,
 `outputs/tta_compare.jpg`, `entrega/enhanced/` (EDSR), `entrega/ens_seg/`,
-`entrega/b5_seg/` (SegFormer-B5), `dataset/visualizations/`.
+`dataset/visualizations/`.
 
 ### Estación terrena (`EstacionTerrena_MuestreoDeDatos/docs/evidencia/`)
 
