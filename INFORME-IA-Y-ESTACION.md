@@ -343,6 +343,7 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
 | Carga en `cv2.dnn` | verificada para cada ONNX de vuelo |
 | Smoke de la estación | 56 aserciones E2E verdes |
+| CI (GitHub Actions) | 3 jobs verdes: vuelo (ruff 0.16.8 + 295 tests + imports + generador), deps de vuelo, build de la estación |
 | Registro de modelos | `MODELS.yaml` con métrica, fuente, hash y estado por artefacto |
 
 ---
