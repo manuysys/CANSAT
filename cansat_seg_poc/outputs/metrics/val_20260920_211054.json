@@ -1,0 +1,63 @@
+{
+  "generado": "2026-09-21T00:10:54.596291+00:00",
+  "script": "evaluate.py",
+  "tipo": "onnx",
+  "modelo": "outputs/cansat_seg_terrain_segformer_b5_512.onnx",
+  "modelo_sha256_16": "7afe10588aba827f",
+  "arquitectura": "auto",
+  "num_clases": 5,
+  "dataset_root": "dataset",
+  "splits": [
+    "Rural",
+    "Urban"
+  ],
+  "n_disponibles": 1669,
+  "n_images": 1669,
+  "img_size": 512,
+  "seed": 42,
+  "segundos": 2355.78,
+  "metrics": {
+    "miou": 0.566443,
+    "pixel_acc": 0.723664,
+    "n_pixels": 426078423,
+    "por_clase": {
+      "vegetation": {
+        "iou": 0.60748,
+        "precision": 0.871559,
+        "recall": 0.667211,
+        "f1": 0.755816,
+        "soporte_px": 153176242
+      },
+      "building": {
+        "iou": 0.582678,
+        "precision": 0.665286,
+        "recall": 0.824334,
+        "f1": 0.736319,
+        "soporte_px": 30702570
+      },
+      "water": {
+        "iou": 0.652417,
+        "precision": 0.700421,
+        "recall": 0.904936,
+        "f1": 0.789652,
+        "soporte_px": 49890474
+      },
+      "bare_ground": {
+        "iou": 0.461872,
+        "precision": 0.719172,
+        "recall": 0.563503,
+        "f1": 0.631891,
+        "soporte_px": 38494932
+      },
+      "other": {
+        "iou": 0.527771,
+        "precision": 0.647094,
+        "recall": 0.741074,
+        "f1": 0.690903,
+        "soporte_px": 153814205
+      }
+    }
+  },
+  "mascaras": "remapeadas",
+  "nota": "Muestra completa."
+}

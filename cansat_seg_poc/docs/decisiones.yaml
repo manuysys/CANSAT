@@ -199,8 +199,9 @@ decisiones:
     estado: vigente
     texto: |
       Aptitud de vuelo MEDIDA con corrupción sintética (tools/stress_suite.py +
-      cansat/corrupt.py; 120 imgs/tarea, seed 42, severidad fija declarada en el
-      módulo; JSON: outputs/stress_suite.json). mIoU limpio → estresado:
+      cansat/corrupt.py; 120 imgs/terreno-daño, 80 flood, 60 fuego; seed 42,
+      severidad fija declarada en el módulo; JSON: outputs/stress_suite.json).
+      mIoU limpio → estresado:
         · Terreno (LoveDA Val, cansat_seg_terrain_v2): 51.0 % → lluvia 20.2 %,
           niebla 16.3 %, motion_blur 43.1 %, subexp 44.9 %, sobreexp 29.3 %,
           escala 50.2 %.
@@ -210,10 +211,18 @@ decisiones:
         · Daño two-stage de vuelo (RescueNet val, cansat_damage_v3_bal):
           IoU bin 0.403 → lluvia 0.334, niebla 0.198, motion 0.350, subexp 0.356,
           sobreexp 0.278, escala 0.374.
-      Lectura honesta: niebla y lluvia son las degradaciones dominantes (la niebla
-      más que duplica el error de daño del two-stage); las exposiciones y el
-      motion blur afectan moderado; el jitter de escala casi no afecta porque el
-      resize al input normaliza. Son corrupciones SINTÉTICAS: miden robustez
+        · Flood (FloodNet val 80 imgs, especialista 224): IoU inundación 0.489 →
+          lluvia 0.256, niebla 0.319, motion 0.488, subexp 0.418, sobreexp 0.348,
+          escala 0.493.
+        · Fuego (fire_smoke valid+test 60 imgs; el valid seleccionó el
+          checkpoint, se declara): IoU fuego 0.801 → lluvia 0.306, niebla 0.787,
+          motion 0.706, subexp 0.642, sobreexp 0.595, escala 0.761.
+      Lectura honesta: niebla y lluvia son las degradaciones dominantes en
+      terreno y daño (la niebla más que duplica el error del two-stage); en flood
+      manda la lluvia (−0.233) y en fuego la lluvia es catastrófica (−0.495)
+      mientras la niebla casi no afecta (humo ≈ niebla para el modelo). Las
+      exposiciones afectan moderado; el jitter de escala casi no afecta porque
+      el resize al input normaliza. Son corrupciones SINTÉTICAS: miden robustez
       relativa del mismo modelo contra sí mismo, no reemplazan validación de
       vuelo real.
 

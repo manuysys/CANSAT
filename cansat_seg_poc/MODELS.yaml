@@ -501,7 +501,12 @@ post_vuelo:
     dataset: "LoveDA remapeado (CC BY 4.0)"
     estado: "POST-VUELO"
     metricas:
-      miou: "PENDIENTE"
+      miou: 0.5664
+      pixel_acc: 0.7237
+      n_images: 1669
+      fuente: "evaluate.py sobre LoveDA Val completo (Rural+Urban), 2026-09-20; JSON: outputs/metrics/val_20260920_211054.json; hash 7afe10588aba827f"
+      por_clase_iou: "vegetation 0.607 · building 0.583 · water 0.652 · bare_ground 0.462 · other 0.528"
+      comparacion: "terreno v2 (DeepLabV3+ MBv2, el que vuela) 0.5219 full Val; el B5 +3.45 pts a cambio de 512px y pesos externos"
     notas: |
       ⚠ post_flight.py apuntaba a cansat_seg_terrain_segformer_b5_640.onnx, que
       NO existe, y por eso TODA la segunda pasada se salteaba en silencio sin

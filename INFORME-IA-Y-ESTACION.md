@@ -334,7 +334,7 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **279 pasan** |
+| Tests de vuelo (`pytest`) | **284 pasan** |
 | Lint (`ruff check .`) | verde |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
@@ -424,13 +424,19 @@ npm run smoke
 
 | Pendiente | Impacto | Bloqueo |
 |---|---|---|
-| Validar en la Pi: s/frame, IMX500, personas | Alto (define el modo de vuelo) | microSD + AI Camera en mano |
+| Validar en la Pi: s/frame, IMX500, personas | Alto (define el modo de vuelo) | **falta la microSD para flashear** (hay Pi Zero W v1 + IMX500) |
 | Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
+| SegFormer-B5 mIoU | ✅ medido: 0.5664 full Val (1669 imgs) vs 0.5219 del v2; JSON `outputs/metrics/val_20260920_211054.json` | — |
+| EDSR tiempo/frame | ✅ medido: ~288 s por frame 1024² en CPU (PC de desarrollo); queda solo post-vuelo | — |
+| Stress flood+fuego | ✅ medido: flood IoU 0.489 → lluvia 0.256; fuego IoU 0.801 → lluvia 0.306 | — |
 | Severidad → colapso medido en casualties | ✅ hecho (0.575 IoU de colapso) | más épocas opcionales |
 | Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame | — |
 | `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
-| UI de la estación para bruma/calor/fuego | Bajo | los datos ya viajan |
+| UI de la estación para bruma/calor/fuego | ✅ hecho (detalle por frame + panel de muestreo) | — |
 | Pseudo-labels regenerados + re-destilado | Medio | baja prioridad (v3/v4 en legacy) |
+| Personas con posición (dist a vías/agua) | Medio | el pipeline no persiste bboxes (evolución de Consulta Terrestre) |
 
-**Riesgo principal**: la validación en hardware sigue pendiente; todos los
-números de tiempo/cómputo en la Pi son estimaciones hasta medir con la placa.
+**Riesgo principal**: la validación en hardware sigue pendiente y **ahora está
+bloqueada por la microSD**: sin flashear no hay s/frame, ni IMX500, ni UART real.
+Todos los números de tiempo/cómputo en la Pi son estimaciones hasta medir con la
+placa.
