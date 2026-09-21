@@ -56,7 +56,11 @@ def preparar_dst(src: Path, dst: Path, sin_postvuelo: bool) -> None:
 
 
 def leer_filas(src: Path):
-    with open(src / "outputs" / "mission" / "telemetry.csv", newline="") as f:
+    # ⚠ encoding explícito: sin esto en Windows se lee/escribe en cp1252 y los
+    # acentos del CSV ("ESTRÉS URBANO") rompen el parseo UTF-8 del servidor
+    # (HTTP 500 en /api/mission). Bug encontrado con el checklist de variantes.
+    with open(src / "outputs" / "mission" / "telemetry.csv", newline="",
+              encoding="utf-8") as f:
         rdr = csv.reader(f)
         head = next(rdr)
         rows = [r for r in rdr if r]
@@ -80,7 +84,7 @@ def fila_rafaga(base: list, head: list, rng: random.Random, k: int) -> list:
 
 def escribir(path: Path, head: list, rows: list, append: bool = False) -> None:
     mode = "a" if append else "w"
-    with open(path, mode, newline="") as f:
+    with open(path, mode, newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         if not append:
             w.writerow(head)

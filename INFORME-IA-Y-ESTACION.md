@@ -216,7 +216,7 @@ red de seguridad para daño fuerte.
 | **Selección por métrica de misión** | daño | Mejor época por IoU de dañado **sobre edificios**, no mIoU dominado por fondo |
 | **Dark channel prior** | estrés ambiental | Bruma/aerosoles sin modelo extra (clásico, barato) |
 | **Humidex** (Magnus) | estrés ambiental | Combina T y humedad de los sensores como pide el DPD |
-| **Auditoría automática IMX500** | todos los ONNX | `audit_imx500.py` en CI/pre-commit |
+| **Auditoría automática IMX500** | todos los ONNX | `audit_imx500.py` (se corre a mano sobre `outputs/`; los ONNX no se versionan, así que no puede ir en CI/pre-commit sobre ellos) |
 
 ---
 
@@ -438,7 +438,7 @@ npm run smoke
 | Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame | — |
 | `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
 | UI de la estación para bruma/calor/fuego | ✅ hecho (detalle por frame + panel de muestreo) | — |
-| Pseudo-labels regenerados + re-destilado | Medio | baja prioridad (v3/v4 en legacy) |
+| Pseudo-labels + re-destilado | ✅ cerrado como descartado: el KD ya empató (0.5196 vs 0.5219) y el pipeline viejo quedó congelado en `legacy/` | — |
 | Personas con posición (dist a vías/agua) | ✅ hecho (v2): bboxes por frame en `telemetry.jsonl` + punto de apoyo; smoke con consultas de personas | — |
 
 **Riesgo principal**: la validación en hardware sigue pendiente y **ahora está

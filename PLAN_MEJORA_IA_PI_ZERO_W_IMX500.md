@@ -187,6 +187,12 @@ Preguntas para vos antes de implementar: 1) ¿Prioridad fuego/humo vs subir dañ
 
 ## V1. Shims que ya delegan pero siguen ensuciando (BORRAR tras fix hints)
 
+> ✅ **RESUELTO (2026-09-21)**: los 9 shims fueron eliminados
+> (`export_v2.py`, `export_b5_512.py`, `export_b5_640.py`, `export_damage_onnx.py`,
+> `export_damage_v3.py`, `evaluate_val.py`, `eval_onnx_gap.py`,
+> `eval_int8_cpu.py`, `crf_refine.py`) y los hints de `mission_pipeline.py`
+> ahora apuntan a `export_onnx.py`. Lo de abajo queda como registro histórico.
+
 - `export_v2.py:24-36`, `export_b5_512.py:26-37`, `export_b5_640.py:30-41`, `export_damage_onnx.py:24-35`, `export_damage_v3.py:26-36` → todos delegan a `export_onnx.py:111-259` (canónico, `OPSET=17:56`, `dynamo=False:201`, `audit:242-250`).
 - `evaluate_val.py:1-25` (100 imgs + mIoU 52.44% hardcodeado), `eval_onnx_gap.py:1-26`, `eval_int8_cpu.py:1-25` → delegan a `evaluate.py:259-374`.
 - `crf_refine.py:1-33` (`sigmaColor=0.051` erróneo, `I` sin usar) → shim de `cansat/crf.py`.

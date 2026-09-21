@@ -710,7 +710,7 @@ def main(argv=None):
                              if Path("outputs/cansat_seg_terrain_v2.onnx").is_file()
                              else "outputs/cansat_seg_deeplabv3plus_mobilenetv2.onnx")
     sess = onnxio.load_required(seg_path, "segmentación",
-                                hint="Corré export_v2.py o export_onnx.py (ver MODELS.yaml).")
+                                hint="Corré export_onnx.py (ver MODELS.yaml).")
 
     # El ONNX de este proyecto tiene entrada FIJA (p. ej. [1,3,320,320]). Antes,
     # pasar --img-size 256 producía un error críptico de ORT/cv2 en el primer
@@ -731,9 +731,9 @@ def main(argv=None):
     sess_d = sess_d2 = sess_siam = sess_f = sess_fire = sess_sev = sess_type = None
     if damage_on:
         sess_d = onnxio.load_required(args.damage_onnx, "daño principal",
-                                      hint="Corré export_damage_onnx.py.")
+                                      hint="Corré export_onnx.py --arch damage.")
         sess_d2 = onnxio.load_required(args.damage2_onnx, "daño two-stage",
-                                       hint="Corré export_damage_v3.py.")
+                                       hint="Corré export_onnx.py --arch damage.")
         if args.siamese_onnx:
             sess_siam = onnxio.load_optional(args.siamese_onnx, "siamés")
         else:

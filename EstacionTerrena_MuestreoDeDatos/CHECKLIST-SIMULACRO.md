@@ -54,8 +54,23 @@ contrato (`lib/validate.ts`).
 - **Resolución chica**: 1366×768 y zoom 100 % → dock, explorador y detalle siguen legibles.
 - **Misión sintética nueva**: `python tools/make_demo_mission.py --clean` y repetir (cambia el seed de la historia).
 
+### Automatización (2026-09-21)
+
+Las variantes 1-3 quedaron automatizadas en `tools/check-variantes.mjs`
+(capturas en `tools/shots/checklist/`):
+
+```bash
+# root normal (demo) y root sin post-vuelo preparado con simulacro:
+python tools/simulacro.py --dst <tmp> --velocidad 80 --sin-postvuelo --rafaga 2 --dropout 1 --trunco-en 6
+node tools/check-variantes.mjs --base http://127.0.0.1:8765 --base-sin-post http://127.0.0.1:8766
+```
+
+La variante 4 se cubre con `make_demo_mission.py --clean` + `node tools/smoke-v4.mjs`
+(y además se corrió una regeneración con `--seed 777`). La corrida completa del
+guion de 12 pasos sigue siendo del operador con el simulacro en vivo.
+
 ## Registro de corridas
 
 | Fecha | Operador | Variantes | Resultado | Notas |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-09-21 | opencode (automático) — **falta firma del operador** | 1) sin post-vuelo 2) sin WebGL 3) 1366×768 4) misión nueva (clean + seed 777) | ✔ 4/4: V1 empty state sin errores; V2 perfil SVG sin errores; V3 Δoverflow 0 px; V4 smoke 56/56 verde y seed distinto sin errores | `node tools/check-variantes.mjs`; capturas en `tools/shots/checklist/`. El checklist encontró y se corrigió un bug real: `simulacro.py` leía/escribía el CSV sin `encoding="utf-8"` y en Windows rompía el server (HTTP 500). |
