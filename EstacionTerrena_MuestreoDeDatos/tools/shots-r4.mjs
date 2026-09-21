@@ -77,6 +77,11 @@ await page.waitForSelector('[data-testid="consulta-total"]', { timeout: 20000 })
 await page.waitForTimeout(700);
 await page.screenshot({ path: `${OUT}/12_consulta_personas.png` });
 
+// OOD/drift: frame fuera de la referencia de LoveDA Val (cansat/ood.py)
+await page.click('[data-card-src="cap_0011"]');
+await page.waitForTimeout(700);
+await page.screenshot({ path: `${OUT}/13_ood_drift.png` });
+
 // detalle de frame con contrato v3 (badge de tipo, colapso con fuente, modelos)
 await page.locator('[data-card-src="cap_0006"]').click();
 await page.waitForTimeout(800);

@@ -127,8 +127,8 @@ Anotar **segundos por frame** (el `time` total dividido 3):
 | s/frame del terreno | Qué hacer |
 |---|---|
 | ≤ 3 s | agregar `--no-damage` fuera y probar los modelos de daño por separado |
-| 3–10 s | volar solo terreno (`--no-damage`); usar `--sampler` para priorizar |
-| > 10 s | volar solo terreno con `--sampler`; la alternativa es el NPU del IMX500 |
+| 3–10 s | volar con `--perfil rapido` (terreno@224 + detección + estrés, sin daño: NO emite veredicto de daño) |
+| > 10 s | `--perfil rapido` + `--sampler`; la alternativa es el NPU del IMX500 |
 
 El término medio es el que se espera en ARMv6. La misión del DPD tiene ~1–2
 minutos de descenso: con 8 s/frame son ~10–15 frames, suficiente para el

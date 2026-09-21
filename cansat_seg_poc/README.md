@@ -21,6 +21,9 @@
 > **Daño two-stage de vuelo**: `outputs/cansat_damage_v3_bal.onnx`
 > (IoU de dañado **0.735** en el dominio UAV).
 > **Entrada**: `python mission_pipeline.py --camera --no-damage --det-backend imx500`.
+> **Perfiles**: `--perfil rapido` agrupa lo mínimo de la Pi (terreno@224 +
+> detección + estrés, sin daño/flood/fuego/severidad ni TTA/CRF/vis) y **no
+> emite veredicto de daño**; `--perfil completo` (default) es el validado.
 >
 > ### Datasets y licencias
 > | Dataset | Uso | Licencia | Restricción |

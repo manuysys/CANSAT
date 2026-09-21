@@ -99,6 +99,9 @@ export interface SampleExtra {
   tipo_es_confiable?: boolean | null
   tipo_modelo_hash?: string | null
   tipo_notas?: string | null
+  /* OOD/drift: proxy de fuera-de-distribución por frame (cansat/ood.py). */
+  ood_score?: number | null
+  ood_flag?: boolean | null
   model_ids?: Record<string, string> | null
   quant?: string | null
 }

@@ -103,6 +103,33 @@ def _model_ids() -> dict[str, str]:
     return out
 ENTREGA = ROOT / "entrega"
 
+
+def _ood_referencia() -> dict | None:
+    """Referencia OOD del repo de vuelo (la misma que usa el pipeline real)."""
+    p = ROOT.parent / "cansat_seg_poc" / "docs" / "benchmarks" / "ood_loveda_val.json"
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _js_divergence(p, q) -> float:
+    """JS en bits; misma fórmula que cansat/ood.py (el demo no importa el repo de vuelo)."""
+    p = np.asarray(p, dtype=np.float64)
+    q = np.asarray(q, dtype=np.float64)
+    if p.sum() <= 0 or q.sum() <= 0:
+        return 0.0
+    p, q = p / p.sum(), q / q.sum()
+    m = 0.5 * (p + q)
+
+    def _kl(a, b):
+        mask = a > 0
+        return float(np.sum(a[mask] * np.log2(a[mask] / np.maximum(b[mask], 1e-12))))
+
+    return max(0.0, 0.5 * _kl(p, m) + 0.5 * _kl(q, m))
+
 # --------------------------------------------------------------------------- #
 # Vocabulario del pipeline (idéntico al contrato de la web)
 # --------------------------------------------------------------------------- #
@@ -864,13 +891,22 @@ def main(argv=None) -> int:
     # de Muestreo de la estación queda vacío en las demos.
     jsonl_path = OUT / "mission" / "telemetry.jsonl"
     model_ids = _model_ids()
+    ood_ref = _ood_referencia()
     with jsonl_path.open("w", encoding="utf-8") as fh:
         for r in rows:
             unc = round(min(0.95, 0.12 + r["danado_pct"] / 220.0
                             + rng.uniform(-0.03, 0.06)), 3)
+            if ood_ref:
+                pcts = [r[k] / 100.0 for k in ("veg", "bui", "wat", "bare", "oth")]
+                js = _js_divergence(pcts, ood_ref["clases_prom"])
+                ood_score = round(js / max(ood_ref.get("umbral_js") or 1.0, 1e-6), 3)
+                ood_flag = bool(ood_score > 1.0)
+            else:
+                ood_score, ood_flag = None, None
             fh.write(json.dumps({
                 "src": r["src"], "uncert": unc,
                 "detecciones": r.get("_dets", []),
+                "ood_score": ood_score, "ood_flag": ood_flag,
                 "ms_seg": int(160 + rng.uniform(-20, 60)),
                 "ms_dmg": int(40 + rng.uniform(-10, 30)),
                 "ms_total": int(230 + rng.uniform(-30, 90)),

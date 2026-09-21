@@ -110,6 +110,18 @@ export function Detail() {
             evento: {ex.tipo_desastre}{Number(ex.tipo_conf) > 0 ? ` · ${num(ex.tipo_conf, 2)}` : ''}
           </Badge>
         )}
+        {/* OOD/drift: la escena no se parece a la referencia de entrenamiento
+            (cansat/ood.py); los números de Val podrían no aplicar. No bloquea. */}
+        {ex?.ood_flag === true && (
+          <Badge
+            variant="secondary"
+            data-testid="badge-ood"
+            className="border-[#ffb020]/40 bg-[#ffb020]/10 text-[10px] text-[#ffd08a]"
+            title={`score OOD ${num(ex.ood_score, 2)} (1.0 = umbral) · referencia: LoveDA Val`}
+          >
+            fuera de distribución
+          </Badge>
+        )}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="font-mono text-[10.5px] text-muted-foreground">{idx + 1} / {frames.length}</span>
           <Button variant="ghost" size="icon" className="size-7" onClick={() => step(-1)} title="Frame anterior (←)"><ChevronLeft className="size-4" /></Button>

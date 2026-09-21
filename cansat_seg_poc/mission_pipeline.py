@@ -120,6 +120,7 @@ from cansat import tipos
 from cansat import population as POP
 from cansat import protocol as PROTO
 from cansat import stress as ST
+from cansat import ood as OOD
 from cansat.casualties import (Supuestos, estimar as estimar_perdidas,
                                ocupacion_por_hora)
 from cansat.crf import dense_crf
@@ -370,10 +371,30 @@ def _rnum(v, nd=1):
     """``round`` que tolera ``None`` (modelo de daño desactivado → no votó)."""
     return None if v is None else round(v, nd)
 
-
 def _disp(v, nd=1):
     """Formato de consola para un valor de daño que puede ser ``None``."""
     return "off" if v is None else f"{v:.{nd}f}"
+
+
+# ── Perfiles de vuelo ──────────────────────────────────────────────────── #
+#: Overrides de flags por perfil. ``rapido`` apunta a la Pi (menos cómputo) y
+#: NO emite veredicto de daño: sólo terreno (@224) + estrés + detección. El
+#: daño, flood, fuego y severidad viven en ``completo`` (el perfil validado).
+PERFILES: dict[str, dict] = {
+    "completo": {},
+    "rapido": {
+        "no_damage": True,
+        "no_vis": True,
+        "crf_iters": 0,
+        "tta": False,
+        "onnx_224": True,
+    },
+}
+
+
+def aplicar_perfil(args) -> dict:
+    """Overrides del perfil pedido. No muta ``args`` (testeable en aislamiento)."""
+    return dict(PERFILES.get(getattr(args, "perfil", "completo"), {}))
 
 
 # ══════════════════════════════════════════════════════════════════════ #
@@ -530,6 +551,14 @@ def build_parser():
     mod.add_argument("--no-stress", action="store_true",
                      help="apagar el estrés ambiental por imagen (bruma/dark "
                           "channel); el humidex usa igual los sensores")
+    mod.add_argument("--no-ood", action="store_true",
+                     help="apagar el aviso de fuera-de-distribución (OOD) por "
+                          "frame; compara las clases/ExG con la referencia de "
+                          "LoveDA Val en docs/benchmarks/ood_loveda_val.json")
+    mod.add_argument("--perfil", choices=("completo", "rapido"), default="completo",
+                     help="preset de vuelo: 'rapido' = terreno@224 + detección + "
+                          "estrés, sin daño/flood/fuego/severidad, sin TTA/CRF/vis "
+                          "(NO emite veredicto de daño; ver PERFILES)")
     mod.add_argument("--siamese-onnx", default="",
                      help="siamés de cambio pre/post. DESACTIVADO por defecto: los "
                           "pesos del repo están marcados ROTO en MODELS.yaml "
@@ -659,6 +688,21 @@ def build_parser():
 # ══════════════════════════════════════════════════════════════════════ #
 def main(argv=None):
     args = build_parser().parse_args(argv)
+
+    # Perfil de vuelo: aplica el preset de flags ANTES de resolver modelos.
+    overrides = aplicar_perfil(args)
+    if overrides:
+        for clave, valor in overrides.items():
+            if clave != "onnx_224":
+                setattr(args, clave, valor)
+        if overrides.get("onnx_224") and not args.onnx:
+            candidato = Path("outputs/cansat_seg_terrain_v2_224.onnx")
+            if candidato.is_file():
+                args.onnx = str(candidato)
+        print(f"  [i] perfil '{args.perfil}': sin daño/flood/fuego/severidad, "
+              f"sin TTA/CRF/vis · terreno "
+              f"{'@224' if overrides.get('onnx_224') else '@320'} · "
+              f"NO emite veredicto de daño (usar perfil completo para eso)")
     # Ocupación por franja horaria (PAGER, USGS): de noche hay más gente
     # presente en el predio y los eventos nocturnos matan más. Un --occupancy
     # explícito la pisa (y queda registrado como "manual").
@@ -932,6 +976,15 @@ def main(argv=None):
     prev_logits = None
     bmp_fail_streak = 0
     p0_u = None
+    # Referencia OOD (opcional): si falta el JSON, el campo va en None y no se
+    # avisa por frame (no se inventa un score).
+    ood_ref = None
+    if not args.no_ood:
+        ood_ref = OOD.cargar_referencia(
+            Path(__file__).resolve().parent / OOD.REFERENCIA_DEFECTO)
+        if ood_ref is None:
+            print("  [i] sin referencia OOD (docs/benchmarks/ood_loveda_val.json): "
+                  "el aviso de fuera-de-distribución queda desactivado.")
 
     try:
         for i, (name, path) in enumerate(frames):
@@ -1065,6 +1118,10 @@ def main(argv=None):
                                   exg_pct=(exg["veg_exg_pct"] if exg else None),
                                   shadow_pct=shd)
             vcode = env["vcode"]
+            # Fuera-de-distribución (proxy declarado, ver cansat/ood.py): no
+            # bloquea nada, sólo avisa que los números de Val podrían no aplicar.
+            ood = OOD.score(pcts, env.get("veg_exg_pct"), env.get("shadow_pct"),
+                            ood_ref)
 
             # ── Daño: consenso real de modelos ──────────────────────────
             # ``None`` = modelo desactivado: NO vota. Antes se pasaba 0.0 y un
@@ -1290,6 +1347,9 @@ def main(argv=None):
                 "contam": env.get("contam"),
                 "heat": env.get("heat"),
                 "stress_idx": env.get("stress_idx"),
+                "ood_score": ood["ood_score"],
+                "ood_flag": ood["ood_flag"],
+                "ood_ref": ood["referencia"],
                 "veg_exg_pct": env.get("veg_exg_pct"),
                 "shadow_pct": env.get("shadow_pct"),
                 # Trazabilidad F6: modelo exacto (hash) y precisión por frame.

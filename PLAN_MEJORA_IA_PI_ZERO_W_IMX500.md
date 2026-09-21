@@ -309,3 +309,40 @@ Fuente: `La Base - DPD CANSAT 2026.pdf` (Equipo 135, E.E.S.T. N.º 4 El Palomar)
 
 - Venezuela = inundación/deslizamiento → justifica priorizar flood specialist. Fuego/humo, viento/tornado, severidad 4 niveles, WorldPop por predio: valiosas como extensión, **no** las pide el DPD (que pide vegetación/personas/edificios/agua/otros + estrés + daños + pérdidas). Que la IA las marque como "extensión" en el informe para no rendir cuentas de más.
 - Difusión (redes, video `youtu.be/J84qZzx0qzw`, cuaderno de campo, foto/video por Luz): entregable no-software; la IA solo debe no romperlo (export CSV/poster PNG para difusión ya existen en la estación).
+
+---
+
+# V9 — Propuestas externas evaluadas (tanda 1, 2026-09-21)
+
+| # | Propuesta | Veredicto | Evidencia / condición |
+|---|---|---|---|
+| 1 | Graph optimization ONNX | **Ya está / no aplica** | ORT usa `ORT_ENABLE_ALL` por default (`onnxio.py`); torch ya pliega BN en export; la Pi v1 usa `cv2.dnn` y el `.rpk` tiene su pipeline. Medir recién con placa |
+| 2 | Early exit en B5 | **No** | El costo de 287.9 s/frame es EDSR, no B5 (B5 ≈ 1.4 s/img); early exit exige re-entrenar SegFormer |
+| 3 | Pruning estructurado de v2 | **Redundante** | El objetivo (≈0.50 mIoU, 2× menos cómputo) ya existe: v2@224 = 0.4996; el NPU ya tiene tiny (~1 MB QDQ) |
+| 4 | Temperature scaling multi-dominio | **Sí → S2** | Implementado en `cansat/calibracion.py` con ECE medido |
+| 5 | Test-Time BN adaptation | **No ahora** | ONNX no actualiza stats BN; frame a frame; sin placa no se mide. Spike post-vuelo opcional |
+| 6 | CRF optimizado 3×3 | **Ya está** | `cansat/crf.py` es guided filter de OpenCV core (edge-aware, sin contrib); el DenseCRF viejo se eliminó |
+| 7 | Multi-model scheduling (POS) | **No aplica** | Modelos secuenciales; el problema real en v1 es RAM. Accionable: `--perfil rapido` y medir en placa |
+| 8 | Cascade coarse-to-fine de daño | **Riesgo alto** | El two-stage ya es cascada; reemplazar el consenso validado exige recalibrar y revalidar. Decidir con s/frame medido |
+| 9 | Conformal adaptativo (APS) | **Sí → S2** | `cansat/calibracion.py` reporta coverage/set-size con probs multiclase del LOEO |
+| 10 | Drift detection en vuelo | **Sí → implementado** | `cansat/ood.py` + referencia LoveDA + badge en la estación |
+| 11 | DisasterKD (frecuencias) | **No por ahora** | KD ya empató (0.5196 vs 0.5219) y el destilado está descartado en decisiones |
+| 12 | CalexNet soft cascade | **No** | Depende de rediseñar la cascada (ver 8); es paper sin caso validado |
+| 13 | Modo Rápido vs Completo | **Sí → implementado** | `mission_pipeline --perfil rapido` (no emite veredicto de daño) |
+
+---
+
+# V10 — Propuestas de investigación evaluadas (tanda 2, 2026-09-21)
+
+| # | Propuesta | Veredicto | Cómo entra / condición |
+|---|---|---|---|
+| 1 | Active Learning | **Sí (herramienta)** | `cansat/active.py` + `tools/select_tiles_for_annotation.py`: cola CSV con entropía+rareza+estrés. Se usa cuando haya vuelos reales |
+| 2 | Grad-CAM | **Sí (herramienta)** | `tools/gradcam.py` (API + CLI, `test_gradcam.py` slow). Endpoint/overlay en la estación queda como paso siguiente |
+| 3 | Synthetic Data (diffusion) | **No por ahora** | Requiere GPU + Stable Diffusion + validación FID; las clases raras (volcán) tienen 41 muestras en xBD Tier 3 |
+| 4 | Continual Learning | **No por ahora** | Necesita ≥2-3 vuelos anotados; el active learning ya deja la cola lista |
+| 5 | Mixture of Experts | **No** | Re-entrenar 5+ modelos en una arquitectura nueva: semanas; el perfil rápido cubre la necesidad de cómputo |
+| 6 | Calibración por clase | **Sí → S2** | Temperaturas por clase en `cansat/calibracion.py` (mismo LOEO multiclase) |
+| 7 | UAV Augmentation | **Parcial (ya existe)** | `cansat/corrupt.py` cubre motion blur, escala, exposición; la stress suite los mide. Se re-evalúa al próximo re-entrenamiento |
+| 8 | Feature/DisasterKD distillation | **No por ahora** | Mismo motivo que V9-11; el destilado no mejora al modelo de vuelo |
+| 9 | UDA LoveDA→RescueNet | **No por ahora** | Proyecto de investigación; el two-stage de vuelo ya se adaptó con mezcla de dominios (0.735 UAV) |
+| 10 | Curriculum Learning | **No por ahora** | Gain incierto; el cuello no es convergencia sino datos de vuelo anotados |

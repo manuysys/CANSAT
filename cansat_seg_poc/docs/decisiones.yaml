@@ -328,6 +328,44 @@ limitaciones:
       cae en ZONA SALUDABLE, que es discutible y conviene revisar si el jurado
       lo pregunta.
 
+  - id: ood-drift
+    estado: vigente
+    texto: |
+      Aviso de fuera-de-distribución (OOD) por frame: proxy DECLARADO, no un
+      detector formal. Compara la mezcla de clases del terreno (divergencia
+      Jensen-Shannon) y los índices de color (ExG y sombras, z-score) contra una
+      referencia construida sobre LoveDA **Val** (nunca Train) con
+      tools/build_ood_reference.py → docs/benchmarks/ood_loveda_val.json.
+      Referencia medida: clases_prom [veg 0.362, bui 0.073, wat 0.116,
+      bare 0.092, oth 0.357]; JS media 0.176 y umbral p95 0.380; ExG 38.0±16.0;
+      sombras 13.5±11.9. El umbral JS es alto porque Val mezcla urbano y rural:
+      el aviso salta con escenas muy distintas (desierto, nieve, noche) o con
+      índices de color a >3σ. Viaja en el JSONL (ood_score/ood_flag) y la
+      estación muestra el badge "fuera de distribución"; NO bloquea nada ni
+      cambia decisiones: advierte que los números de Val podrían no aplicar.
+      Si falta el JSON de referencia, el campo va en None (no se inventa).
+
+  - id: perfil-vuelo
+    estado: vigente
+    texto: |
+      Perfiles de vuelo en mission_pipeline: --perfil completo (default, el
+      validado: terreno + daño/flood/fuego/severidad con consenso) y
+      --perfil rapido (terreno @224 + detección + estrés, sin TTA/CRF/vis ni
+      modelos de daño). Rápido NO emite veredicto de daño: sirve para la Pi
+      cuando el s/frame medido obligue a recortar, y así se documenta en
+      pi/guia_pi.md. El mapeo está en PERFILES/aplicar_perfil() con tests.
+
+  - id: active-learning
+    estado: vigente
+    texto: |
+      Cola de anotación para cuando existan vuelos reales (active learning
+      mínimo): cansat/active.py puntúa cada frame con entropía del modelo de
+      terreno (0.5) + rareza de la mezcla de clases contra la referencia de
+      LoveDA Val (0.3) + estrés ambiental (0.2), y
+      tools/select_tiles_for_annotation.py escribe un CSV ordenado con motivos
+      (no copia frames). Sin labels de vuelo todavía no se re-entrena: la cola
+      es lo que se anota primero después del primer vuelo.
+
   - id: benchmark-parser
     estado: vigente
     texto: |

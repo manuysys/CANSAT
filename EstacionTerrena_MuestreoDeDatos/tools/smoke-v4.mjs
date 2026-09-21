@@ -160,6 +160,15 @@ check(/m2/.test(totalTxt), `resultado visible en el panel (${totalTxt || '—'})
 check(await page.locator('[data-testid="consulta-badge"]').count() >= 1,
   'badge consulta_espacial visible');
 
+// OOD/drift: la demo tiene frames fuera de la referencia de LoveDA Val
+// (cansat/ood.py); el badge se muestra sólo cuando el proxy marca el frame.
+await page.click('[data-card-src="cap_0011"]');
+await page.waitForTimeout(500);
+check(await page.locator('[data-testid="badge-ood"]').count() >= 1,
+  'badge fuera de distribución visible en cap_0011');
+await page.click('[data-card-src="cap_0000"]');
+await page.waitForTimeout(300);
+
 // Política fire_only_v1: badge SOLO cuando el modelo confirmó incendio.
 const samples = await page.evaluate(async () => (await fetch('/api/samples')).json());
 const vals = Object.values(samples.samples || {});

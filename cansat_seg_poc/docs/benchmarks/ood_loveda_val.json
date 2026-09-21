@@ -1,0 +1,39 @@
+{
+  "generado": "2026-09-21T20:14:36.433175+00:00",
+  "script": "tools/build_ood_reference.py",
+  "fuente": "LoveDA Val (Rural+Urban)",
+  "clases": [
+    "vegetation",
+    "building",
+    "water",
+    "bare_ground",
+    "other"
+  ],
+  "clases_prom": [
+    0.36208,
+    0.07272,
+    0.11607,
+    0.09237,
+    0.35677
+  ],
+  "n_mascaras": 1669,
+  "js_media": 0.17638,
+  "js_p95": 0.38048,
+  "umbral_js": 0.38048,
+  "veg_exg_pct_media": 38.0386,
+  "veg_exg_pct_std": 16.0154,
+  "shadow_pct_media": 13.4707,
+  "shadow_pct_std": 11.9186,
+  "umbral_z": 3.0,
+  "detalle": {
+    "Urban": {
+      "mascaras": 677,
+      "imagenes_indices": 300
+    },
+    "Rural": {
+      "mascaras": 992,
+      "imagenes_indices": 300
+    }
+  },
+  "nota": "Referencia OOD construida sobre LoveDA Val (no Train). El umbral JS es el p95 de la divergencia de cada imagen contra la media del propio Val; los índices de color usan z-score con 3σ. Es un proxy de alcance, no un detector formal de novedad."
+}
