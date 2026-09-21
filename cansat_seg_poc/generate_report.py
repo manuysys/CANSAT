@@ -292,23 +292,33 @@ def _latest_json(folder: Path, prefix: str, preferir: str | None = None) -> Path
       las del vuelo (pasó: el informe mostró el 45.76 % del best_model porque
       fue la última evaluación). Si ``preferir`` es un nombre de archivo, se
       busca un JSON cuyo campo ``modelo`` termine con ese nombre.
+
+    ⚠ El "más reciente" se decide por el campo ``generado`` del JSON, NO por el
+      mtime: en CI el checkout de git deja todos los archivos con el mismo
+      mtime, el orden quedaba arbitrario y ``--check`` fallaba contra el informe
+      generado en otra máquina (bug real del CI). El mtime queda solo como
+      desempate y, si todo empata, el nombre.
     """
     if not folder.is_dir():
         return None
+    nombre = Path(preferir).name if preferir else None
+    mejor: tuple[tuple[str, str], Path] | None = None
+    for p in sorted(folder.glob(f"{prefix}*.json")):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if nombre and not str(data.get("modelo", "")).replace("\\", "/").endswith(nombre):
+            continue
+        clave = (str(data.get("generado") or ""), p.name)
+        if mejor is None or clave > mejor[0]:
+            mejor = (clave, p)
+    if mejor is not None:
+        return mejor[1]
+    # Sin JSON válido: degradar al criterio viejo (mtime) por si hay archivos raros.
     cands = sorted(folder.glob(f"{prefix}*.json"),
                    key=lambda p: p.stat().st_mtime, reverse=True)
-    if not cands:
-        return None
-    if preferir:
-        nombre = Path(preferir).name
-        for p in cands:
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                continue
-            if str(data.get("modelo", "")).replace("\\", "/").endswith(nombre):
-                return p
-    return cands[0]
+    return cands[0] if cands else None
 
 
 def section_licencias(L: list[str]) -> None:
