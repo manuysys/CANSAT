@@ -22,7 +22,7 @@ CANSAT/
 ├── cansat_seg_poc/                  # VUELO + POST-VUELO + IA (Python/torch/ONNX)
 │   ├── cansat/                      # paquete compartido (21 módulos)
 │   ├── tools/                       # herramientas (stress suite, consulta, evals…)
-│   ├── tests/                       # 32 archivos de test (372 tests)
+│   ├── tests/                       # 32 archivos de test (374 tests)
 │   ├── docs/                        # decisiones.yaml, reporte, protocolos, evidencia
 │   ├── dataset/ · datasets/         # datos (no versionados)
 │   ├── outputs/ · runs/ · weights/  # modelos y resultados (parcialmente versionados)
@@ -158,10 +158,12 @@ deterministas sobre máscaras y telemetría.
   vivo** (`tools/simulacro.py`: stream acelerado con dropout, ráfaga y trunco) y
   **checklist de simulacro** con 4 variantes, 3 de ellas automatizadas
   (`tools/check-variantes.mjs`).
-- **Smoke E2E** `tools/smoke-v4.mjs`: **62 aserciones verdes**, cero errores de
+- **Smoke E2E** `tools/smoke-v4.mjs`: **64 aserciones verdes**, cero errores de
   consola, sobre el build de producción servido por Python (incluye generación
-  real del overlay Grad-CAM y rutas de error del endpoint; los mensajes de
-  consola llevan la URL para depurar).
+  real del overlay Grad-CAM, rutas de error del endpoint y el bloque de
+  confianza; los mensajes de consola llevan la URL para depurar).
+- **Confianza limitada por estrés**: `summary.json` advierte frames bajo bruma
+  densa/calor peligroso (umbrales de `cansat/stress.py`); sección en el Informe.
 - **Grad-CAM integrado**: botón "explicar" en el detalle con selector de modelo
   (vuelo/xBD), overlay mostrar/ocultar y caché en `outputs/gradcam/`.
 - **Evidencia**: capturas en `docs/evidencia/` (13 en la estación, 10 en vuelo).
@@ -175,6 +177,8 @@ deterministas sobre máscaras y telemetría.
 | `tools/consulta.py` / `bench_parser_earthvqa.py` | Consulta Terrestre y benchmark del parser |
 | `tools/calibrate_per_class.py` | T por clase del tipo: experimentada y **rechazada** (ECE 0.131 vs 0.123) |
 | `firmware/heltec_lb135_uart/` | Emisor LB135 v2 para Heltec V3 (PlatformIO); formato validado contra el parser |
+| `tools/calibrate_per_class.py` | T por clase del tipo: experimentada y **rechazada** (ECE 0.131 vs 0.123) |
+| `train_disaster_type.py --loss` | CE / balanceada / focal + LOEO en tramos (`--eventos`); balanceada **rechazada** (0.317 vs 0.330) |
 | `train_*.py` (~15) | Entrenamientos: terreno, daño, flood, fuego, severidad, tipo, vías… |
 | `prepare_*.py` / `download_*.py` | Preparación/descarga de datasets |
 | `export_onnx.py` | Exportador **único** (opset 17, `dynamo=False`, auditoría) |
@@ -193,13 +197,13 @@ deterministas sobre máscaras y telemetría.
 
 ### 2.9 Tests y CI
 
-- **372 tests locales**: métricas, protocolo, índices, casualties,
-  conformal, sampler, CRF, nodata, xbd, summary, onnxio (mapeo por nombre y
-  backends), imx500 (parser SSD), masks, consultas, corrupt (incluye
-  `sombras`/`vibracion`), stress suite, post_flight, helpers del pipeline,
-  enhance_image, quantize **QDQ end-to-end**, export (slow), `generate_report`
-  y calibración por clase.
-- En CI (`-m "not slow and not gpu and not dataset"`): **364 pasan** +
+- **374 tests locales**: métricas, protocolo, índices, casualties,
+  conformal, sampler, CRF, nodata, xbd, summary (incluye confianza limitada),
+  onnxio (mapeo por nombre y backends), imx500 (parser SSD), masks, consultas,
+  corrupt (incluye `sombras`/`vibracion`), stress suite, post_flight, helpers
+  del pipeline, enhance_image, quantize **QDQ end-to-end**, export (slow),
+  `generate_report` y calibración por clase.
+- En CI (`-m "not slow and not gpu and not dataset"`): **366 pasan** +
   8 deseleccionados.
 - **CI en GitHub Actions activo y verde** (3 jobs): vuelo (ruff 0.16.8 fijado +
   compileall + tests + imports + generador del informe), deps de vuelo y build
@@ -235,11 +239,13 @@ deterministas sobre máscaras y telemetría.
 | Vías (consulta) | IoU 0.515 FloodNet val · cross-domain 0.169 |
 | Stress suite (limpio→peor) | terreno 51.0→16.3 (niebla) · daño UAV 0.403→0.198 (niebla) · flood 0.489→0.256 (lluvia) · fuego 0.801→0.306 (lluvia) · daño2 UAV: motion_blur −0.021, escala −0.026 (n=60) |
 | Parser Consulta (EarthVQA) | cobertura 41.4 % · precisión 100 % (15/15 y 36/36) |
-| Estación | smoke **62 aserciones verdes** · checklist 4/4 variantes · Grad-CAM integrado |
+| Estación | smoke **64 aserciones verdes** · checklist 4/4 variantes · Grad-CAM + confianza integrados |
 | Calibración por clase | ❌ ECE 0.131 vs 0.123 global + rompe ranking de incendio → no adoptada |
 | Aug UAV (daño) | ❌ fine-tune limpio 0.374 → 0.265 → no adoptado (A/B correcto en V11) |
+| Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 (banda ±0.04); redistribuye sin subir la media → no adoptado |
+| Confianza limitada | ✅ bloque en `summary.json` + sección en el Informe (bruma ≥45 %, humidex ≥46) |
 | EDSR | 287.9 s por frame 1024² en CPU |
-| CI | 3 jobs verdes · 364 tests en CI |
+| CI | 3 jobs verdes · 366 tests en CI |
 
 ---
 
@@ -314,6 +320,14 @@ deterministas sobre máscaras y telemetría.
   - Diferido a V11: MoE, UDA, difusión/LoRA, capas Sentinel Hub (rompen el modo
     offline), replay continuo.
 
+**Tanda A+B (2026-09-22): mejoras a números bajos**
+- **A (tipo rebalanceado)**: `--loss balanceada/focal` + LOEO en tramos
+  (`--eventos`); resultado 0.317 vs 0.330 → **rechazado** (el cuello es
+  dominio, no desbalance; decisión `tipo-balanceado`).
+- **B (confianza por estrés)**: bloque `confianza_limitada` en `summary.json`
+  (aditivo, umbrales de `stress.py`) + sección en el Informe + espejo TS;
+  smoke 62 → **64** (decisión `confianza-estres`).
+
 **Tanda del handoff (sesión previa)**
 - **MIL**: media por bolsa 0.3277 vs 0.3681 → documentado como técnica que no
   funcionó; queda el clasificador por tile.
@@ -360,6 +374,7 @@ deterministas sobre máscaras y telemetría.
 | Mix FloodNet+LoveDA para vías | 0.489 (no pasaba el gate) | FloodNet-only 0.515 |
 | Calibración por clase (tipo) | ECE 0.131 vs 0.123 global; rompe ranking de incendio | No adoptada (`calibracion_por_clase.json`) |
 | Augmentación UAV (daño) | Fine-tune limpio 0.374 → 0.265 | No adoptado; A/B correcto en V11 (`aug_uav_dano.json`) |
+| Tipo con pesos por clase | LOEO 0.317 vs 0.330 (ruido ±0.04); mejora 3 eventos, hunde 4 | No adoptado; checkpoint intacto (`tipo_balanceado.json`) |
 
 ---
 
@@ -402,6 +417,6 @@ python generate_report.py && python generate_report.py --check
 cd ../EstacionTerrena_MuestreoDeDatos
 python tools/make_demo_mission.py
 python web_server.py            # http://localhost:8000
-node tools/smoke-v4.mjs         # 62 aserciones
+node tools/smoke-v4.mjs         # 64 aserciones
 node tools/check-variantes.mjs  # variantes del checklist
 ```

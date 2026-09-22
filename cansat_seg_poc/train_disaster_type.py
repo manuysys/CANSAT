@@ -145,6 +145,25 @@ def modelo(n_clases: int):
     return m
 
 
+def pesos_clase(ys: torch.Tensor, n_clases: int, tope: float = 5.0) -> torch.Tensor:
+    """Peso inverso a la frecuencia, topado: las clases raras (volcán, tornado)
+    pesan más sin desestabilizar el entrenamiento."""
+    cuenta = torch.bincount(ys, minlength=n_clases).float().clamp_(min=1.0)
+    w = len(ys) / (n_clases * cuenta)
+    return w.clamp_(max=tope)
+
+
+def perdida(logits: torch.Tensor, y: torch.Tensor, loss: str,
+            w: torch.Tensor | None, gamma: float) -> torch.Tensor:
+    """CE pelada, CE con pesos por clase, o focal (con alfa=pesos)."""
+    if loss == "focal":
+        ce = F.cross_entropy(logits, y, weight=w, reduction="none")
+        return (((1.0 - torch.exp(-ce)) ** gamma) * ce).mean()
+    if loss == "balanceada":
+        return F.cross_entropy(logits, y, weight=w)
+    return F.cross_entropy(logits, y)
+
+
 def _entrenar_fold(train, test, args, device, epochs=6):
     """Entrena un modelo en ``train`` y lo evalúa en ``test`` (un evento).
 
@@ -155,6 +174,10 @@ def _entrenar_fold(train, test, args, device, epochs=6):
 
     model = modelo(len(CLASES)).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    w = None
+    if args.loss in ("balanceada", "focal"):
+        w = pesos_clase(torch.tensor([c for _p, c in train]),
+                        len(CLASES)).to(device)
     dl = DataLoader(TipoDS(train, args.size, aug=True), batch_size=args.batch,
                     shuffle=True, num_workers=4, persistent_workers=True)
     for _ in range(epochs):
@@ -162,7 +185,7 @@ def _entrenar_fold(train, test, args, device, epochs=6):
         for x, y in dl:
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
-            F.cross_entropy(model(x), y).backward()
+            perdida(model(x), y, args.loss, w, args.focal_gamma).backward()
             opt.step()
     model.eval()
     te_dl = DataLoader(TipoDS(test, args.size), batch_size=args.batch,
@@ -194,6 +217,9 @@ def loeo(args) -> int:
 
     filas = recolectar_eventos(args.max_por_clase, args.seed)
     eventos = sorted({e for _p, _c, e in filas})
+    if args.eventos:
+        elegidos = {e.strip() for e in args.eventos.split(",") if e.strip()}
+        eventos = [e for e in eventos if e in elegidos]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"LOEO: {len(eventos)} eventos, {len(filas)} muestras")
     idx_fuego = CLASES.index("incendio")
@@ -219,11 +245,14 @@ def loeo(args) -> int:
     if res:
         w = sum(r["n_test"] for r in res)
         media = sum(r["acc"] * r["n_test"] for r in res) / w
-        print(f"[OK] LOEO media ponderada: {media:.3f} "
+        print(f"[OK] LOEO media ponderada ({args.loss}): {media:.3f} "
               f"({len(res)} eventos, {w} tiles)")
-        out = ROOT / "outputs/disaster_type_loeo.json"
+        out = Path(args.loeo_json)
         out.write_text(json.dumps(
-            {"media_ponderada": round(media, 4), "eventos": res},
+            {"media_ponderada": round(media, 4), "eventos": res,
+             "loss": args.loss, "seed": args.seed,
+             "nota": "Si es un tramo (--eventos), la media es parcial: "
+                     "fusionar tramos ponderando por n_test."},
             indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[OK] {out}")
         if args.guardar_probs and filas_csv:
@@ -264,6 +293,16 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--size", type=int, default=224)
     ap.add_argument("--lr", type=float, default=3e-4)
+    ap.add_argument("--loss", choices=("ce", "balanceada", "focal"),
+                    default="ce", help="balanceada/focal pesan las clases "
+                    "raras (por defecto: CE pelada, como antes)")
+    ap.add_argument("--focal-gamma", type=float, default=2.0)
+    ap.add_argument("--loeo-json", default="outputs/disaster_type_loeo.json",
+                    help="salida del JSON LOEO (para experimentos usar otra "
+                    "ruta y no pisar la canónica)")
+    ap.add_argument("--eventos", default="",
+                    help="con --loeo: solo estos eventos (coma). Para correr "
+                    "el LOEO en tramos y no perder todo si se corta")
     ap.add_argument("--max-por-clase", type=int, default=1200)
     ap.add_argument("--out", default="outputs/best_disaster_type.pth")
     ap.add_argument("--onnx-out", default="outputs/cansat_disaster_type.onnx")
@@ -291,6 +330,12 @@ def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = modelo(len(CLASES)).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    w = None
+    if args.loss in ("balanceada", "focal"):
+        w = pesos_clase(torch.tensor([c for _p, c in train]),
+                        len(CLASES)).to(device)
+        print(f"Pesos por clase ({args.loss}): "
+              f"{[round(float(v), 2) for v in w.cpu()]}")
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     train_dl = DataLoader(TipoDS(train, args.size, aug=True),
                           batch_size=args.batch, shuffle=True, num_workers=4,
@@ -305,7 +350,7 @@ def main() -> int:
         for x, y in train_dl:
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
-            loss = F.cross_entropy(model(x), y)
+            loss = perdida(model(x), y, args.loss, w, args.focal_gamma)
             loss.backward()
             opt.step()
             run += loss.item()
@@ -326,6 +371,7 @@ def main() -> int:
                       acc_val=round(acc, 4),
                       dataset="xBD + RescueNet + KATE-PD + CRASAR (etiqueta de evento)",
                       script="train_disaster_type.py",
+                      loss=args.loss,
                       epochs=ep + 1, seed=args.seed)
             print(f"  → guardado {args.out}")
     print(f"[OK] mejor acc: {best:.3f}")

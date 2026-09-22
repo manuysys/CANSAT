@@ -23,12 +23,14 @@
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
-| Estación terrena | ✅ 5 vistas, contrato de 34 columnas, **62 aserciones E2E en verde** (incluye Grad-CAM) |
+| Estación terrena | ✅ 5 vistas, contrato de 34 columnas, **64 aserciones E2E en verde** (incluye Grad-CAM y confianza) |
+| Confianza limitada por estrés | ✅ `summary.json` advierte frames bajo bruma densa/calor peligroso; sección en el Informe |
 | Explicabilidad (Grad-CAM) | ✅ `/api/gradcam` + overlay en el detalle (modelo de vuelo/xBD), con caché y degradación clara |
 | Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
+| Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
 | UART Heltec (contrato v2) | 🟡 firmware emisor listo y formato validado; pendiente flashear y probar contra el listener |
-| Verificación | ✅ **372 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
+| Verificación | ✅ **374 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 
 ---
 
@@ -245,6 +247,7 @@ recomendaron alternativas en vez de repetirlas sin corregir la causa.
 | **QDQ + MCT + Edge-MDT** | Pendiente (no falló) | Requiere PC Linux + converter Sony | ⏸️ F4 |
 | **Calibración por clase** (2026-09-22) | ECE eval 0.131 vs 0.123 de la global, NLL 2.02 vs 1.66 (peor) y NO preserva el ranking de p_incendio | El ajuste por clase sobre-amortigua (casi todas las T saturan el techo 20.0; volcán n=0 en calibración) y cambiaría la política `fire_only_v1` validada | ❌ no adoptada; evidencia `docs/benchmarks/calibracion_por_clase.json` |
 | **Augmentación UAV en daño** (2026-09-22) | Fine-tune del bal con motion_blur/escala/sombras/vibración: limpio 0.374 → 0.265 | Mismatch de receta (init de `train_damage_v2`, fine-tune con v3), 1 época insuficiente a lr 1e-4 y aug agresiva (escala 0.45-0.60, p=0.35×4) | ❌ no adoptado; el A/B correcto queda en V11; evidencia `docs/benchmarks/aug_uav_dano.json` |
+| **Tipo con pesos por clase** (2026-09-22) | LOEO 0.317 vs 0.330 del baseline (CE pelada), dentro de la banda ±0.04 | Mejora 3 eventos (portugal, midwest, pinery) pero hunde 4 (rescuenet, moore, palu, Cocodrie): redistribuye sin subir la media; focal no se corre (misma hipótesis) | ❌ no adoptado; checkpoint de producción intacto; evidencia `docs/benchmarks/tipo_balanceado.json` |
 
 **Conclusión honesta**: las técnicas que fallaron no eran malas en sí — estaban
 mal implementadas o mal aplicadas al dominio. La receta que sí movió la aguja
@@ -341,9 +344,14 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
   con selector de modelo y overlay mostrar/ocultar; sin torch/checkpoint
   degrada con error claro en el JSON (siempre HTTP 200, como `/api/consulta`,
   para no ensuciar la consola).
-- **Verificación**: `npm run smoke` → **62 aserciones E2E en verde** (build de
+- **Confianza limitada por estrés** (2026-09-22): `build_summary` agrega el
+  bloque `confianza_limitada` (aditivo, sin subir el schema v3) con los frames
+  bajo bruma densa (haze ≥ 45) o calor peligroso (humidex ≥ 46), umbrales
+  declarados de `cansat/stress.py`. No cambia ningún veredicto; el Informe
+  muestra la sección con motivos por frame.
+- **Verificación**: `npm run smoke` → **64 aserciones E2E en verde** (build de
   producción servido por Python, cero errores de consola; incluye generación
-  real del overlay y rutas de error del endpoint).
+  real del overlay, rutas de error del endpoint y el bloque de confianza).
 
 ---
 
@@ -351,12 +359,12 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **372** (364 pasan + 8 deseleccionados slow/gpu/dataset en el filtro de CI; incluye T por clase, `sombras`/`vibracion` y Grad-CAM) |
+| Tests de vuelo (`pytest`) | **374** (366 pasan + 8 deseleccionados slow/gpu/dataset en el filtro de CI; incluye T por clase, `sombras`/`vibracion`, Grad-CAM y confianza) |
 | Lint (`ruff check .`) | verde (0.16.8; el `ruff` viejo del PATH no lee PLR0917) |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
 | Carga en `cv2.dnn` | verificada para cada ONNX de vuelo |
-| Smoke de la estación | **62 aserciones E2E verdes** (cero errores de consola) |
+| Smoke de la estación | **64 aserciones E2E verdes** (cero errores de consola) |
 | CI (GitHub Actions) | 3 jobs verdes: vuelo (ruff 0.16.8 + tests + imports + generador), deps de vuelo, build de la estación |
 | Registro de modelos | `MODELS.yaml` con métrica, fuente, hash y estado por artefacto |
 
@@ -423,6 +431,7 @@ python mission_pipeline.py --folder tiles --frames 3 --no-detect
 # Experimentos documentados (2026-09-22)
 python tools/calibrate_per_class.py                        # T por clase: NO adoptada
 python train_damage_v3.py --aug-uav --epochs 6             # aug UAV: NO adoptada
+python train_disaster_type.py --loeo --loss balanceada     # tipo rebalanceado: NO adoptado
 python tools/gradcam.py --image f.jpg --checkpoint outputs/best_damage3_bal.pth --out g.jpg
 
 # Re-entrenar (ejemplos)
@@ -465,7 +474,8 @@ npm run smoke
 | Personas con posición (dist a vías/agua) | ✅ hecho (v2): bboxes por frame en `telemetry.jsonl` + punto de apoyo; smoke con consultas de personas | — |
 | UART Pi ↔ ESP32 | 🟡 firmware Heltec listo (`firmware/heltec_lb135_uart/`, contrato v2 validado contra el parser); cadena probada en PC con `sim_uart` (12/12) | flashear la placa y probar el listener real (USB `/dev/ttyACM0` y GPIO15) |
 | Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 62 asserts en verde | — |
-| Calibración por clase / aug UAV | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | el A/B correcto de aug queda en V11 |
+| Calibración por clase / aug UAV / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | el A/B correcto de aug queda en V11 |
+| Confianza limitada por estrés | ✅ hecho: bloque en `summary.json` + sección en el Informe + espejo TS | — |
 
 **Riesgo principal**: la validación en hardware sigue pendiente y **ahora está
 bloqueada por la microSD**: sin flashear no hay s/frame, ni IMX500, ni UART real.

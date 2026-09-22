@@ -350,6 +350,21 @@ limitaciones:
       docs/benchmarks/calibracion_tipo.json. Baseline LOEO re-medido en la
       misma corrida: 0.330 (ver `mil-tipo-desastre`).
 
+  - id: tipo-balanceado
+    estado: vigente
+    texto: |
+      Rebalanceo del clasificador de tipo (train_disaster_type.py --loss
+      balanceada/focal, pesos inversos topados en 5.0): LOEO 0.317 vs 0.330
+      del baseline con CE pelada, dentro de la banda de ruido run-to-run
+      (±0.04). Por evento mejora 3 (portugal 0.22→0.53, midwest 0.28→0.56,
+      pinery 0.21→0.38) pero hunde 4 (rescuenet 0.31→0.09, moore 0.85→0.61,
+      palu 0.31→0.07, Cocodrie 0.78→0.54): redistribuye aciertos sin subir la
+      media. El cuello es representación/dominio, no desbalance; focal no se
+      corre (misma hipótesis ya testeada). NO se adopta; el checkpoint de
+      producción sigue siendo el de CE. Para no perder una corrida de ~1 h si
+      se corta, el LOEO acepta --eventos (tramos) + --loeo-json. Evidencia:
+      docs/benchmarks/tipo_balanceado.json.
+
   - id: calibracion-por-clase
     estado: vigente
     texto: |
@@ -483,6 +498,18 @@ limitaciones:
       con p=0.35×4 ops). El A/B correcto (mismo init, misma receta ± aug,
       schedule largo) queda para V11. Evidencia:
       docs/benchmarks/aug_uav_dano.json.
+
+  - id: confianza-estres
+    estado: vigente
+    texto: |
+      El estrés ambiental degrada los modelos (suite: niebla/lluvia hunden el
+      mIoU) y eso está bien: lo que faltaba era que el SISTEMA LO DIGA. Desde
+      2026-09-22 `build_summary` agrega `confianza_limitada` (aditivo, no sube
+      el schema v3): frames con haze_pct ≥ 45 (BRUMA DENSA, ST.CONTAM_DENSA) o
+      humidex ≥ 46 (PELIGROSO, ST.HEAT_PELIGRO), con motivos por frame y la
+      nota "interpretar con cautela". No cambia ningún veredicto. La estación
+      lo muestra en el Informe (sección sin número) y la demo lo trae con
+      n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
   - id: uart-heltec
     estado: vigente

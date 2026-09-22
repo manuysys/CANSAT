@@ -958,6 +958,25 @@ def main(argv=None) -> int:
         veredictos: dict[str, int] = {}
         for r in rows:
             veredictos[r["verdict"]] = veredictos.get(r["verdict"], 0) + 1
+        # Confianza limitada por estrés medido (mismo bloque que
+        # cansat/summary.py::build_summary; umbrales declarados en
+        # cansat/stress.py: CONTAM_DENSA=45.0, HEAT_PELIGRO=46.0).
+        _conf_frames = []
+        for r in rows:
+            _mot = []
+            if (r.get("haze_pct") or 0) >= 45.0:
+                _mot.append(f"bruma densa (haze {r['haze_pct']:.1f}%)")
+            if (r.get("humidex") or 0) >= 46.0:
+                _mot.append(f"calor peligroso (humidex {r['humidex']:.1f})")
+            if _mot:
+                _conf_frames.append({"src": r["src"], "motivos": _mot})
+        conf_baja = {
+            "n_frames": len(_conf_frames),
+            "frames": _conf_frames,
+            "umbrales": {"haze_pct": 45.0, "humidex": 46.0},
+            "nota": ("Frames con veredicto emitido bajo estrés ambiental "
+                     "medido: interpretar con cautela."),
+        }
         perd_est = sum(r["perdidas_est"] for r in rows)
         frames_con_dano = sum(1 for r in rows if r["danado_pct"] > 0)
         summary = {
@@ -994,6 +1013,7 @@ def main(argv=None) -> int:
             ],
             "danado_pct_por_frame": {r["src"]: r["danado_pct"] for r in rows},
             "danado_pct_prom": round(sum(r["danado_pct"] for r in rows) / len(rows), 2),
+            "confianza_limitada": conf_baja,
             "terrain_b5_por_frame": {
                 r["src"]: {k: r[k] for k in ("veg", "bui", "wat", "bare", "oth")} for r in rows
             },

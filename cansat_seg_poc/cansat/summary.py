@@ -173,6 +173,31 @@ def build_summary(
     sup = Supuestos(**(supuestos_perdidas or {}))
     perdidas = estimar_mision([dict(r) for r in rows], sup)
 
+    # ── Confianza limitada por estrés ambiental ─────────────────────── #
+    # Frames cuyo veredicto se emitió bajo estrés MEDIDO (bruma densa o
+    # calor peligroso, con los umbrales declarados de cansat/stress.py).
+    # No cambia ningún veredicto: agrega la advertencia para el operador.
+    from . import stress as ST
+
+    conf_baja: list[dict[str, Any]] = []
+    for r in rows:
+        motivos: list[str] = []
+        hz = _num(r.get("haze_pct"))
+        if hz is not None and hz >= ST.CONTAM_DENSA:
+            motivos.append(f"bruma densa (haze {hz:.1f}%)")
+        hx = _num(r.get("humidex"))
+        if hx is not None and hx >= ST.HEAT_PELIGRO:
+            motivos.append(f"calor peligroso (humidex {hx:.1f})")
+        if motivos:
+            conf_baja.append({"src": str(r.get("src")), "motivos": motivos})
+    confianza = {
+        "n_frames": len(conf_baja),
+        "frames": conf_baja,
+        "umbrales": {"haze_pct": ST.CONTAM_DENSA, "humidex": ST.HEAT_PELIGRO},
+        "nota": ("Frames con veredicto emitido bajo estrés ambiental medido: "
+                 "interpretar con cautela."),
+    }
+
     return {
         "schema_version": SCHEMA_VERSION,
         "mision": mision,
@@ -187,6 +212,9 @@ def build_summary(
         "danado_pct_prom": round(sum(dan_vals) / len(dan_vals), 2) if dan_vals else 0.0,
         "terrain_b5_por_frame": terrain_por_frame,
         "perdidas": perdidas,
+        # Confianza limitada por estrés ambiental medido (aditivo: los
+        # lectores viejos lo ignoran; ver decisión `confianza-estres`).
+        "confianza_limitada": confianza,
         "archivos": {
             "rutas": dict(rutas or {}),
             "conteos": dict(conteos or {}),

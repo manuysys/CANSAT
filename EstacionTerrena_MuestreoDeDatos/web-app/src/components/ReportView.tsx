@@ -134,6 +134,31 @@ export function ReportView() {
           )}
         </Reveal>
 
+        {summary && (
+        <Reveal>
+          <h3 className="mb-2 border-b border-border/60 pb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffb020]">
+            Confianza limitada por estrés ambiental ({summary.confianza_limitada?.n_frames ?? 0})
+          </h3>
+          {(summary.confianza_limitada?.frames?.length ?? 0) > 0 ? (
+            <table className="w-full border-collapse font-mono text-[11px]">
+              <tbody>
+                {(summary.confianza_limitada?.frames ?? []).map(f => (
+                  <tr key={f.src} className="border-b border-border/40 text-muted-foreground">
+                    <td className="py-1.5 pr-2 text-foreground/90">{f.src}</td>
+                    <td className="py-1.5">{f.motivos.join(' · ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[11px] text-muted-foreground">
+              Ningún frame bajo estrés severo (umbrales: bruma ≥ {summary.confianza_limitada?.umbrales?.haze_pct ?? 45} %,
+              humidex ≥ {summary.confianza_limitada?.umbrales?.humidex ?? 46}). Los veredictos valen sin cautela adicional.
+            </p>
+          )}
+        </Reveal>
+        )}
+
         <Reveal>
           <h3 className="mb-2 border-b border-border/60 pb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#3ddc84]">3 · Top 5 frames prioridad HIGH</h3>
           {top5.length ? (

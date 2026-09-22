@@ -1,0 +1,30 @@
+{
+  "experimento": "pesos por clase para el clasificador de tipo (7 clases)",
+  "veredicto": "NO adoptado: 0.317 vs 0.330 del baseline (dentro de la banda de ruido +-0.04)",
+  "baseline": {
+    "loss": "ce",
+    "media_ponderada": 0.3302,
+    "n_tiles": 5121,
+    "fuente": "outputs/disaster_type_loeo.json (canonico, re-medicion)"
+  },
+  "candidato": {
+    "loss": "balanceada (inversa a frecuencia, tope 5.0)",
+    "media_ponderada": 0.3171,
+    "n_tiles": 5121,
+    "fuente": "outputs/disaster_type_loeo_bal.json (fusion de tramos probe+A+B+C)",
+    "protocolo": "mismo que baseline: 6 epocas/fold, seed 42, MobileNetV3-Small 224"
+  },
+  "mejoras_por_evento": {
+    "xbd:portugal-wildfire": [0.217, 0.529],
+    "xbd:midwest-flooding": [0.283, 0.561],
+    "xbd:pinery-bushfire": [0.212, 0.383]
+  },
+  "empeoras_por_evento": {
+    "rescuenet:huracan": [0.31, 0.093],
+    "xbd:moore-tornado": [0.851, 0.613],
+    "xbd:palu-tsunami": [0.306, 0.072],
+    "crasar:Cocodrie": [0.778, 0.54]
+  },
+  "lectura": "los pesos por clase redistribuyen aciertos entre eventos pero no suben la media: el cuello es representacion/dominio, no desbalance de clases. Focal no se corre (misma familia de hipotesis, ya testeada).",
+  "nota_LOEO_original": "el 0.3681 historico vs 0.330 re-medido es varianza run-to-run declarada en decisiones (mil-tipo-desastre)"
+}

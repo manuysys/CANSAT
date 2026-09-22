@@ -29,6 +29,21 @@ export interface SummaryArchivos {
 }
 
 /** Estimación de pérdidas humanas (DPD). Ver cansat/casualties.py del pipeline. */
+/** Frames con veredicto emitido bajo estres ambiental medido (bruma densa o
+ *  calor peligroso, umbrales declarados de `cansat/stress.py`). No cambia
+ *  ningun veredicto: advierte al operador. Ver `cansat/summary.py`. */
+export interface ConfianzaFrame {
+  src: string
+  motivos: string[]
+}
+
+export interface ConfianzaLimitada {
+  n_frames?: number
+  frames?: ConfianzaFrame[]
+  umbrales?: { haze_pct?: number; humidex?: number }
+  nota?: string
+}
+
 export interface Perdidas {
   area_relevada_m2?: number
   area_danada_m2?: number
@@ -56,6 +71,7 @@ export interface Summary {
   danado_pct_prom?: number | null
   terrain_b5_por_frame?: Record<string, Record<string, number>>
   perdidas?: Perdidas
+  confianza_limitada?: ConfianzaLimitada
   archivos?: SummaryArchivos
   generado?: string
   nota?: string

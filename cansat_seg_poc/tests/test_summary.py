@@ -49,6 +49,29 @@ def test_motivo_se_genera_si_no_viene():
     assert "46.0" in s["alertas"][0]["motivo"]
 
 
+def test_confianza_limitada_vacia_sin_estres():
+    s = S.build_summary([fila("a"), fila("b", haze_pct=20.0, humidex=30.0)])
+    conf = s["confianza_limitada"]
+    assert conf["n_frames"] == 0
+    assert conf["frames"] == []
+    from cansat import stress as ST
+    assert conf["umbrales"] == {"haze_pct": ST.CONTAM_DENSA,
+                                "humidex": ST.HEAT_PELIGRO}
+
+
+def test_confianza_limitada_marca_bruma_y_calor():
+    rows = [fila("a", haze_pct=60.0),
+            fila("b", humidex=50.0),
+            fila("c", haze_pct=10.0, humidex=25.0)]
+    s = S.build_summary(rows)
+    conf = s["confianza_limitada"]
+    assert conf["n_frames"] == 2
+    por_src = {f["src"]: f["motivos"] for f in conf["frames"]}
+    assert any("bruma densa" in m for m in por_src["a"])
+    assert any("calor peligroso" in m for m in por_src["b"])
+    assert "c" not in por_src
+
+
 def test_alt_max_min():
     s = S.build_summary([fila("a", alt=250.0), fila("b", alt=100.0),
                          fila("c", alt=1.5)])

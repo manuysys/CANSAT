@@ -203,6 +203,10 @@ if (conf.length > 0) {
 }
 check(await page.getByText('modelos:', { exact: false }).count() >= 1, 'trazabilidad de modelos (contrato v3)');
 check(await page.getByText('medido', { exact: false }).count() >= 1, 'colapso con fuente (medido/supuesto)');
+const rSummary = await page.evaluate(async () => (await fetch('/api/summary')).json());
+check(rSummary.summary?.confianza_limitada?.umbrales?.haze_pct === 45
+  && rSummary.summary?.confianza_limitada?.umbrales?.humidex === 46,
+  `summary trae confianza_limitada con umbrales declarados (${rSummary.summary?.confianza_limitada?.n_frames ?? '?'} frames)`);
 
 // Tabs de imagen degradadas
 await page.click('[data-card-src="cap_0000"]');
@@ -267,6 +271,7 @@ await page.getByRole('tab', { name: 'Informe', exact: true }).click();
 await page.waitForTimeout(600);
 const doc = await page.locator('#informe-print').innerText();
 check(/INFORME DE MISI/i.test(doc) && /firmas|asesor/i.test(doc), 'informe con contenido y firmas');
+check(/Confianza limitada/i.test(doc), 'sección de confianza limitada visible en el informe');
 await page.screenshot({ path: SHOTS + '/v4_informe.png', fullPage: true });
 
 // Presentación
