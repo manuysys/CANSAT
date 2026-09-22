@@ -29,6 +29,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
+from cansat import corrupt as COR
 from cansat.checkpoints import save_ckpt
 from cansat.seed import set_seed
 from cansat.xbd import split_por_desastre
@@ -61,8 +62,9 @@ def rescue_loss(logits: torch.Tensor, y: torch.Tensor,
 
 
 class XBDv3(Dataset):
-    def __init__(self, rows, size=320, aug=False):
+    def __init__(self, rows, size=320, aug=False, aug_uav_p=0.0):
         self.rows, self.size, self.aug = rows, size, aug
+        self.aug_uav_p = aug_uav_p
 
     def __len__(self):
         return len(self.rows)
@@ -94,6 +96,14 @@ class XBDv3(Dataset):
             if k:
                 img = np.ascontiguousarray(np.rot90(img, k))
                 msk = np.ascontiguousarray(np.rot90(msk, k))
+            if self.aug_uav_p > 0:
+                # Augmentación UAV (misma fuente que la suite: cansat/corrupt.py).
+                # Una op por vez con prob. p; el rng sale del stream global
+                # sembrado (set_seed), igual que los flips de arriba.
+                for nombre in COR.AUG_UAV:
+                    if random.random() < self.aug_uav_p:
+                        rng_uav = np.random.default_rng(random.randrange(1 << 30))
+                        img, msk, _meta = COR.aplicar(nombre, img, msk, rng_uav)
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         rgb = (rgb - MEAN) / STD
         return (torch.from_numpy(rgb.transpose(2, 0, 1)).float(),
@@ -152,6 +162,12 @@ def main():
                          "dominios cuando se agregan extras (p.ej. 4)")
     ap.add_argument("--workers", type=int, default=0,
                     help="workers del DataLoader (0 = hilo principal)")
+    ap.add_argument("--init", default="outputs/best_damage3.pth",
+                    help="checkpoint inicial (default: damage3, como antes)")
+    ap.add_argument("--aug-uav", action="store_true",
+                    help="augmentación UAV (motion_blur/escala/sombras/vibración)")
+    ap.add_argument("--aug-uav-p", type=float, default=0.35,
+                    help="prob. por op de --aug-uav")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     set_seed(args.seed)
@@ -189,7 +205,7 @@ def main():
         model = DeepLabV3PlusMobileNetV2(3)
     except TypeError:
         model = DeepLabV3PlusMobileNetV2()
-    ckpt = Path("outputs/best_damage3.pth")
+    ckpt = Path(args.init)
     if ckpt.exists():
         # ⚠ load_into acepta los DOS formatos (dict con metadata o state_dict
         #   crudo) y ABORTA si carga menos capas de las exigidas. Antes esto era
@@ -204,7 +220,10 @@ def main():
     w = w.to(device)
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    train_dl = DataLoader(XBDv3(train_rows, args.size, aug=True),
+    if args.aug_uav:
+        print(f"Augmentación UAV activa: {list(COR.AUG_UAV)} p={args.aug_uav_p}")
+    train_dl = DataLoader(XBDv3(train_rows, args.size, aug=True,
+                                aug_uav_p=args.aug_uav_p if args.aug_uav else 0.0),
                           batch_size=args.batch, shuffle=True,
                           num_workers=args.workers,
                           persistent_workers=args.workers > 0)
@@ -258,6 +277,7 @@ def main():
             save_ckpt(args.out, model,
                       num_classes=3, img_size=args.size,
                       class_names=["other", "intacto", "danado"],
+                      aug_uav=bool(args.aug_uav),
                       iou_dano_two_stage=round(iou_d2, 4),
                       iou_per_class=[round(float(x), 4) for x in ious],
                       dataset="xbd (split por desastre) + extras",

@@ -93,6 +93,61 @@ def ajustar_temperatura(probs: np.ndarray, y: np.ndarray,
     return float(candidatas[int(np.argmin(perdidas))])
 
 
+def aplicar_temperatura_por_clase(probs: np.ndarray,
+                                  temps: np.ndarray) -> np.ndarray:
+    """``q_i ∝ p_i^(1/T_i)`` normalizado (una T por clase)."""
+    temps = np.asarray(temps, dtype=np.float64)
+    if temps.ndim != 1 or temps.shape[0] != np.asarray(probs).shape[1]:
+        raise ValueError("temps debe ser un vector (C,)")
+    if (temps <= 0).any():
+        raise ValueError("las temperaturas deben ser > 0")
+    pot = np.power(np.clip(probs, 1e-12, 1.0), 1.0 / temps[None, :])
+    return _normalizar(pot)
+
+
+def ajustar_temperatura_por_clase(probs: np.ndarray, y: np.ndarray,
+                                  t_min: float = 0.3, t_max: float = 20.0,
+                                  pasos: int = 80, min_n: int = 30) -> np.ndarray:
+    """Una T por clase: cada T_c minimiza el NLL solo en las muestras con y==c.
+
+    Clases con menos de ``min_n`` muestras en calibración quedan en T=1.0
+    (no hay evidencia para ajustarlas y no se inventa).
+    """
+    probs = np.asarray(probs, dtype=np.float64)
+    y = np.asarray(y)
+    n_clases = probs.shape[1]
+    temps = np.ones(n_clases)
+    if len(y) == 0:
+        return temps
+    candidatas = np.exp(np.linspace(math.log(t_min), math.log(t_max), pasos))
+    for c in range(n_clases):
+        m = y == c
+        if m.sum() < min_n:
+            continue
+        base = np.ones(n_clases)
+        perdidas = []
+        for t in candidatas:
+            base[c] = float(t)
+            perdidas.append(nll(aplicar_temperatura_por_clase(probs[m], base), y[m]))
+        temps[c] = float(candidatas[int(np.argmin(perdidas))])
+    return temps
+
+
+def ranking_preservado(p_antes: np.ndarray, p_despues: np.ndarray,
+                       clase: int) -> bool:
+    """¿La transformación preserva el orden de p_clase en todas las parejas?
+
+    La política ``fire_only_v1`` decide por umbral sobre p_incendio: si el
+    orden se preserva, el ranking no cambia (solo habría que re-mapear τ).
+    """
+    a = np.asarray(p_antes)[:, clase]
+    b = np.asarray(p_despues)[:, clase]
+    # Inversión = pareja (i,j) con a[i] <= a[j] pero b[i] > b[j]: equivale a
+    # que b no sea no-decreciente al ordenar por a (sort estable).
+    orden = np.argsort(a, kind="stable")
+    return bool((np.diff(b[orden]) >= 0).all())
+
+
 def ece(probs: np.ndarray, y: np.ndarray, n_bins: int = 15) -> float:
     """Expected Calibration Error sobre la confianza top-1."""
     p = _normalizar(probs)
@@ -219,6 +274,67 @@ def analizar(probs: np.ndarray, y: np.ndarray, eventos: list[str],
         "nota": ("T se ajusta sobre eventos de calibración y se evalúa en eventos "
                  "held-out (el CSV ya es LOEO). APS: cobertura y tamaño MEDIDOS. "
                  "Si mejora_ece ≤ 0 la temperatura no aporta y no se adopta."),
+    }
+
+
+def analizar_por_clase(probs: np.ndarray, y: np.ndarray,
+                       eventos: list[str]) -> dict:
+    """Compara crudo vs T global vs T por clase, con el mismo split por eventos.
+
+    Veredicto: se adopta solo si la T por clase mejora el ECE de evaluación
+    respecto de la global Y preserva el ranking de p_incendio (la política
+    ``fire_only_v1`` decide por umbral sobre esa probabilidad).
+    """
+    calib_ev, eval_ev = _split_eventos(eventos)
+    es_calib = np.array([e in set(calib_ev) for e in eventos])
+    es_eval = ~es_calib
+
+    p_c, y_c = probs[es_calib], y[es_calib]
+    p_e, y_e = probs[es_eval], y[es_eval]
+
+    t_global = ajustar_temperatura(p_c, y_c)
+    p_e_glob = aplicar_temperatura(p_e, t_global)
+
+    temps = ajustar_temperatura_por_clase(p_c, y_c)
+    p_e_clase = aplicar_temperatura_por_clase(p_e, temps)
+
+    idx_fuego = CLASES.index("incendio")
+    monotona = ranking_preservado(p_e_glob, p_e_clase, idx_fuego)
+
+    ece_crudo = ece(p_e, y_e)
+    ece_glob = ece(p_e_glob, y_e)
+    ece_clase = ece(p_e_clase, y_e)
+    nll_crudo = nll(p_e, y_e)
+    nll_glob = nll(p_e_glob, y_e)
+    nll_clase = nll(p_e_clase, y_e)
+
+    por_clase = {}
+    for c, nombre in enumerate(CLASES):
+        por_clase[nombre] = {
+            "temperatura": round(float(temps[c]), 3),
+            "n_calibracion": int((y_c == c).sum()),
+            "n_evaluacion": int((y_e == c).sum()),
+        }
+
+    adoptada = bool(ece_clase < ece_glob and monotona)
+    return {
+        "n_total": len(y),
+        "n_eventos": len(set(eventos)),
+        "eventos_calibracion": sorted(calib_ev),
+        "eventos_evaluacion": sorted(eval_ev),
+        "ece_evaluacion_crudo": round(ece_crudo, 4),
+        "ece_evaluacion_global": round(ece_glob, 4),
+        "ece_evaluacion_por_clase": round(ece_clase, 4),
+        "nll_evaluacion_crudo": round(nll_crudo, 4),
+        "nll_evaluacion_global": round(nll_glob, 4),
+        "nll_evaluacion_por_clase": round(nll_clase, 4),
+        "temperatura_global": round(t_global, 3),
+        "temperaturas_por_clase": por_clase,
+        "ranking_incendio_preservado": monotona,
+        "adoptada": adoptada,
+        "nota": ("Se adopta solo si la T por clase baja el ECE en eventos "
+                 "held-out respecto de la global y preserva el ranking de "
+                 "p_incendio. Si no, se documenta como no adoptada."),
     }
 
 

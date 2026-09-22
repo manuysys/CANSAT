@@ -29,7 +29,10 @@ def test_corrupciones_declaradas():
     assert set(COR.CORRUPCIONES) == {
         "lluvia", "niebla", "motion_blur",
         "subexposicion", "sobreexposicion", "escala",
+        "sombras", "vibracion",
     }
+    # El subset UAV de entrenamiento sale de la misma fuente.
+    assert set(COR.AUG_UAV) <= set(COR.CORRUPCIONES)
 
 
 def test_aplicar_es_determinista():
@@ -51,10 +54,10 @@ def test_formas_y_dtypes():
         assert isinstance(meta, dict) and meta, nombre
 
 
-def test_solo_escala_toca_la_mascara():
+def test_solo_geometricas_tocan_la_mascara():
     img, mask = _texturada(), _mascara()
     for nombre in COR.CORRUPCIONES:
-        if nombre == "escala":
+        if nombre in ("escala", "vibracion"):
             continue
         _out, mask_out, _meta = COR.aplicar(nombre, img, mask,
                                             np.random.default_rng(2))
@@ -104,3 +107,27 @@ def test_lluvia_anade_trazos():
 def test_corrupcion_desconocida():
     with pytest.raises(ValueError, match="desconocida"):
         COR.aplicar("granizo", _texturada(), None, np.random.default_rng(0))
+
+
+def test_sombras_oscurecen_sin_tocar_gt():
+    img = np.full((96, 96, 3), 160, np.uint8)
+    mask = _mascara()
+    out, meta = COR.sombras(img, np.random.default_rng(5))
+    assert out.mean() < img.mean()          # hay sombra de verdad
+    assert out.min() < img.min()
+    out2, _, _ = COR.aplicar("sombras", img, mask, np.random.default_rng(5))
+    assert np.array_equal(out2, out)        # dispatch consistente
+    assert 1 <= meta["n"] <= COR.SOMBRAS_N
+
+
+def test_vibracion_mueve_escena_y_mascara():
+    img, mask = _texturada(), _mascara()
+    out, mask_out, meta = COR.aplicar("vibracion", img, mask,
+                                      np.random.default_rng(6))
+    assert out.shape == img.shape and out.dtype == np.uint8
+    # La máscara se movió con la escena pero conserva las clases.
+    assert not np.array_equal(mask_out, mask)
+    assert set(np.unique(mask_out).tolist()) <= {0, 1, 2}
+    assert abs(meta["dx"]) <= COR.VIBRACION_DX
+    assert abs(meta["dy"]) <= COR.VIBRACION_DX
+    assert abs(meta["ang"]) <= COR.VIBRACION_ANG

@@ -154,6 +154,23 @@ export type ConsultaTotal =
   | { min_m?: number | null; media_m?: number | null }
   | { frames_con_presencia?: number; de?: number }
 
+/* Grad-CAM: explicabilidad del modelo de daño para un frame. */
+export type GradcamModelo = 'dano2' | 'dano'
+
+export interface GradcamResult {
+  ok: boolean
+  src?: string
+  modelo?: string
+  cached?: boolean
+  url?: string
+  fuente?: string
+  clase?: number | null
+  ms?: number
+  generado?: string
+  error?: string
+  detalle?: string
+}
+
 export interface ConsultaResult {
   ok?: boolean
   consulta_espacial?: boolean

@@ -350,6 +350,18 @@ limitaciones:
       docs/benchmarks/calibracion_tipo.json. Baseline LOEO re-medido en la
       misma corrida: 0.330 (ver `mil-tipo-desastre`).
 
+  - id: calibracion-por-clase
+    estado: vigente
+    texto: |
+      Extensión con una T por clase (q_i ∝ p_i^(1/T_i), tools/calibrate_per_class.py,
+      mismo split por eventos). NO se adopta: ECE de evaluación 0.131 vs 0.123
+      de la global, NLL 2.02 vs 1.66 (peor), y NO preserva el ranking de
+      p_incendio, así que cambiaría la política fire_only_v1 validada. El ajuste
+      por clase sobre-amortigua: casi todas las T saturan el techo del grid
+      (20.0) y volcán queda en T=1.0 por falta de muestras en calibración
+      (n=0). Se documenta el experimento fallido en vez de cablearlo.
+      Evidencia: docs/benchmarks/calibracion_por_clase.json.
+
   - id: ood-drift
     estado: vigente
     texto: |
@@ -453,6 +465,50 @@ limitaciones:
       donde NO hay ningún cambio. Corregido (ahora skipea la muestra), pero los
       pesos best_siamese_damage.pth ya entrenados arrastran ese defecto:
       re-entrenar antes de confiar en el siamés.
+
+  - id: aug-uav-dano
+    estado: vigente
+    texto: |
+      Augmentación UAV para el daño de vuelo: ops nuevas `sombras` (parches
+      poligonales oscurecidos) y `vibracion` (±3 px + ±0.4°, geométrica con
+      máscara) en cansat/corrupt.py como FUENTE ÚNICA (entrenar y evaluar con
+      la misma implementación), subset AUG_UAV = motion_blur/escala/sombras/
+      vibracion, hook --aug-uav en train_damage_v3.py (default apagado).
+      Baseline medido (dano2, RescueNet val, n=60): limpio IoU bin 0.374;
+      motion_blur -0.021, escala -0.026, sombras -0.001, vibracion -0.006.
+      Fine-tune desde best_damage3_bal.pth con aug (1 época, lr 1e-4): limpio
+      0.265 (-0.109), motion_blur -0.034, escala +0.000. NO SE ADOPTA: degrada
+      el limpio. Causas probables: mismatch de receta (init de train_damage_v2,
+      fine-tune con v3), 1 época insuficiente y aug agresiva (escala 0.45-0.60
+      con p=0.35×4 ops). El A/B correcto (mismo init, misma receta ± aug,
+      schedule largo) queda para V11. Evidencia:
+      docs/benchmarks/aug_uav_dano.json.
+
+  - id: uart-heltec
+    estado: vigente
+    texto: |
+      Firmware emisor del contrato LB135 v2 para Heltec WiFi LoRa 32 V3
+      (firmware/heltec_lb135_uart/, PlatformIO): 1 paquete/s con perfil de
+      descenso simulado DECLARADO (no son sensores reales) y checksum NMEA.
+      El formato se validó contra cansat/protocol.py (parse + checksum + fix).
+      Sale por USB-serie: en la PC se lee como COMx y en la Pi como
+      /dev/ttyACM0, sin pelear con pines GPIO. Cadena probada en PC:
+      sim_uart → uart_listener --stdin → uart_state.json (12/12 paquetes).
+      PENDIENTE: flashear la placa, probar el listener contra el Heltec real
+      y el cableado GPIO directo (TX→GPIO15); ver pi/guia_pi.md §8.
+
+  - id: gradcam-estacion
+    estado: vigente
+    texto: |
+      Explicabilidad del daño integrada a la estación (2026-09-22): endpoint
+      GET /api/gradcam (src, modelo=dano2|dano, clase opcional) que invoca
+      tools/gradcam.py por subproceso con el venv de vuelo (la estación sigue
+      stdlib-only), cachea el PNG en outputs/gradcam/ y lo sirve por /img/.
+      El Detalle del frame tiene botón "explicar (Grad-CAM)" con selector de
+      modelo (vuelo/xBD) y overlay mostrar/ocultar; el resultado vale solo para
+      su frame y la petición se aborta al navegar. Primera generación ~13 s en
+      CPU, después cache. Sin torch/checkpoint degrada con error claro.
+      Evidencia: docs/evidencia/10_gradcam.png.
 
 proximos_pasos:
   - |

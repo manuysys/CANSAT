@@ -20,9 +20,9 @@ vivo y en post-vuelo.
 ```
 CANSAT/
 ├── cansat_seg_poc/                  # VUELO + POST-VUELO + IA (Python/torch/ONNX)
-│   ├── cansat/                      # paquete compartido (20 módulos)
+│   ├── cansat/                      # paquete compartido (21 módulos)
 │   ├── tools/                       # herramientas (stress suite, consulta, evals…)
-│   ├── tests/                       # 32 archivos de test (365 tests)
+│   ├── tests/                       # 32 archivos de test (372 tests)
 │   ├── docs/                        # decisiones.yaml, reporte, protocolos, evidencia
 │   ├── dataset/ · datasets/         # datos (no versionados)
 │   ├── outputs/ · runs/ · weights/  # modelos y resultados (parcialmente versionados)
@@ -143,8 +143,9 @@ deterministas sobre máscaras y telemetría.
 ### 2.7 Estación terrena (`EstacionTerrena_MuestreoDeDatos/`)
 
 - **Servidor stdlib** `web_server.py`: API GET (`/api/mission`, `/api/frame`,
-  `/api/samples`, `/api/summary`, `/api/health`, `/api/consulta`, SSE
-  `/api/events`), proxy `/img`, cache por mtime, sin dependencias.
+  `/api/samples`, `/api/summary`, `/api/health`, `/api/consulta`,
+  `/api/gradcam`, SSE `/api/events`), proxy `/img` (incluye `outputs/gradcam/`),
+  cache por mtime, sin dependencias.
 - **App React** (Vite): vistas **Vuelo / Post-vuelo / Informe / Presentación /
   Jurado**, 27 componentes: escena 3D del descenso con fallback SVG, corredor,
   mapa offline con tiles locales, timeline, bitácora, panel de muestreo,
@@ -157,17 +158,23 @@ deterministas sobre máscaras y telemetría.
   vivo** (`tools/simulacro.py`: stream acelerado con dropout, ráfaga y trunco) y
   **checklist de simulacro** con 4 variantes, 3 de ellas automatizadas
   (`tools/check-variantes.mjs`).
-- **Smoke E2E** `tools/smoke-v4.mjs`: **56 aserciones verdes**, cero errores de
-  consola, sobre el build de producción servido por Python.
-- **Evidencia**: capturas en `docs/evidencia/` (12 en la estación, 8 en vuelo).
+- **Smoke E2E** `tools/smoke-v4.mjs`: **62 aserciones verdes**, cero errores de
+  consola, sobre el build de producción servido por Python (incluye generación
+  real del overlay Grad-CAM y rutas de error del endpoint; los mensajes de
+  consola llevan la URL para depurar).
+- **Grad-CAM integrado**: botón "explicar" en el detalle con selector de modelo
+  (vuelo/xBD), overlay mostrar/ocultar y caché en `outputs/gradcam/`.
+- **Evidencia**: capturas en `docs/evidencia/` (13 en la estación, 10 en vuelo).
 
 ### 2.8 Herramientas principales
 
 | Herramienta | Para qué |
 |---|---|
 | `evaluate.py` | Eval unificada ONNX/PyTorch sobre LoveDA (JSON versionado + confusión) |
-| `tools/stress_suite.py` + `cansat/corrupt.py` | Aptitud de vuelo: limpio vs 6 corrupciones |
+| `tools/stress_suite.py` + `cansat/corrupt.py` | Aptitud de vuelo: limpio vs 8 corrupciones (`sombras`/`vibracion` nuevas); el mismo módulo es augment de entreno (`AUG_UAV`) |
 | `tools/consulta.py` / `bench_parser_earthvqa.py` | Consulta Terrestre y benchmark del parser |
+| `tools/calibrate_per_class.py` | T por clase del tipo: experimentada y **rechazada** (ECE 0.131 vs 0.123) |
+| `firmware/heltec_lb135_uart/` | Emisor LB135 v2 para Heltec V3 (PlatformIO); formato validado contra el parser |
 | `train_*.py` (~15) | Entrenamientos: terreno, daño, flood, fuego, severidad, tipo, vías… |
 | `prepare_*.py` / `download_*.py` | Preparación/descarga de datasets |
 | `export_onnx.py` | Exportador **único** (opset 17, `dynamo=False`, auditoría) |
@@ -186,13 +193,14 @@ deterministas sobre máscaras y telemetría.
 
 ### 2.9 Tests y CI
 
-- **365 tests locales** (32 archivos): métricas, protocolo, índices, casualties,
+- **372 tests locales**: métricas, protocolo, índices, casualties,
   conformal, sampler, CRF, nodata, xbd, summary, onnxio (mapeo por nombre y
-  backends), imx500 (parser SSD), masks, consultas, corrupt, stress suite,
-  post_flight, helpers del pipeline, enhance_image, quantize **QDQ end-to-end**,
-  export (slow) y `generate_report`.
-- En CI: **347 pasan** + 3 skip (torch) + 1 deselected (equivalencia cv2/ORT,
-  necesita el ONNX de vuelo).
+  backends), imx500 (parser SSD), masks, consultas, corrupt (incluye
+  `sombras`/`vibracion`), stress suite, post_flight, helpers del pipeline,
+  enhance_image, quantize **QDQ end-to-end**, export (slow), `generate_report`
+  y calibración por clase.
+- En CI (`-m "not slow and not gpu and not dataset"`): **364 pasan** +
+  8 deseleccionados.
 - **CI en GitHub Actions activo y verde** (3 jobs): vuelo (ruff 0.16.8 fijado +
   compileall + tests + imports + generador del informe), deps de vuelo y build
   de la estación. Los errores se publican en **anotaciones del check**.
@@ -225,11 +233,13 @@ deterministas sobre máscaras y telemetría.
 | Severidad (colapso) | IoU 0.633 |
 | Tipo de desastre | LOEO 0.3681 · MIL 0.3277 (no supera) · umbral incendio 0.99 (conformal FPR≤5 %, recall 0.291) |
 | Vías (consulta) | IoU 0.515 FloodNet val · cross-domain 0.169 |
-| Stress suite (limpio→peor) | terreno 51.0→16.3 (niebla) · daño UAV 0.403→0.198 (niebla) · flood 0.489→0.256 (lluvia) · fuego 0.801→0.306 (lluvia) |
+| Stress suite (limpio→peor) | terreno 51.0→16.3 (niebla) · daño UAV 0.403→0.198 (niebla) · flood 0.489→0.256 (lluvia) · fuego 0.801→0.306 (lluvia) · daño2 UAV: motion_blur −0.021, escala −0.026 (n=60) |
 | Parser Consulta (EarthVQA) | cobertura 41.4 % · precisión 100 % (15/15 y 36/36) |
-| Estación | smoke 56 aserciones verdes · checklist 4/4 variantes |
+| Estación | smoke **62 aserciones verdes** · checklist 4/4 variantes · Grad-CAM integrado |
+| Calibración por clase | ❌ ECE 0.131 vs 0.123 global + rompe ranking de incendio → no adoptada |
+| Aug UAV (daño) | ❌ fine-tune limpio 0.374 → 0.265 → no adoptado (A/B correcto en V11) |
 | EDSR | 287.9 s por frame 1024² en CPU |
-| CI | 3 jobs verdes · 316 tests en CI |
+| CI | 3 jobs verdes · 364 tests en CI |
 
 ---
 
@@ -289,6 +299,21 @@ deterministas sobre máscaras y telemetría.
   - **Active learning**: cola de anotación priorizada para el primer vuelo real.
   - **Grad-CAM**: CLI de explicabilidad para auditar predicciones raras.
 
+**Tanda del plan externo (2026-09-21/22, `PLAN_MEJORA_IMPLEMENTACION_COMPLETA.md`)**
+- La mitad ya existía (active learning, drift, tool Grad-CAM). Lo nuevo:
+  - **Grad-CAM en la estación**: `/api/gradcam` + overlay + caché (evidencia
+    `10_gradcam.png`, decisión `gradcam-estacion`); smoke 58 → **62**.
+  - **Calibración por clase**: experimentada y **rechazada** (ECE 0.131 vs
+    0.123; rompe el ranking de incendio; `calibracion_por_clase.json`).
+  - **Augmentación UAV**: ops `sombras`/`vibracion` en `cansat/corrupt.py`
+    (fuente única entreno+suite, 8 corrupciones) + `--aug-uav` en
+    `train_damage_v3.py`; fine-tune **rechazado** (limpio 0.374 → 0.265;
+    `aug_uav_dano.json`).
+  - **UART Heltec**: firmware emisor LB135 v2 (`firmware/heltec_lb135_uart/`),
+    formato validado contra el parser; pendiente flashear y probar.
+  - Diferido a V11: MoE, UDA, difusión/LoRA, capas Sentinel Hub (rompen el modo
+    offline), replay continuo.
+
 **Tanda del handoff (sesión previa)**
 - **MIL**: media por bolsa 0.3277 vs 0.3681 → documentado como técnica que no
   funcionó; queda el clasificador por tile.
@@ -333,14 +358,18 @@ deterministas sobre máscaras y telemetría.
 | MIL (bolsa=evento) | 0.3277 vs 0.3681 del tile | Clasificador por tile |
 | Siamés con pre oblicuo | Alucinaba cambio | OFF por defecto |
 | Mix FloodNet+LoveDA para vías | 0.489 (no pasaba el gate) | FloodNet-only 0.515 |
+| Calibración por clase (tipo) | ECE 0.131 vs 0.123 global; rompe ranking de incendio | No adoptada (`calibracion_por_clase.json`) |
+| Augmentación UAV (daño) | Fine-tune limpio 0.374 → 0.265 | No adoptado; A/B correcto en V11 (`aug_uav_dano.json`) |
 
 ---
 
 ## 6. Pendientes (solo hardware / placa)
 
-1. **microSD** para flashear la Pi Zero W v1 (hoy es el bloqueo principal).
+1. **microSD** para flashear la Pi Zero W v1 (hoy es el bloqueo principal;
+   `dist_pi` regenerado con código al día, listo para `scp`).
 2. Validar en placa: **s/frame**, **AI Camera/IMX500** (¿funciona en Zero W v1?),
-   **UART real Pi↔ESP32**, personas por NPU.
+   **UART real Pi↔Heltec** (firmware listo; probar USB `/dev/ttyACM0` y GPIO15),
+   personas por NPU.
 3. **Conversión Edge-MDT (.rpk)** de terreno/flood/fuego: requiere **PC Linux**
    con el converter Sony.
 4. **INT8**: re-medir QDQ estático en la placa y decidir FP32 vs INT8
@@ -373,6 +402,6 @@ python generate_report.py && python generate_report.py --check
 cd ../EstacionTerrena_MuestreoDeDatos
 python tools/make_demo_mission.py
 python web_server.py            # http://localhost:8000
-node tools/smoke-v4.mjs         # 56 aserciones
+node tools/smoke-v4.mjs         # 62 aserciones
 node tools/check-variantes.mjs  # variantes del checklist
 ```

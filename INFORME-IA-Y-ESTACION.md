@@ -23,8 +23,12 @@
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
-| Estación terrena | ✅ 5 vistas, contrato de 34 columnas, 41 aserciones E2E en verde |
-| Verificación | ✅ **200 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
+| Estación terrena | ✅ 5 vistas, contrato de 34 columnas, **62 aserciones E2E en verde** (incluye Grad-CAM) |
+| Explicabilidad (Grad-CAM) | ✅ `/api/gradcam` + overlay en el detalle (modelo de vuelo/xBD), con caché y degradación clara |
+| Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
+| Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
+| UART Heltec (contrato v2) | 🟡 firmware emisor listo y formato validado; pendiente flashear y probar contra el listener |
+| Verificación | ✅ **372 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 
 ---
 
@@ -239,6 +243,8 @@ recomendaron alternativas en vez de repetirlas sin corregir la causa.
 | **Principal re-entrenado con mezcla UAV** | Peor en ambos dominios | xBD 0.173 → 0.047 y RescueNet 0.476 | ❌ descartado |
 | **xBD entrenado, evaluado en UAV** | Satura | 62.7 % de "daño" en tiles sin daño | ❌ por eso se adaptó el dominio |
 | **QDQ + MCT + Edge-MDT** | Pendiente (no falló) | Requiere PC Linux + converter Sony | ⏸️ F4 |
+| **Calibración por clase** (2026-09-22) | ECE eval 0.131 vs 0.123 de la global, NLL 2.02 vs 1.66 (peor) y NO preserva el ranking de p_incendio | El ajuste por clase sobre-amortigua (casi todas las T saturan el techo 20.0; volcán n=0 en calibración) y cambiaría la política `fire_only_v1` validada | ❌ no adoptada; evidencia `docs/benchmarks/calibracion_por_clase.json` |
+| **Augmentación UAV en daño** (2026-09-22) | Fine-tune del bal con motion_blur/escala/sombras/vibración: limpio 0.374 → 0.265 | Mismatch de receta (init de `train_damage_v2`, fine-tune con v3), 1 época insuficiente a lr 1e-4 y aug agresiva (escala 0.45-0.60, p=0.35×4) | ❌ no adoptado; el A/B correcto queda en V11; evidencia `docs/benchmarks/aug_uav_dano.json` |
 
 **Conclusión honesta**: las técnicas que fallaron no eran malas en sí — estaban
 mal implementadas o mal aplicadas al dominio. La receta que sí movió la aguja
@@ -328,8 +334,16 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
   (corredor, mejoras EDSR, evidencias, máscaras de consulta).
 - **Simulacro y demo**: `tools/simulacro.py`, `tools/make_demo_mission.py`
   (mundo sintético con zonas de incendio, inundación y sismo), `CHECKLIST-SIMULACRO.md`.
-- **Verificación**: `npm run smoke` → **56 aserciones E2E en verde** (build de
-  producción servido por Python, cero errores de consola).
+- **Grad-CAM** (2026-09-22): `GET /api/gradcam` (src, modelo `dano2`/`dano`,
+  clase opcional) invoca `tools/gradcam.py` por subproceso con el venv de vuelo
+  (la estación sigue stdlib-only), cachea el PNG en `outputs/gradcam/` y lo
+  sirve por `/img/`. El detalle del frame tiene botón "explicar (Grad-CAM)"
+  con selector de modelo y overlay mostrar/ocultar; sin torch/checkpoint
+  degrada con error claro en el JSON (siempre HTTP 200, como `/api/consulta`,
+  para no ensuciar la consola).
+- **Verificación**: `npm run smoke` → **62 aserciones E2E en verde** (build de
+  producción servido por Python, cero errores de consola; incluye generación
+  real del overlay y rutas de error del endpoint).
 
 ---
 
@@ -337,12 +351,12 @@ telemetría (CSV 34 columnas + JSONL con `contam`/`heat`/`visibility`).
 
 | Qué | Resultado |
 |---|---|
-| Tests de vuelo (`pytest`) | **365 pasan** en local; en CI: 347 + 3 skip (torch) + 1 deselected (equivalencia cv2/ORT, necesita el ONNX de vuelo) |
-| Lint (`ruff check .`) | verde |
+| Tests de vuelo (`pytest`) | **372** (364 pasan + 8 deseleccionados slow/gpu/dataset en el filtro de CI; incluye T por clase, `sombras`/`vibracion` y Grad-CAM) |
+| Lint (`ruff check .`) | verde (0.16.8; el `ruff` viejo del PATH no lee PLR0917) |
 | Compilación (`compileall`) | verde |
 | Auditoría IMX500 (`audit_imx500.py`) | los 6 ONNX de vuelo pasan (opset 17, autocontenidos) |
 | Carga en `cv2.dnn` | verificada para cada ONNX de vuelo |
-| Smoke de la estación | 56 aserciones E2E verdes |
+| Smoke de la estación | **62 aserciones E2E verdes** (cero errores de consola) |
 | CI (GitHub Actions) | 3 jobs verdes: vuelo (ruff 0.16.8 + tests + imports + generador), deps de vuelo, build de la estación |
 | Registro de modelos | `MODELS.yaml` con métrica, fuente, hash y estado por artefacto |
 
@@ -366,6 +380,7 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `07_consulta_terrestre.png` | panel de Consulta Terrestre con resultado y badge `consulta_espacial` sobre el mapa (contrato v3) |
 | `08_consulta_personas.png` | consulta v2 con personas y posiciones (punto de apoyo del bbox) |
 | `09_ood_drift.png` | badge "fuera de distribución" (OOD/drift contra la referencia de LoveDA Val) |
+| `10_gradcam.png` | overlay Grad-CAM del modelo de daño de vuelo sobre un frame (qué regiones justifican el daño) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -402,8 +417,13 @@ Para regenerarlas: `python tools/generate_evidence.py` (IA) y
 # Vuelo (PC)
 cd cansat_seg_poc
 pip install -r requirements.txt
-python -m pytest tests -q                                  # 200 tests
+python -m pytest tests -q -m "not slow and not gpu and not dataset"   # 372 (364 pasan)
 python mission_pipeline.py --folder tiles --frames 3 --no-detect
+
+# Experimentos documentados (2026-09-22)
+python tools/calibrate_per_class.py                        # T por clase: NO adoptada
+python train_damage_v3.py --aug-uav --epochs 6             # aug UAV: NO adoptada
+python tools/gradcam.py --image f.jpg --checkpoint outputs/best_damage3_bal.pth --out g.jpg
 
 # Re-entrenar (ejemplos)
 python train_terrain_tiny.py --arch lraspp-mv3s --size 224 --epochs 30
@@ -443,6 +463,9 @@ npm run smoke
 | UI de la estación para bruma/calor/fuego | ✅ hecho (detalle por frame + panel de muestreo) | — |
 | Pseudo-labels + re-destilado | ✅ cerrado como descartado: el KD ya empató (0.5196 vs 0.5219) y el pipeline viejo quedó congelado en `legacy/` | — |
 | Personas con posición (dist a vías/agua) | ✅ hecho (v2): bboxes por frame en `telemetry.jsonl` + punto de apoyo; smoke con consultas de personas | — |
+| UART Pi ↔ ESP32 | 🟡 firmware Heltec listo (`firmware/heltec_lb135_uart/`, contrato v2 validado contra el parser); cadena probada en PC con `sim_uart` (12/12) | flashear la placa y probar el listener real (USB `/dev/ttyACM0` y GPIO15) |
+| Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 62 asserts en verde | — |
+| Calibración por clase / aug UAV | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | el A/B correcto de aug queda en V11 |
 
 **Riesgo principal**: la validación en hardware sigue pendiente y **ahora está
 bloqueada por la microSD**: sin flashear no hay s/frame, ni IMX500, ni UART real.

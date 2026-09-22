@@ -63,7 +63,7 @@ async function skipCutscene(pg) {
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true });
 const page = await ctx.newPage();
 const GL_NOISE = /GL Driver Message|GPU stall due to ReadPixels/;  // artefacto headless/SwiftShader
-page.on('console', m => { const t = m.type(); if ((t === 'error' || t === 'warning') && !GL_NOISE.test(m.text())) problems.push(`consola.${t}: ${m.text().slice(0, 160)}`); });
+page.on('console', m => { const t = m.type(); if ((t === 'error' || t === 'warning') && !GL_NOISE.test(m.text())) problems.push(`consola.${t}: ${m.text().slice(0, 120)} @ ${(m.location().url || '').slice(-80)}`); });
 page.on('pageerror', e => problems.push('pageerror: ' + e.message.slice(0, 160)));
 page.on('requestfailed', r => problems.push('reqfail: ' + r.url().slice(0, 120)));
 
@@ -168,6 +168,22 @@ check(await page.locator('[data-testid="badge-ood"]').count() >= 1,
   'badge fuera de distribución visible en cap_0011');
 await page.click('[data-card-src="cap_0000"]');
 await page.waitForTimeout(300);
+
+// Grad-CAM: botón on-demand + overlay + rutas de error (sin quemar GPU en CI:
+// la generación real corre acá porque el smoke es local con torch).
+check(await page.locator('[data-testid="gradcam-pedir"]').count() >= 1,
+  'botón explicar (Grad-CAM) presente en el detalle');
+await page.locator('[data-testid="gradcam-pedir"]').click();
+await page.locator('[data-testid="gradcam-overlay"]').waitFor({ timeout: 180000 }).catch(() => {});
+check(await page.locator('[data-testid="gradcam-overlay"]').count() >= 1,
+  'overlay Grad-CAM generado y visible en cap_0000');
+const rGcamMal = await page.evaluate(async () =>
+  (await fetch('/api/gradcam?src=noexiste&modelo=dano2')).json());
+check(rGcamMal.ok === false, 'gradcam de frame inexistente da error claro');
+const rGcamMod = await page.evaluate(async () =>
+  (await fetch('/api/gradcam?src=cap_0000&modelo=zzz')).json());
+check(rGcamMod.ok === false && (rGcamMod.modelos || []).includes('dano2'),
+  'gradcam de modelo desconocido lista los válidos');
 
 // Política fire_only_v1: badge SOLO cuando el modelo confirmó incendio.
 const samples = await page.evaluate(async () => (await fetch('/api/samples')).json());
@@ -298,7 +314,7 @@ await new Promise(r => setTimeout(r, 1800));
 const ctx2 = await browser.newContext({ viewport: { width: 1366, height: 768 } });
 const page2 = await ctx2.newPage();
 page2.on('pageerror', e => problems.push('page2 pageerror: ' + e.message.slice(0, 120)));
-page2.on('console', m => { if (m.type() === 'error') problems.push('page2 consola: ' + m.text().slice(0, 120)); });
+page2.on('console', m => { if (m.type() === 'error') problems.push('page2 consola: ' + m.text().slice(0, 110) + ' @ ' + ((m.location().url || '').slice(-70))); });
 await page2.goto('http://localhost:8004', { waitUntil: 'networkidle' });
 await page2.waitForSelector('[data-card-src]');
 await skipCutscene(page2);

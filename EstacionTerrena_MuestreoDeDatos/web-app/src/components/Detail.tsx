@@ -1,9 +1,9 @@
 /* Detalle del frame: el protagonista de la vista Vuelo.
    Imagen grande con tabs internas (solo las variantes que existen) y, debajo,
    terreno + leyenda persistente, ambiente, daño y sampler con tooltips de glosario. */
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronLeft, ChevronRight, ImageOff, TriangleAlert } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, ImageOff, TriangleAlert } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,10 +12,10 @@ import { EmptyState } from '@/components/EmptyState'
 import { TerrainLegend } from '@/components/TerrainLegend'
 import { Gloss } from '@/components/Gloss'
 import { filteredFrames, useMission } from '@/store/mission'
-import { imgURL } from '@/lib/api'
+import { fetchGradcam, imgURL } from '@/lib/api'
 import { clampPct, intOr, num } from '@/lib/format'
 import { diagTone, domLabel, IMG_TABS, priColor, TERRAIN, verdictClass } from '@/lib/vocab'
-import type { Frame, ImgKey } from '@/lib/types'
+import type { Frame, GradcamModelo, GradcamResult, ImgKey } from '@/lib/types'
 
 function Kv({ k, v, u, tone, color, gloss }: { k: string; v: string; u?: string; tone?: string; color?: string; gloss?: string }) {
   return (
@@ -40,6 +40,19 @@ export function Detail() {
   const select = useMission(s => s.select)
   const setDetailImg = useMission(s => s.setDetailImg)
   const samples = useMission(s => s.samples)
+
+  /* Grad-CAM: explicabilidad del daño, on-demand con caché en el servidor.
+     Sin efectos de reseteo: el resultado vale solo para su propio src y la
+     petición se aborta al cambiar de frame. */
+  const [gcam, setGcam] = useState<GradcamResult | null>(null)
+  const [gcamOn, setGcamOn] = useState(false)
+  const [gcamBusy, setGcamBusy] = useState(false)
+  const [gcamModelo, setGcamModelo] = useState<GradcamModelo>('dano2')
+  const gcamAbort = useRef<AbortController | null>(null)
+  useEffect(() => {
+    gcamAbort.current?.abort()
+    return () => gcamAbort.current?.abort()
+  }, [selected])
 
   const f: Frame | null = selected ? bySrc.get(selected) ?? null : null
   const ex = f ? samples[f.src] : undefined
@@ -81,6 +94,32 @@ export function Detail() {
   const tabLabel = IMG_TABS.find(t => t.k === detailImg)?.label ?? 'Evidencia'
   const idx = intOr(f._idx, frames.indexOf(f))
   const tone = diagTone(f.diag)
+
+  const pedirGradcam = async () => {
+    if (gcamBusy) return
+    gcamAbort.current?.abort()
+    const ctl = new AbortController()
+    gcamAbort.current = ctl
+    setGcamBusy(true)
+    setGcam(null)
+    try {
+      const r = await fetchGradcam(f.src, gcamModelo, ctl.signal)
+      setGcam(r)
+      if (r.ok) setGcamOn(true)
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      setGcam({ ok: false, src: f.src, error: e instanceof Error ? e.message : 'falló la petición' })
+    } finally {
+      setGcamBusy(false)
+    }
+  }
+  /* El resultado sólo vale para su frame: al navegar, el anterior se ignora. */
+  const gcamShown = gcam && gcam.src === f.src ? gcam : null
+  const gcamVis = gcamOn && gcamShown && gcamShown.ok && gcamShown.url ? gcamShown : null
+  const pie = gcamVis
+    ? `Grad-CAM ${gcamVis.modelo} · clase ${gcamVis.clase ?? 'dominante'}${gcamVis.ms != null ? ` · ${gcamVis.ms} ms` : ''}${gcamVis.cached ? ' · cache' : ''}`
+    : `${tabLabel} · ${rel}`
+  const gcamURL = gcamVis?.url ? imgURL(gcamVis.url) : null
 
   return (
     <Card id="tour-detalle" className="flex flex-col border-border/60 bg-card/60">
@@ -156,6 +195,46 @@ export function Detail() {
         </div>
       )}
 
+      {/* Grad-CAM: qué regiones justifican el daño (on-demand, cache en servidor) */}
+      {url && (
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-1">
+          <Button
+            size="sm" variant="outline" data-testid="gradcam-pedir"
+            className="h-7 gap-1.5 font-mono text-[10.5px]"
+            disabled={gcamBusy} onClick={pedirGradcam}
+            title="Genera el mapa de calor de las regiones que justifican el daño (torch + checkpoint del repo de vuelo)"
+          >
+            <Eye className="size-3.5" />
+            {gcamBusy ? 'generando Grad-CAM…' : gcamShown?.ok ? 'regenerar Grad-CAM' : 'explicar (Grad-CAM)'}
+          </Button>
+          <div className="flex overflow-hidden rounded-full border border-border/60" role="group" aria-label="modelo a explicar">
+            {(['dano2', 'dano'] as const).map(m => (
+              <button
+                key={m} type="button" onClick={() => setGcamModelo(m)}
+                className={`px-2.5 py-1 font-mono text-[10px] transition-colors ${gcamModelo === m ? 'bg-[#5aa9e6]/20 text-[#a8d4f5]' : 'text-muted-foreground hover:text-foreground'}`}
+                title={m === 'dano2' ? 'modelo de vuelo (two-stage)' : 'modelo xBD Joplin/Nepal'}
+              >
+                {m === 'dano2' ? 'vuelo' : 'xBD'}
+              </button>
+            ))}
+          </div>
+          {gcamShown?.ok && gcamShown.url && (
+            <button
+              type="button" onClick={() => setGcamOn(v => !v)}
+              className="rounded-full border border-[#ffb020]/35 bg-[#ffb020]/10 px-3 py-1 font-mono text-[10px] text-[#ffd08a] transition-colors hover:bg-[#ffb020]/20"
+              title="Mostrar/ocultar el mapa de calor sobre el frame"
+            >
+              {gcamOn ? 'ocultar calor' : 'mostrar calor'}
+            </button>
+          )}
+        </div>
+      )}
+      {gcamShown && !gcamShown.ok && (
+        <p className="px-4 pt-1 font-mono text-[10.5px] text-[#ff8f9b]">
+          Grad-CAM no disponible: {gcamShown.error}{gcamShown.detalle ? ` · ${gcamShown.detalle}` : ''} (requiere torch + checkpoint en el repo de vuelo)
+        </p>
+      )}
+
       {/* Imagen protagonista con fade + scale 1.02 → 1 */}
       <div className="relative flex flex-1 items-center justify-center px-4 py-4">
         <AnimatePresence mode="wait">
@@ -168,9 +247,17 @@ export function Detail() {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="flex w-fit flex-col items-center justify-center"
             >
-              <img src={url} alt={`${tabLabel} de ${f.src}`} className="max-h-[46vh] w-auto max-w-full rounded-lg border border-border/40 bg-[#070a0f] object-contain shadow-[0_24px_60px_-28px_rgba(0,0,0,.95)] xl:max-h-[520px]" />
+              <div className="relative w-fit">
+                <img src={url} alt={`${tabLabel} de ${f.src}`} className="max-h-[46vh] w-auto max-w-full rounded-lg border border-border/40 bg-[#070a0f] object-contain shadow-[0_24px_60px_-28px_rgba(0,0,0,.95)] xl:max-h-[520px]" />
+                {gcamURL && (
+                  <img
+                    src={gcamURL} alt={`Grad-CAM de ${f.src}`} data-testid="gradcam-overlay"
+                    className="pointer-events-none absolute inset-0 h-full w-full rounded-lg object-contain opacity-95"
+                  />
+                )}
+              </div>
               <figcaption className="mt-2 w-full truncate text-center font-mono text-[10.5px] text-muted-foreground/80">
-                {tabLabel} · {rel}
+                {pie}
               </figcaption>
             </motion.figure>
           ) : (

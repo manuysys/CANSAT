@@ -14,6 +14,15 @@ RescueNet son nadir y con buena exposición):
   · ``subexposicion`` ganancia 2^EV con EV negativo (contraluz/sombra)
   · ``sobreexposicion`` ganancia 2^EV con EV positivo (cielo lavado)
   · ``escala``        remuestreo down→up (cambio de altitud efectiva)
+  · ``sombras``       parches poligonales oscurecidos, borde suavizado (sol de
+                      mediodía; solo fotométrica, la GT no se toca)
+  · ``vibracion``     traslación ±3 px + rotación ±0.4° (jitter del motor;
+                      geométrica: la máscara se transforma igual, borde replicate)
+
+El mismo módulo se usa como **augmentación de entrenamiento** (train_damage_v3.py
+``--aug-uav`` aplica motion_blur/escala/sombras/vibracion): entrenar y evaluar
+con la misma fuente evita que el "mejora" sea un artefacto de implementaciones
+distintas.
 
 ⚠ Honestidad: son degradaciones SINTÉTICAS con severidad fija declarada acá.
 No reemplazan una validación de vuelo real; sirven para comparar el mismo
@@ -31,7 +40,8 @@ import numpy as np
 
 from . import stress as ST
 
-#: Corrupciones soportadas (orden estable para reportes).
+#: Corrupciones soportadas (orden estable para reportes: al final van las
+#: nuevas para no cambiar el stream aleatorio de las que ya existen).
 CORRUPCIONES: tuple[str, ...] = (
     "lluvia",
     "niebla",
@@ -39,7 +49,12 @@ CORRUPCIONES: tuple[str, ...] = (
     "subexposicion",
     "sobreexposicion",
     "escala",
+    "sombras",
+    "vibracion",
 )
+
+#: Subconjunto UAV para augmentación de entrenamiento (movimiento/altitud/luz).
+AUG_UAV: tuple[str, ...] = ("motion_blur", "escala", "sombras", "vibracion")
 
 # ── Severidad declarada (única, "moderada") ─────────────────────────────── #
 LLUVIA_DENSIDAD: float = 0.0009   # gotas por píxel del frame
@@ -59,6 +74,13 @@ MOTION_SIGMA: float = 4.0
 EXPOSICION_EV: float = 1.2        # EV de la sub/sobre-exposición
 
 ESCALA_RANGO: tuple[float, float] = (0.45, 0.60)   # factor down→up
+
+SOMBRAS_N: int = 2                # parches de sombra (1..N por frame)
+SOMBRAS_FACTOR: float = 0.45      # multiplicador de brillo dentro de la sombra
+SOMBRAS_BLUR: int = 21            # suavizado del borde (impar)
+
+VIBRACION_DX: int = 3             # traslación máxima en píxeles
+VIBRACION_ANG: float = 0.4        # rotación máxima en grados
 
 
 def motion_kernel(size: int, angle: float) -> np.ndarray:
@@ -187,6 +209,58 @@ def escala(
     return out, mask_out, {"factor": round(f, 3)}
 
 
+def sombras(bgr: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, dict]:
+    """
+    Sombras duras: 1..N polígonos convexos oscurecidos, borde suavizado.
+
+    Solo fotométrica (la geometría no cambia, la GT sigue alineada): una sombra
+    real no mueve los edificios, solo les baja el brillo.
+    """
+    h, w = bgr.shape[:2]
+    n = int(rng.integers(1, SOMBRAS_N + 1))
+    mascara = np.zeros((h, w), np.float32)
+    for _ in range(n):
+        cx, cy = rng.uniform(0, w), rng.uniform(0, h)
+        r = rng.uniform(0.08, 0.25) * max(h, w)
+        k = int(rng.integers(3, 7))
+        angs = np.sort(rng.uniform(0, 2 * np.pi, k))
+        radios = rng.uniform(0.5 * r, r, k)
+        pts = np.stack([cx + radios * np.cos(angs),
+                        cy + radios * np.sin(angs)]).T.astype(np.int32)
+        cv2.fillConvexPoly(mascara, pts, 1.0)
+    mascara = cv2.GaussianBlur(mascara, (SOMBRAS_BLUR, SOMBRAS_BLUR), 0)
+    factor = 1.0 - (1.0 - SOMBRAS_FACTOR) * mascara[..., None]
+    out = bgr.astype(np.float32) * factor
+    meta = {"n": n, "factor": SOMBRAS_FACTOR, "borde": SOMBRAS_BLUR}
+    return np.clip(out, 0, 255).astype(np.uint8), meta
+
+
+def vibracion(
+    bgr: np.ndarray, mask: np.ndarray | None, rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray | None, dict]:
+    """
+    Sacudida de alta frecuencia: traslación ±3 px + rotación ±0.4°.
+
+    Geométrica como ``escala``: la máscara se transforma con la misma matriz
+    (vecino más cercano) y el borde se replica (jitter, no recorte).
+    """
+    h, w = bgr.shape[:2]
+    ang = float(rng.uniform(-VIBRACION_ANG, VIBRACION_ANG))
+    dx = float(rng.uniform(-VIBRACION_DX, VIBRACION_DX))
+    dy = float(rng.uniform(-VIBRACION_DX, VIBRACION_DX))
+    m = cv2.getRotationMatrix2D((w / 2, h / 2), ang, 1.0)
+    m[:, 2] += (dx, dy)
+    out = cv2.warpAffine(bgr, m, (w, h), flags=cv2.INTER_LINEAR,
+                         borderMode=cv2.BORDER_REPLICATE)
+    mask_out = mask
+    if mask is not None:
+        mask_out = cv2.warpAffine(mask.astype(np.uint8), m, (w, h),
+                                  flags=cv2.INTER_NEAREST,
+                                  borderMode=cv2.BORDER_REPLICATE)
+    return out, mask_out, {"dx": round(dx, 2), "dy": round(dy, 2),
+                           "ang": round(ang, 3)}
+
+
 # ══════════════════════════════════════════════════════════════════════════ #
 #  API de la suite
 # ══════════════════════════════════════════════════════════════════════════ #
@@ -199,8 +273,8 @@ def aplicar(
     """
     Aplica una corrupción y devuelve ``(bgr, mask, meta)``.
 
-    Sólo ``escala`` modifica la máscara (los objetos cambian de tamaño); el
-    resto la deja intacta para que la GT siga alineada píxel a píxel.
+    ``escala`` y ``vibracion`` son geométricas y transforman la máscara igual;
+    el resto es fotométrico y la deja intacta para que la GT siga alineada.
     """
     if nombre == "lluvia":
         out, meta = lluvia(bgr, rng)
@@ -214,6 +288,10 @@ def aplicar(
         out, meta = exposicion(bgr, +EXPOSICION_EV)
     elif nombre == "escala":
         return escala(bgr, mask, rng)
+    elif nombre == "sombras":
+        out, meta = sombras(bgr, rng)
+    elif nombre == "vibracion":
+        return vibracion(bgr, mask, rng)
     else:
         raise ValueError(
             f"corrupción desconocida: {nombre!r} (soportadas: {', '.join(CORRUPCIONES)})"

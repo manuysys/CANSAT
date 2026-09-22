@@ -1,0 +1,44 @@
+{
+  "experimento": "augmentacion UAV para el modelo de dano de vuelo",
+  "veredicto": "NO adoptado: el fine-tune degrada el limpio 0.374 -> 0.265",
+  "base": {
+    "onnx": "outputs/cansat_damage_v3_bal.onnx",
+    "sha256_16": "519631d1508b239a",
+    "limpio_iou_bin": 0.374,
+    "limpio_miou": 0.439,
+    "deltas": {
+      "motion_blur": -0.021,
+      "escala": -0.026,
+      "sombras": -0.001,
+      "vibracion": -0.006
+    }
+  },
+  "candidato": {
+    "init": "outputs/best_damage3_bal.pth (receta train_damage_v2.py)",
+    "checkpoint": "outputs/best_damage3_bal_aug.pth",
+    "onnx": "outputs/cansat_damage_v3_bal_aug.onnx",
+    "sha256_16": "93325be4f0826da9",
+    "receta": "train_damage_v3.py --aug-uav --aug-uav-p 0.35 --epochs 6 --batch 16 --lr 1e-4 (1 epoca completada en ~30 min; corrida cortada por tiempo)",
+    "limpio_iou_bin": 0.265,
+    "limpio_miou": 0.316,
+    "deltas": {
+      "motion_blur": -0.034,
+      "escala": 0.0,
+      "sombras": 0.001,
+      "vibracion": 0.002
+    }
+  },
+  "protocolo": {
+    "tarea": "dano2 (RescueNet val, UAV)",
+    "n_imagenes": 60,
+    "img_size": 320,
+    "seed": 42,
+    "nota": "n=60 (no canonico 120): comparacion A/B valida porque ambas ramas usan el mismo comando; outputs/stress_aug_base.json y outputs/stress_aug_new.json (gitignorados)"
+  },
+  "causas_probables": [
+    "mismatch de receta: el init viene de train_damage_v2.py y el fine-tune usa train_damage_v3.py (loss rescue, otro split de validacion)",
+    "1 epoca es insuficiente con lr 1e-4 para absorber el cambio de distribucion",
+    "augmentacion agresiva: escala 0.45-0.60 + p=0.35 por op (~80% de tiles tocados por epoca)"
+  ],
+  "seguimiento_V11": "A/B limpio desde el mismo init con la misma receta +/- aug, schedule mas largo, y escala menos agresiva como augment"
+}

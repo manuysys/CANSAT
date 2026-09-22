@@ -346,3 +346,27 @@ Fuente: `La Base - DPD CANSAT 2026.pdf` (Equipo 135, E.E.S.T. N.º 4 El Palomar)
 | 8 | Feature/DisasterKD distillation | **No por ahora** | Mismo motivo que V9-11; el destilado no mejora al modelo de vuelo |
 | 9 | UDA LoveDA→RescueNet | **No por ahora** | Proyecto de investigación; el two-stage de vuelo ya se adaptó con mezcla de dominios (0.735 UAV) |
 | 10 | Curriculum Learning | **No por ahora** | Gain incierto; el cuello no es convergencia sino datos de vuelo anotados |
+
+---
+
+# V11 — Cierre de pendientes V10 + diferidos post-presentación (2026-09-22)
+
+V10-2 (Grad-CAM en estación): **hecho** — `/api/gradcam` + overlay + caché
+(decisión `gradcam-estacion`, evidencia `10_gradcam.png`, smoke 62).
+V10-6 (calibración por clase): **rechazada con evidencia** — ECE 0.131 vs 0.123
+global, NLL peor y rompe el ranking de incendio (decisión
+`calibracion-por-clase`, `docs/benchmarks/calibracion_por_clase.json`).
+V10-7 (augmentación UAV): **rechazada con evidencia** — fine-tune 0.374 →
+0.265 en limpio (decisión `aug-uav-dano`, `docs/benchmarks/aug_uav_dano.json`);
+`sombras`/`vibracion` quedan como corrupciones 7-8 de la suite.
+
+Diferido a después del 5-9 oct (nada de esto entra antes de presentar):
+
+| # | Propuesta | Condición de entrada |
+|---|---|---|
+| 1 | A/B correcto de aug UAV | Mismo init + misma receta ± aug, schedule largo, `escala` menos agresiva como augment (0.7-0.9 en vez de 0.45-0.60), lr de fine-tune separado |
+| 2 | Mixture of Experts (daño) | Solo si el perfil rápido no alcanza en la Pi medida |
+| 3 | UDA LoveDA→RescueNet (terreno) | Proyecto de investigación con GPU y tiempo |
+| 4 | Difusión/LoRA para clases raras | GPU + validación FID; volcán tiene 41 muestras en xBD Tier 3 |
+| 5 | Capas Sentinel Hub/WMS en la estación | Incompatible con el modo offline del jurado: solo como overlay opcional con red |
+| 6 | Continual learning con replay | Requiere 3-5 vuelos reales anotados (la cola de active learning ya está lista) |

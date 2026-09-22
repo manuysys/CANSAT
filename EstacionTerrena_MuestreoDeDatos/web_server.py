@@ -12,6 +12,7 @@ Servidor único (solo stdlib de Python) que cumple dos roles:
         GET /api/mission      -> telemetry.csv parseado + summary.json + mapa de archivos
         GET /api/frame/<src>  -> una fila del CSV + rutas de imágenes disponibles
         GET /api/consulta     -> Consulta Terrestre (q=…&poly=lon,lat;…) vía el motor simbólico
+        GET /api/gradcam      -> explicabilidad del daño (src=…&modelo=…&clase=…), cacheada
         GET /api/health       -> estado del servidor (para el indicador LIVE de la web)
         GET /img/<relpath>    -> proxy de imágenes desde la raíz del proyecto
                                  (mimetype correcto + sin caché, para live refresh)
@@ -59,6 +60,8 @@ SUMMARY_JSON = ROOT / "entrega" / "summary.json"
 
 MISSION_DIR = ROOT / "outputs" / "mission"
 ENTREGA_DIR = ROOT / "entrega"
+# Grad-CAM: PNGs de explicabilidad generados por el repo de vuelo (cache local).
+GRADCAM_DIR = ROOT / "outputs" / "gradcam"
 
 # Consulta Terrestre: el motor simbólico vive en el repo de vuelo (cansat/consultas.py)
 # y se invoca por subproceso para que esta estación siga siendo stdlib-only.
@@ -105,7 +108,7 @@ def _configure(root: Path) -> None:
     ``--root``. Antes el bloque de ``--root`` duplicaba todo a mano.
     """
     global ROOT, WEB_DIR, DIST_DIR, TELEMETRY_CSV, CORRIDOR_MAP, SUMMARY_JSON
-    global MISSION_DIR, ENTREGA_DIR, BUCKETS, TELEMETRY_JSONL, FLIGHT_ROOT
+    global MISSION_DIR, ENTREGA_DIR, GRADCAM_DIR, BUCKETS, TELEMETRY_JSONL, FLIGHT_ROOT
 
     # ¿El FLIGHT_ROOT era el default relativo a la ROOT vieja? Se mide ANTES de
     # reasignar ROOT; si no, la comparación se hace contra la ROOT nueva y el
@@ -117,6 +120,7 @@ def _configure(root: Path) -> None:
     DIST_DIR = ROOT / "web-app" / "dist"
     MISSION_DIR = ROOT / "outputs" / "mission"
     ENTREGA_DIR = ROOT / "entrega"
+    GRADCAM_DIR = ROOT / "outputs" / "gradcam"
     TELEMETRY_CSV = MISSION_DIR / "telemetry.csv"
     TELEMETRY_JSONL = MISSION_DIR / "telemetry.jsonl"
     CORRIDOR_MAP = ROOT / "outputs" / "corridor_map.jpg"
@@ -661,6 +665,106 @@ def consulta_cached(q: str, region: list | None = None) -> dict:
 _CONSULTA_CACHE: dict = {"key": None, "sig": None, "data": None}
 
 
+# --------------------------------------------------------------------------- #
+# Grad-CAM (explicabilidad de los modelos de daño)
+# --------------------------------------------------------------------------- #
+# La herramienta vive en el repo de vuelo (tools/gradcam.py, hooks de torch)
+# y se invoca por subproceso para que la estación siga stdlib-only. El PNG se
+# cachea en outputs/gradcam/ y se sirve por /img/. Sin checkpoint o sin torch
+# degrada con error claro y la web esconde el botón.
+
+GRADCAM_MODELOS = {
+    # clave API: (checkpoint en el repo de vuelo, nº de clases, arquitectura)
+    "dano2": ("best_damage3_bal.pth", 3, "deeplabv3plus"),   # modelo de vuelo
+    "dano": ("best_damage3.pth", 3, "deeplabv3plus"),        # xBD Joplin/Nepal
+}
+GRADCAM_FUENTES = ("full_res", "high_res", "thumb", "vis")
+GRADCAM_TIMEOUT = 240
+_GRADCAM_LOCK = threading.Lock()
+
+
+def gradcam_disponible() -> dict:
+    """Qué modelos se pueden explicar acá (tool + checkpoint presentes)."""
+    script = FLIGHT_ROOT / "tools" / "gradcam.py"
+    if not script.is_file():
+        return {"ok": False, "motivo": "no encontré tools/gradcam.py en el repo de vuelo"}
+    modelos = {}
+    for key, (ckpt, _n, _arch) in GRADCAM_MODELOS.items():
+        modelos[key] = (FLIGHT_ROOT / "outputs" / ckpt).is_file()
+    return {"ok": any(modelos.values()), "modelos": modelos}
+
+
+def _gradcam_fuente(src: str) -> Path | None:
+    """Imagen fuente del frame, priorizando la resolución más alta."""
+    for key in GRADCAM_FUENTES:
+        for k, directory, suffix in BUCKETS:
+            if k == key:
+                found = find_image(directory, src, suffix)
+                if found:
+                    return found
+    return None
+
+
+def _gradcam_srcs() -> set[str]:
+    payload = CACHE.get()
+    return {str(fr.get("src")) for fr in payload.get("frames") or []}
+
+
+def run_gradcam(src: str, modelo: str = "dano2",
+                clase: int | None = None) -> dict:
+    """Genera (o reutiliza) el Grad-CAM de un frame. Nunca lanza."""
+    modelo = (modelo or "dano2").strip()
+    if modelo not in GRADCAM_MODELOS:
+        return {"ok": False, "error": f"modelo desconocido: {modelo}",
+                "modelos": sorted(GRADCAM_MODELOS)}
+    ckpt_name, n_cls, arch = GRADCAM_MODELOS[modelo]
+    ckpt = FLIGHT_ROOT / "outputs" / ckpt_name
+    if not ckpt.is_file():
+        return {"ok": False, "error": f"falta el checkpoint {ckpt_name}",
+                "detalle": f"esperado en {ckpt}"}
+    if src not in _gradcam_srcs():
+        return {"ok": False, "error": f"frame no encontrado: {src}"}
+    img = _gradcam_fuente(src)
+    if img is None:
+        return {"ok": False, "error": f"el frame {src} no tiene imagen en disco"}
+
+    out = GRADCAM_DIR / f"{src}_{modelo}.jpg"
+    if out.is_file() and _mtime_ns(out) > max(_mtime_ns(img), _mtime_ns(ckpt)):
+        return {"ok": True, "src": src, "modelo": modelo, "cached": True,
+                "url": _rel(out), "fuente": _rel(img), "clase": clase}
+
+    script = FLIGHT_ROOT / "tools" / "gradcam.py"
+    if not script.is_file():
+        return {"ok": False, "error": f"no encontré {script}"}
+    cmd = [_consulta_python(), str(script),
+           "--image", str(img), "--checkpoint", str(ckpt),
+           "--arch", arch, "--num-classes", str(n_cls),
+           "--img-size", "320", "--out", str(out)]
+    if clase is not None:
+        cmd += ["--clase", str(clase)]
+
+    t0 = time.perf_counter()
+    with _GRADCAM_LOCK:
+        if out.is_file() and _mtime_ns(out) > max(_mtime_ns(img), _mtime_ns(ckpt)):
+            pass  # otro hilo lo generó mientras se esperaba el lock
+        else:
+            try:
+                cp = subprocess.run(cmd, capture_output=True, text=True,
+                                    encoding="utf-8", cwd=str(FLIGHT_ROOT),
+                                    timeout=GRADCAM_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                return {"ok": False, "error": f"Grad-CAM superó {GRADCAM_TIMEOUT} s"}
+            except OSError as exc:
+                return {"ok": False, "error": f"no pude ejecutar Grad-CAM: {exc}"}
+            if cp.returncode != 0 or not out.is_file():
+                return {"ok": False, "error": "Grad-CAM falló",
+                        "detalle": ((cp.stdout or "") + (cp.stderr or ""))[-400:]}
+    ms = round((time.perf_counter() - t0) * 1000, 1)
+    return {"ok": True, "src": src, "modelo": modelo, "cached": False,
+            "url": _rel(out), "fuente": _rel(img), "clase": clase,
+            "ms": ms, "generado": datetime.now(timezone.utc).isoformat()}
+
+
 def build_frame_payload(src: str) -> dict:
     """
     Una sola fila del CSV + sus imagenes disponibles.
@@ -709,7 +813,7 @@ def _safe_image_resolve(relpath: str) -> Path | None:
     candidate = _safe_resolve(relpath)
     if candidate is None or candidate.suffix.lower() not in IMG_EXTS:
         return None
-    allowed = [CORRIDOR_MAP, *(
+    allowed = [CORRIDOR_MAP, GRADCAM_DIR, *(
         directory for _key, directory, _suffix in BUCKETS
     )]
     for base in allowed:
@@ -920,6 +1024,7 @@ class GroundStationHandler(BaseHTTPRequestHandler):
                 "summary_exists": SUMMARY_JSON.is_file(),
                 "masks_exists": (ENTREGA_DIR / "masks").is_dir(),
                 "detections_exists": TELEMETRY_JSONL.is_file(),
+                "gradcam": gradcam_disponible(),
             })
             return
 
@@ -954,6 +1059,30 @@ class GroundStationHandler(BaseHTTPRequestHandler):
                                      "error": "poly no es JSON válido"}, 400)
                     return
             self._send_json(consulta_cached(q, region))
+            return
+
+        if path == "/api/gradcam":
+            # Explicabilidad del daño. GET con src=…&modelo=dano2|dano&clase=…
+            qs = parse_qs(parsed.query)
+            src = (qs.get("src") or [""])[0].strip()
+            modelo = (qs.get("modelo") or ["dano2"])[0]
+            clase_raw = (qs.get("clase") or [""])[0]
+            clase = None
+            if clase_raw:
+                try:
+                    clase = int(clase_raw)
+                except ValueError:
+                    self._send_json({"ok": False,
+                                     "error": "clase debe ser entero"}, 400)
+                    return
+            if not src:
+                self._send_json({"ok": False, "error": "falta src"}, 400)
+                return
+            # Siempre 200 con bandera ok (como /api/consulta): los errores de
+            # input van en el JSON para no ensuciar la consola del jurado con
+            # 404 de recursos que el frontend pide a propósito.
+            data = run_gradcam(src, modelo, clase)
+            self._send_json(data)
             return
 
         if path == "/api/events":

@@ -1,5 +1,5 @@
 /* Capa de red: misma API de web_server.py, sin cambios. */
-import type { ConsultaResult, MissionPayload, SamplesPayload } from './types'
+import type { ConsultaResult, GradcamModelo, GradcamResult, MissionPayload, SamplesPayload } from './types'
 
 export async function fetchMission(signal?: AbortSignal): Promise<MissionPayload> {
   const res = await fetch('/api/mission', { cache: 'no-store', signal })
@@ -26,6 +26,18 @@ export async function fetchConsulta(
   const res = await fetch('/api/consulta?' + params.toString(), { cache: 'no-store', signal })
   if (!res.ok) throw new Error('HTTP ' + res.status)
   return (await res.json()) as ConsultaResult
+}
+
+/** Grad-CAM: qué regiones del frame justifican el daño predicho.
+ *  Devuelve el JSON incluso en 404 (error claro si falta torch/checkpoint). */
+export async function fetchGradcam(
+  src: string,
+  modelo: GradcamModelo,
+  signal?: AbortSignal,
+): Promise<GradcamResult> {
+  const params = new URLSearchParams({ src, modelo })
+  const res = await fetch('/api/gradcam?' + params.toString(), { cache: 'no-store', signal })
+  return (await res.json()) as GradcamResult
 }
 
 /** Ruta relativa del proyecto -> URL del proxy de imágenes del servidor. */

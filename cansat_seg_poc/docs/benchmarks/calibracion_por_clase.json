@@ -1,0 +1,82 @@
+{
+  "n_total": 5121,
+  "n_eventos": 24,
+  "eventos_calibracion": [
+    "crasar:Champlain",
+    "crasar:MussettBayouFire",
+    "kate_pd:turkiye",
+    "xbd:hurricane-florence",
+    "xbd:hurricane-matthew",
+    "xbd:joplin-tornado",
+    "xbd:mexico-earthquake",
+    "xbd:moore-tornado",
+    "xbd:palu-tsunami",
+    "xbd:portugal-wildfire",
+    "xbd:socal-fire",
+    "xbd:tuscaloosa-tornado"
+  ],
+  "eventos_evaluacion": [
+    "crasar:Cocodrie",
+    "crasar:Steinhatchee",
+    "rescuenet:huracan",
+    "xbd:hurricane-harvey",
+    "xbd:hurricane-michael",
+    "xbd:lower-puna-volcano",
+    "xbd:midwest-flooding",
+    "xbd:nepal-flooding",
+    "xbd:pinery-bushfire",
+    "xbd:santa-rosa-wildfire",
+    "xbd:sunda-tsunami",
+    "xbd:woolsey-fire"
+  ],
+  "ece_evaluacion_crudo": 0.4726,
+  "ece_evaluacion_global": 0.1228,
+  "ece_evaluacion_por_clase": 0.1308,
+  "nll_evaluacion_crudo": 3.3888,
+  "nll_evaluacion_global": 1.6551,
+  "nll_evaluacion_por_clase": 2.0245,
+  "temperatura_global": 13.107,
+  "temperaturas_por_clase": {
+    "huracan": {
+      "temperatura": 20.0,
+      "n_calibracion": 74,
+      "n_evaluacion": 1118
+    },
+    "inundacion": {
+      "temperatura": 20.0,
+      "n_calibracion": 111,
+      "n_evaluacion": 925
+    },
+    "sismo": {
+      "temperatura": 20.0,
+      "n_calibracion": 796,
+      "n_evaluacion": 0
+    },
+    "incendio": {
+      "temperatura": 20.0,
+      "n_calibracion": 744,
+      "n_evaluacion": 456
+    },
+    "volcan": {
+      "temperatura": 1.0,
+      "n_calibracion": 0,
+      "n_evaluacion": 183
+    },
+    "tornado": {
+      "temperatura": 20.0,
+      "n_calibracion": 658,
+      "n_evaluacion": 0
+    },
+    "otro": {
+      "temperatura": 20.0,
+      "n_calibracion": 56,
+      "n_evaluacion": 0
+    }
+  },
+  "ranking_incendio_preservado": false,
+  "adoptada": false,
+  "nota": "Se adopta solo si la T por clase baja el ECE en eventos held-out respecto de la global y preserva el ranking de p_incendio. Si no, se documenta como no adoptada.",
+  "generado": "2026-09-22T01:31:21.980036+00:00",
+  "script": "tools/calibrate_per_class.py",
+  "fuente": "outputs\\loeo_probs_todas.csv"
+}

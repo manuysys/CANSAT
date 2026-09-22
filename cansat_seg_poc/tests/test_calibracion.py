@@ -92,3 +92,49 @@ def test_analizar_con_split_por_eventos():
     assert "alpha_0.05" in res["aps"]
     assert 0.0 <= res["ece_evaluacion_antes"] <= 1.0
     assert "xbd" in res["por_dominio"]
+
+
+def test_temperatura_por_clase_uno_no_cambia():
+    rng = np.random.default_rng(7)
+    p = _probs_desde_logits(rng.normal(0, 1, (40, 3)))
+    q = CAL.aplicar_temperatura_por_clase(p, np.ones(3))
+    np.testing.assert_allclose(q, p / p.sum(axis=1, keepdims=True), rtol=1e-9)
+
+
+def test_temperatura_por_clase_rechaza_malos_temps():
+    p = np.full((5, 3), 1 / 3)
+    with pytest.raises(ValueError):
+        CAL.aplicar_temperatura_por_clase(p, np.array([1.0, 0.0, 2.0]))
+    with pytest.raises(ValueError):
+        CAL.aplicar_temperatura_por_clase(p, np.array([1.0, 2.0]))
+
+
+def test_ajustar_por_clase_sin_datos_devuelve_unos():
+    rng = np.random.default_rng(3)
+    p = _probs_desde_logits(rng.normal(0, 1, (10, 3)))
+    temps = CAL.ajustar_temperatura_por_clase(p, np.array([0] * 10), min_n=30)
+    np.testing.assert_allclose(temps, np.ones(3))
+
+
+def test_ranking_preservado_detecta_inversion():
+    antes = np.array([[0.9, 0.1], [0.5, 0.5], [0.2, 0.8]])
+    igual = antes.copy()
+    assert CAL.ranking_preservado(antes, igual, 0) is True
+    invertido = np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
+    assert CAL.ranking_preservado(antes, invertido, 0) is False
+
+
+def test_analizar_por_clase_veredicto_estructurado():
+    rng = np.random.default_rng(11)
+    eventos, probs, y = [], [], []
+    for i, ev in enumerate(["xbd:a", "xbd:b", "crasar:c", "crasar:d"]):
+        n = 70
+        yy = rng.integers(0, 7, n)
+        p = _probs_desde_logits(rng.normal(0, 1, (n, 7)) * 2.0)
+        eventos += [ev] * n
+        probs.append(p)
+        y.append(yy)
+    res = CAL.analizar_por_clase(np.vstack(probs), np.concatenate(y), eventos)
+    assert len(res["temperaturas_por_clase"]) == 7
+    assert res["adoptada"] in (True, False)
+    assert isinstance(res["ranking_incendio_preservado"], bool)
