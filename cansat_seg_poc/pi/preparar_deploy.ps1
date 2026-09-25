@@ -73,6 +73,10 @@ foreach ($f in $Archivos) {
 }
 Copy-Item (Join-Path $Root "cansat") -Destination $Dist -Recurse -Force
 Copy-Item (Join-Path $Root "pi")     -Destination $Dist -Recurse -Force
+# Herramienta de medición en la placa (ms por modelo) → dist_pi/tools/.
+$ToolsDst = Join-Path $Dist "tools"
+New-Item -ItemType Directory -Force -Path $ToolsDst | Out-Null
+Copy-Item (Join-Path $Root "tools\bench_models.py") -Destination $ToolsDst -Force
 # Datos auxiliares: grilla de densidad poblacional (WorldPop) para casualties.
 $PopGrid = Join-Path $Root "dataset\population\population_grid.csv"
 if (Test-Path $PopGrid) {
@@ -92,6 +96,23 @@ if (Test-Path $Baseline) {
     Write-Host "  baseline.png copiado (siamés habilitado)"
 } else {
     Write-Host "  [i] sin outputs/baseline.png: el siamés no se usará" -ForegroundColor DarkGray
+}
+
+# ── 3b. Tiles de prueba (smoke y bench SIN cámara en la Pi) ──────────────────
+#  La Pi vuela con --folder cuando no hay cámara; el bench (tools/bench_models)
+#  también necesita una imagen. Van 2–3 livianas de dataset/pruebas.
+$Pruebas = Join-Path $Root "dataset\pruebas"
+if (Test-Path $Pruebas) {
+    $TilesDst = Join-Path $Dist "tiles"
+    New-Item -ItemType Directory -Force -Path $TilesDst | Out-Null
+    Get-ChildItem $Pruebas -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -match '^\.(png|jpg|jpeg)$' } |
+        Sort-Object Length | Select-Object -First 3 |
+        ForEach-Object { Copy-Item $_.FullName -Destination $TilesDst -Force }
+    $n = (Get-ChildItem $TilesDst -File).Count
+    Write-Host "  $n imagenes de prueba copiadas a tiles/ (smoke y bench sin camara)"
+} else {
+    Write-Host "  [i] sin dataset/pruebas: no hay tiles para el smoke sin camara" -ForegroundColor DarkGray
 }
 
 # ── 4. Resumen ───────────────────────────────────────────────────────────────
