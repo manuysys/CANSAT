@@ -1,0 +1,31 @@
+{
+  "generado": "2026-09-26T08:36:36.636482+00:00",
+  "prueba": "UART real LB135 v2: firmware esp8266_ch340 -> uart_listener.py (PC)",
+  "hardware": "placa ESP8266 (NodeMCU/Wemos, CH340) ? el usuario la tenia como 'ESP32-S3'",
+  "firmware_env": "firmware/heltec_lb135_uart (PlatformIO env esp8266_ch340)",
+  "puerto": "COM3 @ 115200 8N1",
+  "paquetes": 25,
+  "checksum_ok": 25,
+  "duracion_s": 25.0,
+  "primer_pkt": {
+    "pkt": 0,
+    "t_s": 0.0,
+    "alt_m": 800.0,
+    "p_hPa": 920.8,
+    "temp_C": 14.8,
+    "lat": -34.60372,
+    "lon": -58.38159,
+    "hum_pct": 55.0
+  },
+  "ultimo_pkt": {
+    "pkt": 24,
+    "t_s": 24.0,
+    "alt_m": 608.0,
+    "p_hPa": 942.3,
+    "temp_C": 16.0,
+    "lat": -34.60385,
+    "lon": -58.38148,
+    "hum_pct": 55.0
+  },
+  "nota": "Perfil SIMULADO declarado (no sensores reales). Valida el contrato v2 de punta a punta con hardware real. Pendiente: mismo test en la Pi (/dev/ttyUSB0) y GPIO15 con la Heltec."
+}

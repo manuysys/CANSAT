@@ -514,15 +514,18 @@ limitaciones:
   - id: uart-heltec
     estado: vigente
     texto: |
-      Firmware emisor del contrato LB135 v2 para Heltec WiFi LoRa 32 V3
-      (firmware/heltec_lb135_uart/, PlatformIO): 1 paquete/s con perfil de
-      descenso simulado DECLARADO (no son sensores reales) y checksum NMEA.
-      El formato se validó contra cansat/protocol.py (parse + checksum + fix).
-      Sale por USB-serie: en la PC se lee como COMx y en la Pi como
-      /dev/ttyACM0, sin pelear con pines GPIO. Cadena probada en PC:
-      sim_uart → uart_listener --stdin → uart_state.json (12/12 paquetes).
-      PENDIENTE: flashear la placa, probar el listener contra el Heltec real
-      y el cableado GPIO directo (TX→GPIO15); ver pi/guia_pi.md §8.
+      Firmware emisor del contrato LB135 v2 (firmware/heltec_lb135_uart/,
+      PlatformIO): 1 paquete/s con perfil de descenso simulado DECLARADO (no
+      son sensores reales) y checksum NMEA. El formato se validó contra
+      cansat/protocol.py (parse + checksum + fix). PRUEBA REAL 2026-09-26: la
+      placa disponible resultó ser un ESP8266 (NodeMCU/Wemos con CH340), no un
+      S3; se agregó el env esp8266_ch340 y se flasheó con esptool directo
+      (--before=no_reset, porque PlatformIO agrega default_reset y estos clones
+      no tienen auto-reset). Listener en la PC: 25/25 paquetes a 1 Hz,
+      checksum_ok en todos, descenso 800→608 m, GPS y humedad presentes
+      (docs/benchmarks/uart_hardware_pc.json). En la Pi el CH340 aparece como
+      /dev/ttyUSB0. PENDIENTE: el mismo listener en la Pi y el cableado GPIO
+      directo (TX→GPIO15) con la Heltec; ver pi/guia_pi.md §8.
 
   - id: gradcam-estacion
     estado: vigente

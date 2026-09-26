@@ -29,7 +29,7 @@
 | Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
-| UART Heltec (contrato v2) | 🟡 firmware emisor listo y formato validado; pendiente flashear y probar contra el listener |
+| UART real (contrato v2) | ✅ probado con hardware real (ESP8266 + CH340): 25/25 paquetes, checksum OK, GPS/humedad; 🟡 pendiente el mismo test en la Pi (`/dev/ttyUSB0`) |
 | **Pi Zero W v1 (medido 2026-09-25)** | ✅ tiny@224 **~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → el vuelo por CPU usa tiny; daño/flood/fuego/severidad post-vuelo en la PC |
 | Verificación | ✅ **374 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 

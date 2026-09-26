@@ -114,6 +114,8 @@ def main(argv=None) -> int:
                     choices=("auto", "onnxruntime", "cv2"),
                     help="forzar backend (en la Pi no hay ORT: cv2)")
     ap.add_argument("--out", default="outputs/bench_models.json")
+    ap.add_argument("--no-merge", action="store_true",
+                    help="no reutilizar resultados del JSON existente")
     ap.add_argument("--nota", default="")
     args = ap.parse_args(argv)
 
@@ -133,6 +135,17 @@ def main(argv=None) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     resultados: dict[str, dict] = {}
+    # Reanudable: si el JSON ya existe, conserva lo medido antes (permite cortar
+    # la corrida y seguir después sin perder modelos).
+    if out.is_file() and not args.no_merge:
+        try:
+            previo = json.loads(out.read_text(encoding="utf-8"))
+            resultados.update(previo.get("resultados") or {})
+            if resultados:
+                print(f"  [merge] {len(resultados)} modelo(s) conservados de {out}",
+                      flush=True)
+        except (json.JSONDecodeError, OSError):
+            pass
     payload = {
         "generado": datetime.now(timezone.utc).isoformat(),
         "script": "tools/bench_models.py",
