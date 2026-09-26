@@ -114,25 +114,29 @@ Usar unas pocas imágenes (tiles de LoveDA o cualquier JPG/PNG):
 
 ```bash
 cd ~/cansat_seg_poc && source venv/bin/activate
-time python mission_pipeline.py --folder ~/tiles --frames 3 --interval 0 \
-     --no-detect --no-damage --overwrite
-# Y la variante rápida (la que vuela, F1 2026-09-18):
+# El modelo que VUELA en CPU (medido 2026-09-25): tiny@224, ~3 s/frame total.
 time python mission_pipeline.py --folder ~/tiles --frames 3 --interval 0 \
      --no-detect --no-damage --overwrite \
-     --onnx outputs/cansat_seg_terrain_v2_224.onnx --img-size 224
+     --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224
 ```
 
-Anotar **segundos por frame** (el `time` total dividido 3):
+### MEDICIÓN REAL en la Zero W v1 (2026-09-25) — leer antes de elegir modelo
 
-| s/frame del terreno | Qué hacer |
-|---|---|
-| ≤ 3 s | agregar `--no-damage` fuera y probar los modelos de daño por separado |
-| 3–10 s | volar con `--perfil rapido` (terreno@224 + detección + estrés, sin daño: NO emite veredicto de daño) |
-| > 10 s | `--perfil rapido` + `--sampler`; la alternativa es el NPU del IMX500 |
+Placa: Pi Zero W v1 (ARMv6, 1 núcleo 1 GHz, sin NEON) · Raspbian 13 Trixie ·
+OpenCV 4.10 de apt (`cv2.dnn`, no hay onnxruntime para ARMv6).
 
-El término medio es el que se espera en ARMv6. La misión del DPD tiene ~1–2
-minutos de descenso: con 8 s/frame son ~10–15 frames, suficiente para el
-corredor y el muestreo adaptativo.
+| Modelo | Arquitectura | ms_seg | s/frame total | Veredicto |
+|---|---|---|---|---|
+| `cansat_seg_terrain_tiny_224.onnx` | LR-ASPP MV3-S | 1767–1851 | **~3.0 s** | ✅ **vuela** |
+| `cansat_seg_terrain_v2_224.onnx` | DeepLabV3+ MV2 | ~243 000 | ~4 min | ❌ inviable en CPU |
+| daño / flood / fuego / severidad (MV2) | DeepLabV3+ MV2 | ~4 min c/u | — | ❌ post-vuelo en la PC |
+
+El `ms_total` sale del `telemetry.jsonl` de cada frame (no del `time` del
+proceso, que incluye el arranque). El tiny pierde ~6 pts de mIoU (0.4397 vs
+0.4996) pero es **80× más rápido**: en ARMv6 sin NEON los DeepLabV3+ MV2 no
+son viables ni con `--perfil rapido`. Decisión completa en `decisiones.yaml`
+(`modelo-vuelo-tiny`). Con ~3 s/frame y un descenso de 1–2 min → 20–40 frames,
+suficiente para el corredor y el muestreo adaptativo.
 
 ### Detección de personas con el AI Camera (sin torch)
 
@@ -155,17 +159,19 @@ validado en hardware todavía**: es lo primero a probar en la Pi.
 ## 7. Vuelo
 
 ```bash
-# --frames 1000 = grabar hasta que se corte la energía; ajustar tras medir
+# --frames 1000 = grabar hasta que se corte la energía
 python mission_pipeline.py --camera --frames 1000 --interval 0 \
     --no-detect --no-damage --enhance \
-    --onnx outputs/cansat_seg_terrain_v2_224.onnx --img-size 224 \
+    --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224 \
     --det-backend imx500 \
     --pop-density 1500 \
     --out-dir /home/pi/vuelos/$(date +%Y%m%d_%H%M%S)
 ```
 
-- `--onnx ..._224.onnx --img-size 224`: terreno a 224 px (mIoU 0.4996 y la
-  mitad de cómputo que 320). Si el frame sobra tiempo, volver al de 320.
+- `--onnx ..._tiny_224.onnx --img-size 224`: **medido en la placa** (1.8 s de
+  segmentación, ~3 s/frame total). El v2@224 tarda ~4 min/frame en ARMv6: no
+  entra en vuelo; el daño/flood/fuego/severidad se corren post-vuelo en la PC
+  sobre los frames capturados (`mission_pipeline.py --folder <copia-SD>`).
 - `--det-backend imx500` reemplaza a YOLO por el NPU del AI Camera (si la
   cámara no es la AI Camera, usar `--no-detect`).
 - `--enhance` ayuda con la nitidez (denoise + unsharp) y cuesta poco.

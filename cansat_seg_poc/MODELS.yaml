@@ -93,18 +93,21 @@ vuelo:
     entrada: "[1, 3, 224, 224]"
     dataset: "LoveDA remapeado (CC BY 4.0)"
     precision: "FP32 (51.0 MB)"
-    estado: "CANDIDATO DE VUELO cv2.dnn (2.04x menos cómputo que el v2@320)"
+    estado: "NO VUELA en CPU: medido ~243 s/frame en la Pi Zero W v1 (2026-09-25)"
     metricas:
       miou: 0.4996
       pixel_accuracy: 0.6691
       fuente: "outputs/metrics/v2_224_val.json (Val completo, 1669 imgs, seed 42)"
       comparacion: "v2@320 0.5219 · v2@224 re-entrenado 0.4996 · v2@320 evaluado a 224 0.4718"
+      ms_inferencia_pi_zero_w_v1: 243300
     notas: |
       Entrenar a 224 recupera +2.8 pts sobre evaluar el v2@320 a 224 (0.4718).
-      Pierde 2.2 pts contra el v2@320 pero cuesta la mitad de cómputo por frame
-      (224² = 0.49 × 320²). Pasa auditoría IMX500 a 224 y carga en cv2.dnn.
-      Si la medición en la Pi confirma que 320 es muy lento (estimado ~8 s/f),
-      éste es el reemplazo directo sin tocar el pipeline (mismo contrato).
+      Pierde 2.2 pts contra el v2@320 y la mitad de cómputo teórico, pero MEDIDO
+      en la placa (Raspbian 13, OpenCV 4.10 cv2.dnn, ARMv6 sin NEON) tarda
+      ~243 s por inferencia: ~80× más que el tiny. El estimado previo (~8 s/f)
+      era 30× optimista: la brecha DeepLabV3+ MV2 vs LR-ASPP MV3-S en ARMv6 no
+      es de FLOPs. Post-vuelo en la PC (ORT) sigue siendo el terreno de mejor
+      mIoU. Evidencia: docs/benchmarks/pi_zero_w_sframe.json.
 
   segmentacion_terreno_tiny:
     # F1.2 (2026-09-18): MobileNetV3-Small + LR-ASPP, el candidato NPU.
@@ -117,21 +120,24 @@ vuelo:
     entrada: "[1, 3, 224, 224]"
     dataset: "LoveDA remapeado (CC BY 4.0)"
     precision: "FP32 (4.3 MB; ~1.1 MB INT8)"
-    estado: "CANDIDATO NPU (IMX500) — no cumple el mIoU objetivo en CPU"
+    estado: "MODELO DE VUELO CPU (medido ~3 s/frame en la Pi Zero W v1, 2026-09-25)"
     metricas:
       miou: 0.4397
       pixel_accuracy: 0.6241
       fuente: "outputs/metrics/tiny_224_val.json (Val completo, 1669 imgs, seed 42)"
       comparacion: "MV3-S@224 0.4397 · MV2@224 0.4996 · v2@320 0.5219"
+      ms_seg_pi_zero_w_v1: 1767
+      ms_total_pi_zero_w_v1: 2988
     notas: |
-      ⚠ NO alcanza el criterio F1 de 0.48 mIoU a 224 (queda en 0.44, -6 pts
-      contra el control MV2@224). Su valor es el tamaño: 4.3 MB FP32 / ~1.1 MB
-      INT8 entra holgado en el límite de <8 MB del IMX500, y el régimen de ops
-      (Conv/HardSwish/HardSigmoid/GlobalAveragePool/Mul/Resize) es el que el
-      plan declaró convertible. Falta la verificación real en Edge-MDT (F4).
-      Para cv2.dnn en CPU conviene el MV2@224. Si el NPU lo corre a <50 ms, la
-      caída de 6 pts puede ser aceptable para cobertura en vuelo.
-      Ops verificadas con audit_imx500.py --size 224: pasa.
+      ⚠ No alcanza el criterio F1 de 0.48 mIoU (queda en 0.44, -6 pts contra el
+      MV2@224) pero MEDIDO en la placa es el ÚNICO modelo de terreno viable en
+      CPU: 1.8 s de segmentación y ~3.0 s/frame end-to-end, contra ~243 s del
+      v2@224 (ARMv6 sin NEON). Con un descenso de 1–2 min da 20–40 frames.
+      El daño/flood/fuego/severidad (DeepLabV3+ MV2, ~4 min c/u) pasan a
+      post-vuelo en la PC. Decisión `modelo-vuelo-tiny`; evidencia
+      docs/benchmarks/pi_zero_w_sframe.json (medición 2026-09-25).
+      Ops verificadas con audit_imx500.py --size 224: pasa (candidato NPU
+      cuando exista conversión Edge-MDT).
 
   alternativas_terreno:
     - nombre: "best_terrain_v2_distilled.pth"

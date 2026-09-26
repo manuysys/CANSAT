@@ -43,15 +43,17 @@ SIZE_POR_MODELO: dict[str, int] = {
     "cansat_fire_smoke.onnx": 256,
 }
 
-#: Modelos de vuelo (sin el siamés: tiene 2 entradas).
+#: Modelos de vuelo (sin el siamés: tiene 2 entradas), ordenados por
+#: importancia de vuelo: si la placa corta a mitad, lo medido primero es lo
+#: que más importa.
 MODELOS_DEFAULT: tuple[str, ...] = (
     "cansat_seg_terrain_v2_224.onnx",
+    "cansat_damage_v3_bal.onnx",
+    "cansat_flood_specialist_224.onnx",
+    "cansat_fire_smoke.onnx",
     "cansat_seg_terrain_v2.onnx",
     "cansat_seg_terrain_tiny_224.onnx",
-    "cansat_flood_specialist_224.onnx",
     "cansat_damage3_mobilenetv2.onnx",
-    "cansat_damage_v3_bal.onnx",
-    "cansat_fire_smoke.onnx",
     "cansat_severity.onnx",
 )
 
@@ -122,44 +124,15 @@ def main(argv=None) -> int:
         return 1
     print(f"imagen: {img} {bgr.shape[1]}x{bgr.shape[0]} · {args.runs} corridas/modelo")
 
-    resultados: dict[str, dict] = {}
-    for nombre in args.models:
-        path = Path(args.models_dir) / nombre
-        if not path.is_file():
-            print(f"  [skip] no existe {path}")
-            continue
-        try:
-            modelo = OnnxModel(path, required=True, label=nombre,
-                               backend=args.backend or "auto")
-        except Exception as exc:
-            print(f"  [ERROR] {nombre}: {exc}")
-            resultados[nombre] = {"error": str(exc)[:200]}
-            continue
-        size = SIZE_POR_MODELO.get(nombre, 320)
-        try:
-            m = medir(modelo, size, bgr, args.runs)
-        except Exception as exc:
-            print(f"  [ERROR] inferencia {nombre}: {exc}")
-            resultados[nombre] = {"error": str(exc)[:200]}
-            continue
-        m.update({"size": size, "sha256_16": sha256_16(path),
-                  "mb": round(path.stat().st_size / 1e6, 1),
-                  "backend": modelo.backend})
-        resultados[nombre] = m
-        print(f"  {nombre:<38} {m['ms_media']:8.1f} ms  "
-              f"(p95 {m['ms_p95']:7.1f}) [{m['backend']}] {m['mb']} MB")
-
-    try:
-        import cv2 as _cv2
-        cv2_version = _cv2.__version__
-    except ImportError:                              # pragma: no cover
-        cv2_version = "?"
     try:
         import onnxruntime as _ort
         ort_version = _ort.__version__
     except ImportError:
         ort_version = None
 
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    resultados: dict[str, dict] = {}
     payload = {
         "generado": datetime.now(timezone.utc).isoformat(),
         "script": "tools/bench_models.py",
@@ -167,19 +140,57 @@ def main(argv=None) -> int:
         "machine": platform.machine(),
         "platform": platform.platform(),
         "python": sys.version.split()[0],
-        "cv2": cv2_version,
+        "cv2": cv2.__version__,
         "onnxruntime": ort_version,
         "imagen": str(img),
         "runs": args.runs,
+        "completo": False,
         "resultados": resultados,
         "nota": (args.nota or "Solo inferencia (sin pre/post del pipeline). "
                  "En ARMv6 el backend cae a cv2.dnn por subproceso."),
     }
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-                   encoding="utf-8")
-    print(f"  → {out}")
+
+    def guardar(completo: bool) -> None:
+        """Escribe el JSON tras CADA modelo: un corte no pierde lo medido."""
+        payload["completo"] = completo
+        out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8")
+
+    for nombre in args.models:
+        path = Path(args.models_dir) / nombre
+        if not path.is_file():
+            print(f"  [skip] no existe {path}", flush=True)
+            continue
+        # La CARGA también se mide: en ARMv6 parsear 50 MB de ONNX no es gratis.
+        t_load = time.perf_counter()
+        try:
+            modelo = OnnxModel(path, required=True, label=nombre,
+                               backend=args.backend or "auto")
+        except Exception as exc:
+            print(f"  [ERROR] {nombre}: {exc}", flush=True)
+            resultados[nombre] = {"error": str(exc)[:200]}
+            guardar(False)
+            continue
+        ms_carga = (time.perf_counter() - t_load) * 1000.0
+        size = SIZE_POR_MODELO.get(nombre, 320)
+        try:
+            m = medir(modelo, size, bgr, args.runs)
+        except Exception as exc:
+            print(f"  [ERROR] inferencia {nombre}: {exc}", flush=True)
+            resultados[nombre] = {"error": str(exc)[:200], "ms_carga": round(ms_carga, 1)}
+            guardar(False)
+            continue
+        m.update({"size": size, "sha256_16": sha256_16(path),
+                  "mb": round(path.stat().st_size / 1e6, 1),
+                  "backend": modelo.backend, "ms_carga": round(ms_carga, 1)})
+        resultados[nombre] = m
+        guardar(False)                       # guardado incremental
+        print(f"  {nombre:<38} {m['ms_media']:8.1f} ms  "
+              f"(p95 {m['ms_p95']:7.1f}) [{m['backend']}] {m['mb']} MB · "
+              f"carga {ms_carga:.0f} ms", flush=True)
+
+    guardar(True)
+    print(f"  → {out}", flush=True)
     return 0
 
 

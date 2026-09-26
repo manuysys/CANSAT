@@ -77,6 +77,15 @@ Copy-Item (Join-Path $Root "pi")     -Destination $Dist -Recurse -Force
 $ToolsDst = Join-Path $Dist "tools"
 New-Item -ItemType Directory -Force -Path $ToolsDst | Out-Null
 Copy-Item (Join-Path $Root "tools\bench_models.py") -Destination $ToolsDst -Force
+# Referencia OOD (cansat/ood.py la busca en docs/benchmarks/): sin ella el
+# aviso de fuera-de-distribución queda desactivado a bordo.
+$OodRef = Join-Path $Root "docs\benchmarks\ood_loveda_val.json"
+if (Test-Path $OodRef) {
+    $OodDst = Join-Path $Dist "docs\benchmarks"
+    New-Item -ItemType Directory -Force -Path $OodDst | Out-Null
+    Copy-Item $OodRef -Destination $OodDst -Force
+    Write-Host "  referencia OOD copiada (docs/benchmarks)"
+}
 # Datos auxiliares: grilla de densidad poblacional (WorldPop) para casualties.
 $PopGrid = Join-Path $Root "dataset\population\population_grid.csv"
 if (Test-Path $PopGrid) {

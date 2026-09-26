@@ -30,6 +30,7 @@
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
 | UART Heltec (contrato v2) | 🟡 firmware emisor listo y formato validado; pendiente flashear y probar contra el listener |
+| **Pi Zero W v1 (medido 2026-09-25)** | ✅ tiny@224 **~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → el vuelo por CPU usa tiny; daño/flood/fuego/severidad post-vuelo en la PC |
 | Verificación | ✅ **374 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 
 ---
@@ -461,7 +462,7 @@ npm run smoke
 
 | Pendiente | Impacto | Bloqueo |
 |---|---|---|
-| Validar en la Pi: s/frame, IMX500, personas | Alto (define el modo de vuelo) | **falta la microSD para flashear** (hay Pi Zero W v1 + IMX500) |
+| Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; 🟡 IMX500/personas pendiente de la cámara | — |
 | Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
 | SegFormer-B5 mIoU | ✅ medido: 0.5664 full Val (1669 imgs) vs 0.5219 del v2; JSON `outputs/metrics/val_20260920_211054.json` | — |
 | EDSR tiempo/frame | ✅ medido: ~288 s por frame 1024² en CPU (PC de desarrollo); queda solo post-vuelo | — |
@@ -477,7 +478,10 @@ npm run smoke
 | Calibración por clase / aug UAV / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | el A/B correcto de aug queda en V11 |
 | Confianza limitada por estrés | ✅ hecho: bloque en `summary.json` + sección en el Informe + espejo TS | — |
 
-**Riesgo principal**: la validación en hardware sigue pendiente y **ahora está
-bloqueada por la microSD**: sin flashear no hay s/frame, ni IMX500, ni UART real.
-Todos los números de tiempo/cómputo en la Pi son estimaciones hasta medir con la
-placa.
+**Estado del hardware (2026-09-25)**: la Pi Zero W v1 quedó operativa
+(Raspbian 13 Trixie, OpenCV 4.10 de apt, escritorio apagado, `throttled=0x0`)
+y el s/frame está **medido**, no estimado: el tiny@224 corre a ~3 s/frame y el
+v2@224 a ~243 s (ARMv6 sin NEON) → el vuelo por CPU usa el tiny y el resto de
+la IA pasa a post-vuelo. Falta: la **AI Camera/IMX500** (detección on-sensor y
+personas) y el **UART real** (el ESP32-S3 está disponible; la Heltec no).
+Evidencia: `cansat_seg_poc/docs/benchmarks/pi_zero_w_sframe.json`.

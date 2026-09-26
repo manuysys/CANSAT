@@ -244,6 +244,7 @@ deterministas sobre máscaras y telemetría.
 | Aug UAV (daño) | ❌ fine-tune limpio 0.374 → 0.265 → no adoptado (A/B correcto en V11) |
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 (banda ±0.04); redistribuye sin subir la media → no adoptado |
 | Confianza limitada | ✅ bloque en `summary.json` + sección en el Informe (bruma ≥45 %, humidex ≥46) |
+| **Pi Zero W v1 (medido 2026-09-25)** | **tiny@224 ~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → vuelo CPU con tiny; resto post-vuelo |
 | EDSR | 287.9 s por frame 1024² en CPU |
 | CI | 3 jobs verdes · 366 tests en CI |
 
@@ -320,6 +321,19 @@ deterministas sobre máscaras y telemetría.
   - Diferido a V11: MoE, UDA, difusión/LoRA, capas Sentinel Hub (rompen el modo
     offline), replay continuo.
 
+**Bring-up Pi Zero W v1 (2026-09-25, hardware real)**
+- SD 16 GB flasheada (Raspbian 13 **Trixie**, no Bookworm) → SSH por clave,
+  `apt full-upgrade`, `imx500-all` instalado, escritorio apagado
+  (`multi-user.target`; la imagen era Desktop), `throttled=0x0`.
+- `dist_pi` copiado (400 MB) + `pi/instalar_en_pi.sh` (OpenCV 4.10 de apt,
+  venv `--system-site-packages`, pyserial/PyYAML; sin onnxruntime en ARMv6).
+- **Medición real**: tiny@224 = 1.77 s de segmentación / ~3.0 s/frame total;
+  v2@224 = **243 s/frame**; los MV2 (daño/flood/fuego/severidad) ~4 min c/u →
+  **decisión `modelo-vuelo-tiny`**: vuela el tiny, el resto post-vuelo en la PC
+  (el DPD no exige IA en tiempo real a bordo). Evidencia:
+  `docs/benchmarks/pi_zero_w_sframe.json`; guía y MODELS.yaml actualizados.
+- Pendiente de hardware: AI Camera (IMX500) y UART real (ESP32-S3 disponible).
+
 **Tanda A+B (2026-09-22): mejoras a números bajos**
 - **A (tipo rebalanceado)**: `--loss balanceada/focal` + LOEO en tramos
   (`--eventos`); resultado 0.317 vs 0.330 → **rechazado** (el cuello es
@@ -380,11 +394,12 @@ deterministas sobre máscaras y telemetría.
 
 ## 6. Pendientes (solo hardware / placa)
 
-1. **microSD** para flashear la Pi Zero W v1 (hoy es el bloqueo principal;
-   `dist_pi` regenerado con código al día, listo para `scp`).
-2. Validar en placa: **s/frame**, **AI Camera/IMX500** (¿funciona en Zero W v1?),
-   **UART real Pi↔Heltec** (firmware listo; probar USB `/dev/ttyACM0` y GPIO15),
-   personas por NPU.
+1. ✅ **microSD y Pi operativa** (2026-09-25): Raspbian 13 Trixie, OpenCV 4.10,
+   `imx500-all` instalado, SSH por clave, escritorio apagado.
+2. **s/frame**: ✅ medido (tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`).
+   **AI Camera/IMX500** y personas por NPU: 🟡 pendientes de la cámara.
+   **UART real**: 🟡 firmware listo; probar con el ESP32-S3 por USB
+   (`/dev/ttyUSB0`, CH340) y la Heltec por GPIO15.
 3. **Conversión Edge-MDT (.rpk)** de terreno/flood/fuego: requiere **PC Linux**
    con el converter Sony.
 4. **INT8**: re-medir QDQ estático en la placa y decidir FP32 vs INT8

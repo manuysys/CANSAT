@@ -537,6 +537,35 @@ limitaciones:
       CPU, después cache. Sin torch/checkpoint degrada con error claro.
       Evidencia: docs/evidencia/10_gradcam.png.
 
+  - id: pi-hardware
+    estado: vigente
+    texto: |
+      Puesta a punto REAL de la Pi Zero W v1 (2026-09-25): Raspbian 13 Trixie
+      (no Bookworm; imx500-all 1.13 está disponible y quedó instalado),
+      OpenCV 4.10 de apt (cv2.dnn; no hay onnxruntime para ARMv6), venv
+      --system-site-packages, pyserial/PyYAML, 426 MB RAM, SD 16 GB clase 10,
+      `vcgencmd get_throttled` = 0x0 (fuente estable), temp 38 °C. Se apagó el
+      escritorio (la imagen era Desktop): `systemctl set-default
+      multi-user.target` + lightdm disabled (reversible). `dist_pi` viaja con
+      tiles de prueba y `tools/bench_models.py`. Medición de la placa en
+      docs/benchmarks/pi_zero_w_sframe.json. PENDIENTE: AI Camera (IMX500) y
+      UART real (el S3 está disponible; la Heltec no).
+
+  - id: modelo-vuelo-tiny
+    estado: vigente
+    texto: |
+      MEDICIÓN 2026-09-25 en la placa: el terreno `tiny` (LR-ASPP MV3-S @224)
+      tarda 1.77 s de segmentación y ~3.0 s/frame total (ms_seg/ms_total del
+      telemetry.jsonl; 3 frames: 5289/2988/2994 ms). El `v2@224` (DeepLabV3+
+      MV2) tarda ~243 s por inferencia: 80× más. En ARMv6 sin NEON la familia
+      DeepLabV3+ MV2 (daño, flood, fuego, severidad) NO es viable a bordo
+      (~4 min/frame c/u). DECISIÓN: el vuelo por CPU usa el tiny@224 (mIoU
+      0.4397, -6 pts vs 0.4996, se declara) y el resto de la IA corre
+      POST-VUELO en la PC sobre los frames capturados. El DPD no exige IA en
+      tiempo real a bordo (ver V8.1). Con ~3 s/frame y 1–2 min de descenso dan
+      20–40 frames. Evidencia: docs/benchmarks/pi_zero_w_sframe.json; guía
+      actualizada en pi/guia_pi.md §6.
+
 proximos_pasos:
   - |
     Convertir el ONNX a formato IMX500 al llegar la Raspberry Pi, con las
