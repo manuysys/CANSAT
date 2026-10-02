@@ -245,6 +245,7 @@ deterministas sobre máscaras y telemetría.
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 (banda ±0.04); redistribuye sin subir la media → no adoptado |
 | Confianza limitada | ✅ bloque en `summary.json` + sección en el Informe (bruma ≥45 %, humidex ≥46) |
 | **Pi Zero W v1 (medido 2026-09-25)** | **tiny@224 ~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → vuelo CPU con tiny; resto post-vuelo |
+| **AI Camera IMX500 (validada 2026-10-02)** | cámara OK en la Zero v1 · detección on-sensor **~3 fps sin CPU** · pipeline `--camera --det-backend imx500` OK |
 | EDSR | 287.9 s por frame 1024² en CPU |
 | CI | 3 jobs verdes · 366 tests en CI |
 
@@ -397,7 +398,9 @@ deterministas sobre máscaras y telemetría.
 1. ✅ **microSD y Pi operativa** (2026-09-25): Raspbian 13 Trixie, OpenCV 4.10,
    `imx500-all` instalado, SSH por clave, escritorio apagado.
 2. **s/frame**: ✅ medido (tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`).
-   **AI Camera/IMX500** y personas por NPU: 🟡 pendientes de la cámara.
+   **AI Camera/IMX500**: ✅ validada (2026-10-02): cámara OK, detección
+   on-sensor ~3 fps sin CPU, pipeline con `--det-backend imx500` funcionando.
+   🟡 Pendiente: conversión de nuestros modelos a .rpk (Edge-MDT/Linux).
    **UART real**: ✅ probado con la placa de vuelo **Heltec V3 + BME280 +
    MPU6050** (scan I2C 0x76/0x68, p/t/hum reales, 21/21 paquetes:
    `docs/benchmarks/uart_hardware_heltec_pc.json`) y antes con un

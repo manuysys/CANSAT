@@ -19,7 +19,7 @@
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
 | Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
-| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · 🟡 NPU IMX500 sin validar en placa |
+| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · ✅ **NPU IMX500 validado en la Pi** (~3 fps on-sensor, sin CPU) |
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
@@ -390,6 +390,8 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `08_consulta_personas.png` | consulta v2 con personas y posiciones (punto de apoyo del bbox) |
 | `09_ood_drift.png` | badge "fuera de distribución" (OOD/drift contra la referencia de LoveDA Val) |
 | `10_gradcam.png` | overlay Grad-CAM del modelo de daño de vuelo sobre un frame (qué regiones justifican el daño) |
+| `11_pi_imx500.png` | frame anotado del pipeline corriendo en la Pi con la AI Camera (`--camera --det-backend imx500`) |
+| `11b_pi_imx500_foto.png` | foto real de la AI Camera (IMX500) en la Pi Zero W v1 (4056x3040, reescalada) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -462,7 +464,7 @@ npm run smoke
 
 | Pendiente | Impacto | Bloqueo |
 |---|---|---|
-| Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; 🟡 IMX500/personas pendiente de la cámara | — |
+| Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; ✅ **IMX500 validado (2026-10-02)**: cámara OK y detección on-sensor ~3 fps | — |
 | Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
 | SegFormer-B5 mIoU | ✅ medido: 0.5664 full Val (1669 imgs) vs 0.5219 del v2; JSON `outputs/metrics/val_20260920_211054.json` | — |
 | EDSR tiempo/frame | ✅ medido: ~288 s por frame 1024² en CPU (PC de desarrollo); queda solo post-vuelo | — |

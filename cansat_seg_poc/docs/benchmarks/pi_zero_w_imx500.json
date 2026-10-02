@@ -1,0 +1,31 @@
+{
+  "generado": "2026-10-02T03:46:51.528786+00:00",
+  "prueba": "AI Camera IMX500 validada en la Pi Zero W v1 (2026-10-02)",
+  "hardware": {
+    "placa": "Raspberry Pi Zero W v1 (ARMv6)",
+    "camara": "Raspberry Pi AI Camera (Sony IMX500), modos 4056x3040 y 2028x1520",
+    "os": "Raspbian 13 Trixie"
+  },
+  "rpicam_still": {
+    "list_cameras": "0 : imx500 [4056x3040 10-bit RGGB]",
+    "primera_foto_s": 7.3,
+    "archivo": "/home/pi/test.jpg (920 KB)"
+  },
+  "deteccion_on_sensor": {
+    "modelo": "imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk",
+    "frames": 37,
+    "segundos": 12,
+    "fps_aprox": 3.1,
+    "detecciones": 0,
+    "nota": "escena vacia (c?mara apuntando a una pared/techo); el pipeline on-sensor corre sin CPU"
+  },
+  "pipeline_con_camara": {
+    "comando": "mission_pipeline.py --camera --frames 5 --no-damage --det-backend imx500 --onnx tiny",
+    "frames": 5,
+    "s_por_frame_total": 5.4,
+    "segmentacion_ms": 1500,
+    "detecciones": 0,
+    "telemetria": "cam_000..cam_004 con terreno del tiny"
+  },
+  "pendiente": "capturar una deteccion real (persona/objeto) para la evidencia visual"
+}
