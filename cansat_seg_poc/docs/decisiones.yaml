@@ -515,17 +515,20 @@ limitaciones:
     estado: vigente
     texto: |
       Firmware emisor del contrato LB135 v2 (firmware/heltec_lb135_uart/,
-      PlatformIO): 1 paquete/s con perfil de descenso simulado DECLARADO (no
-      son sensores reales) y checksum NMEA. El formato se validó contra
-      cansat/protocol.py (parse + checksum + fix). PRUEBA REAL 2026-09-26: la
-      placa disponible resultó ser un ESP8266 (NodeMCU/Wemos con CH340), no un
-      S3; se agregó el env esp8266_ch340 y se flasheó con esptool directo
-      (--before=no_reset, porque PlatformIO agrega default_reset y estos clones
-      no tienen auto-reset). Listener en la PC: 25/25 paquetes a 1 Hz,
-      checksum_ok en todos, descenso 800→608 m, GPS y humedad presentes
-      (docs/benchmarks/uart_hardware_pc.json). En la Pi el CH340 aparece como
-      /dev/ttyUSB0. PENDIENTE: el mismo listener en la Pi y el cableado GPIO
-      directo (TX→GPIO15) con la Heltec; ver pi/guia_pi.md §8.
+      PlatformIO): 1 paquete/s con checksum NMEA y, desde 2026-10-02, SENSORES
+      REALES. PRUEBA 2026-10-02 con la placa de vuelo: **Heltec WiFi LoRa 32 V3**
+      (ESP32-S3 + CP2102) + **BME280** en 0x76 + **MPU6050** en 0x68. El scan
+      I2C del arranque detectó ambos (sobrevivieron a una conexión invertida de
+      unos segundos). p/t/hum son reales del BME280 (1017.9 hPa, 22.5 °C,
+      46.5 %) y la altitud sale de la presión (referencia 1013.25; en el predio
+      se ajusta con --p0-alt). El MPU6050 se lee y se imprime por serial, pero
+      NO viaja en el contrato (dominio del firmware de vuelo). GPS: este emisor
+      no tiene; lat/lon simulados y declarados. Listener en la PC: 21/21
+      paquetes, checksum_ok en todos (docs/benchmarks/uart_hardware_heltec_pc.json).
+      Antes se validó con un ESP8266/CH340 (25/25; docs/benchmarks/uart_hardware_pc.json).
+      La Heltec se flashea por USB nativo/CP2102 sin botones (auto-reset).
+      PENDIENTE: listener en la Pi por GPIO15 (espera el header soldado; el UART
+      de la Pi ya quedó configurado: consola off, enable_uart=1).
 
   - id: gradcam-estacion
     estado: vigente

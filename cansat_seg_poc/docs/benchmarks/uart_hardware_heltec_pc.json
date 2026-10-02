@@ -1,0 +1,31 @@
+{
+  "generado": "2026-10-02T03:41:57.816439+00:00",
+  "prueba": "UART real LB135 v2 con la placa de vuelo: Heltec WiFi LoRa 32 V3 + BME280 + MPU6050",
+  "hardware": {
+    "placa": "Heltec WiFi LoRa 32 V3 (ESP32-S3, CP2102)",
+    "sensores": "BME280 en 0x76 (real), MPU6050 en 0x68 (debug)",
+    "puerto": "COM4 @ 115200 8N1"
+  },
+  "firmware_env": "firmware/heltec_lb135_uart (PlatformIO env heltec_wifi_lora_32_V3)",
+  "scan_i2c": [
+    "0x68 (MPU6050)",
+    "0x76 (BME280)"
+  ],
+  "paquetes": 21,
+  "checksum_ok": 21,
+  "bme280_real": {
+    "p_hPa": 1017.9,
+    "temp_C": 22.5,
+    "hum_pct": 46.5,
+    "alt_m_desde_presion": -38.7,
+    "nota": "altitud con referencia 1013.25 hPa; en el predio se ajusta con --p0-alt"
+  },
+  "mpu6050_accel_m_s2": [
+    -4.4,
+    4.09,
+    -8.44
+  ],
+  "mpu6050_nota": "solo debug por serial; NO viaja en el contrato v2 (dominio del firmware de vuelo)",
+  "gps": "no hay en este emisor: lat/lon simulados y declarados",
+  "nota": "Los sensores fueron conectados al rev?s unos segundos antes de esta prueba y SOBREVIVIERON (el scan I2C los detecta). Perfil de terreno simulado declarado."
+}

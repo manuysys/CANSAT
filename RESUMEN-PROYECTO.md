@@ -398,10 +398,11 @@ deterministas sobre máscaras y telemetría.
    `imx500-all` instalado, SSH por clave, escritorio apagado.
 2. **s/frame**: ✅ medido (tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`).
    **AI Camera/IMX500** y personas por NPU: 🟡 pendientes de la cámara.
-   **UART real**: ✅ probado con hardware real (ESP8266/CH340, env
-   `esp8266_ch340`) en la PC: 25/25 paquetes a 1 Hz, checksum OK, GPS y
-   humedad (`docs/benchmarks/uart_hardware_pc.json`). 🟡 pendiente en la Pi
-   (`/dev/ttyUSB0`) y GPIO15 con la Heltec.
+   **UART real**: ✅ probado con la placa de vuelo **Heltec V3 + BME280 +
+   MPU6050** (scan I2C 0x76/0x68, p/t/hum reales, 21/21 paquetes:
+   `docs/benchmarks/uart_hardware_heltec_pc.json`) y antes con un
+   ESP8266/CH340 (25/25: `uart_hardware_pc.json`). 🟡 pendiente GPIO15 en la
+   Pi (header sin soldar; UART de la Pi ya configurado).
 3. **Conversión Edge-MDT (.rpk)** de terreno/flood/fuego: requiere **PC Linux**
    con el converter Sony.
 4. **INT8**: re-medir QDQ estático en la placa y decidir FP32 vs INT8
