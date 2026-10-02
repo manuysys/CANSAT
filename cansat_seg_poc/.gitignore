@@ -18,6 +18,9 @@ outputs/*
 !outputs/metrics/
 runs/
 wandb/
+# PlatformIO: build + librerías descargadas (se regeneran solas al compilar).
+# Sin esto, `git add -A` metía ~180 archivos de libdeps en el repo.
+.pio/
 *.pth
 *.pt
 *.onnx
