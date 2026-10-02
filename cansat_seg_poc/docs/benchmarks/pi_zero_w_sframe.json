@@ -1,0 +1,152 @@
+{
+  "generado": "2026-09-26T02:08:13.456034+00:00",
+  "script": "tools/bench_models.py",
+  "host": "cansat",
+  "machine": "armv6l",
+  "platform": "Linux-6.18.50+rpt-rpi-v6-armv6l-with-glibc2.41",
+  "python": "3.13.5",
+  "cv2": "4.10.0",
+  "onnxruntime": null,
+  "imagen": "/home/pi/cansat_seg_poc/tiles/PERSONAS_AUTOS.png",
+  "runs": 1,
+  "completo": true,
+  "resultados": {
+    "cansat_seg_terrain_v2_224.onnx": {
+      "ms_min": 246012.7,
+      "ms_media": 246012.7,
+      "ms_p95": 246012.7,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        5,
+        224,
+        224
+      ],
+      "size": 224,
+      "sha256_16": "99648e12254116e4",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 2692.6
+    },
+    "cansat_damage_v3_bal.onnx": {
+      "ms_min": 3697168.8,
+      "ms_media": 3697168.8,
+      "ms_p95": 3697168.8,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        3,
+        320,
+        320
+      ],
+      "size": 320,
+      "sha256_16": "519631d1508b239a",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 3132.9
+    },
+    "cansat_flood_specialist_224.onnx": {
+      "ms_min": 243419.0,
+      "ms_media": 243419.0,
+      "ms_p95": 243419.0,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        3,
+        224,
+        224
+      ],
+      "size": 224,
+      "sha256_16": "d34f3345a5d281d0",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 8915.4
+    },
+    "cansat_fire_smoke.onnx": {
+      "ms_min": 2353194.4,
+      "ms_media": 2353194.4,
+      "ms_p95": 2353194.4,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        3,
+        256,
+        256
+      ],
+      "size": 256,
+      "sha256_16": "2b86ec8af17221a6",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 3227.5
+    },
+    "cansat_seg_terrain_v2.onnx": {
+      "ms_min": 3702597.4,
+      "ms_media": 3702597.4,
+      "ms_p95": 3702597.4,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        5,
+        320,
+        320
+      ],
+      "size": 320,
+      "sha256_16": "7a49d457fa157b19",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 3010.6
+    },
+    "cansat_seg_terrain_tiny_224.onnx": {
+      "ms_min": 1538.7,
+      "ms_media": 1538.7,
+      "ms_p95": 1538.7,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        5,
+        224,
+        224
+      ],
+      "size": 224,
+      "sha256_16": "7a35b3ede89d04c9",
+      "mb": 4.3,
+      "backend": "opencv-dnn",
+      "ms_carga": 607.6
+    },
+    "cansat_damage3_mobilenetv2.onnx": {
+      "ms_min": 3738096.6,
+      "ms_media": 3738096.6,
+      "ms_p95": 3738096.6,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        3,
+        320,
+        320
+      ],
+      "size": 320,
+      "sha256_16": "1eeb2026dc45aaa1",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 3297.5
+    },
+    "cansat_severity.onnx": {
+      "ms_min": 3708260.0,
+      "ms_media": 3708260.0,
+      "ms_p95": 3708260.0,
+      "n_runs": 1,
+      "salida_shape": [
+        1,
+        5,
+        320,
+        320
+      ],
+      "size": 320,
+      "sha256_16": "78e75f90129c0dde",
+      "mb": 51.0,
+      "backend": "opencv-dnn",
+      "ms_carga": 7327.5
+    }
+  },
+  "nota": "Pi Zero W v1 (ARMv6, 1 nucleo 1 GHz), Raspbian 13 Trixie, OpenCV 4.10 apt (cv2.dnn), 1 warmup + 1 corrida por modelo; medido 2026-09-25"
+}
