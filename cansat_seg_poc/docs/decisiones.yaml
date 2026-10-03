@@ -527,8 +527,14 @@ limitaciones:
       paquetes, checksum_ok en todos (docs/benchmarks/uart_hardware_heltec_pc.json).
       Antes se validó con un ESP8266/CH340 (25/25; docs/benchmarks/uart_hardware_pc.json).
       La Heltec se flashea por USB nativo/CP2102 sin botones (auto-reset).
-      PENDIENTE: listener en la Pi por GPIO15 (espera el header soldado; el UART
-      de la Pi ya quedó configurado: consola off, enable_uart=1).
+      PRUEBA POR GPIO15 (2026-10-03, header soldado): Heltec TX→GPIO15 (pin 10) y
+      GND común; la Pi ya tenía consola serie off y enable_uart=1 (/dev/serial0 →
+      ttyS0). Listener en la Pi: 40/40 paquetes con checksum OK
+      (docs/benchmarks/uart_hardware_pi_gpio.json). Integración: el pipeline con
+      --uart-state toma lat/lon y humedad del estado fresco (máx. 10 s) por frame.
+      En esa corrida los sensores I2C estaban desconectados (boot: BME280/MPU no
+      detectados) → valores simulados declarados; se repite al reconectar los
+      dupont para la evidencia con valores reales.
 
   - id: gradcam-estacion
     estado: vigente

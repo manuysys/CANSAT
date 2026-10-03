@@ -1,0 +1,28 @@
+{
+  "generado": "2026-10-03T19:12:39.892912+00:00",
+  "prueba": "UART LB135 v2 por GPIO15: Heltec TX -> Pi RXD (/dev/serial0)",
+  "hardware": {
+    "emisor": "Heltec WiFi LoRa 32 V3 (alimentada por USB de la PC)",
+    "receptor": "Raspberry Pi Zero W v1, /dev/serial0 (ttyS0, mini-UART GPIO14/15)",
+    "cableado": "Heltec TX -> Pi pin 10 (GPIO15 RXD); GND comun (pin 6)",
+    "uart_pi": "consola serie off, enable_uart=1"
+  },
+  "paquetes": 40,
+  "checksum_ok": 40,
+  "integracion_pipeline": {
+    "comando": "mission_pipeline --folder tiles --frames 2 --uart-state outputs/uart_state_gpio.json",
+    "resultado": "lat/lon y hum_pct asociados por frame desde el estado fresco (max_age 10 s)",
+    "lat_lon_csv": [
+      [
+        -34.60388,
+        -58.38146
+      ],
+      [
+        -34.60392,
+        -58.38144
+      ]
+    ],
+    "hum_pct_csv": 55.0
+  },
+  "nota": "En esta corrida los sensores I2C de la Heltec estaban desconectados (el boot dijo 'BME280/MPU6050 no detectado'), por eso los valores son del perfil simulado declarado. Al reconectar los dupont se repite para la evidencia con valores reales."
+}
