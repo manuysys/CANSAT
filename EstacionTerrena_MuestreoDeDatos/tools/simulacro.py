@@ -28,6 +28,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Windows: con stdout redirigido a archivo, cp1252 no puede codificar flechas
+# unicode y el proceso muere al final del simulacro (crash real 2026-10-03).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 
 def log(msg: str) -> None:
     print(f"[simulacro {time.strftime('%H:%M:%S')}] {msg}", flush=True)
