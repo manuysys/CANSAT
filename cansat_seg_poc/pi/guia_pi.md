@@ -164,6 +164,7 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
     --no-detect --no-damage --enhance \
     --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224 \
     --det-backend imx500 \
+    --shutter 8000 --gain 16 \
     --pop-density 1500 \
     --out-dir /home/pi/vuelos/$(date +%Y%m%d_%H%M%S)
 ```
@@ -172,6 +173,10 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
   segmentación, ~3 s/frame total). El v2@224 tarda ~4 min/frame en ARMv6: no
   entra en vuelo; el daño/flood/fuego/severidad se corren post-vuelo en la PC
   sobre los frames capturados (`mission_pipeline.py --folder <copia-SD>`).
+- `--shutter 8000 --gain 16`: **medido 2026-10-03** — con luz baja el automático
+  elige ~60 ms de exposición y a pulso/suave el frame sale con motion blur (el
+  SSD no detecta). Con 8 ms + gain 16 la imagen es usable (verificado en la
+  placa: ExposureTime 7995 µs). Ajustar según la luz del predio.
 - `--det-backend imx500` reemplaza a YOLO por el NPU del AI Camera (si la
   cámara no es la AI Camera, usar `--no-detect`).
 - `--enhance` ayuda con la nitidez (denoise + unsharp) y cuesta poco.
