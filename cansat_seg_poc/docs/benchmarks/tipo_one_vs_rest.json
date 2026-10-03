@@ -1,0 +1,184 @@
+{
+  "generado": "2026-10-03T19:18:42.430339+00:00",
+  "script": "tools/loeo_one_vs_rest.py",
+  "protocolo": {
+    "split": "leave-one-event-out (mismo que el canonico)",
+    "epochs": 2,
+    "max_por_clase": 250,
+    "seed": 42,
+    "clases_ovr": [
+      "huracan",
+      "inundacion",
+      "sismo",
+      "incendio",
+      "volcan",
+      "tornado",
+      "otro"
+    ],
+    "nota": "control y OvR con el MISMO presupuesto reducido; comparacion por AP por clase (sin umbral)"
+  },
+  "eventos": {
+    "crasar:Champlain": {
+      "n_test": 56,
+      "ap_control": {
+        "otro": 1.0
+      },
+      "ap_ovr": {
+        "otro": 1.0
+      }
+    },
+    "kate_pd:turkiye": {
+      "n_test": 210,
+      "ap_control": {
+        "sismo": 1.0
+      },
+      "ap_ovr": {
+        "sismo": 1.0
+      }
+    },
+    "rescuenet:huracan": {
+      "n_test": 202,
+      "ap_control": {
+        "huracan": 1.0
+      },
+      "ap_ovr": {
+        "huracan": 1.0
+      }
+    },
+    "xbd:joplin-tornado": {
+      "n_test": 64,
+      "ap_control": {
+        "tornado": 1.0
+      },
+      "ap_ovr": {
+        "tornado": 1.0
+      }
+    },
+    "xbd:lower-puna-volcano": {
+      "n_test": 183,
+      "ap_control": {
+        "volcan": 1.0
+      },
+      "ap_ovr": {
+        "volcan": 1.0
+      }
+    },
+    "xbd:mexico-earthquake": {
+      "n_test": 40,
+      "ap_control": {
+        "sismo": 1.0
+      },
+      "ap_ovr": {
+        "sismo": 1.0
+      }
+    },
+    "xbd:midwest-flooding": {
+      "n_test": 71,
+      "ap_control": {
+        "inundacion": 1.0
+      },
+      "ap_ovr": {
+        "inundacion": 1.0
+      }
+    },
+    "xbd:moore-tornado": {
+      "n_test": 88,
+      "ap_control": {
+        "tornado": 1.0
+      },
+      "ap_ovr": {
+        "tornado": 1.0
+      }
+    },
+    "xbd:nepal-flooding": {
+      "n_test": 130,
+      "ap_control": {
+        "inundacion": 1.0
+      },
+      "ap_ovr": {
+        "inundacion": 1.0
+      }
+    },
+    "xbd:pinery-bushfire": {
+      "n_test": 40,
+      "ap_control": {
+        "incendio": 1.0
+      },
+      "ap_ovr": {
+        "incendio": 1.0
+      }
+    },
+    "xbd:portugal-wildfire": {
+      "n_test": 99,
+      "ap_control": {
+        "incendio": 1.0
+      },
+      "ap_ovr": {
+        "incendio": 1.0
+      }
+    },
+    "xbd:socal-fire": {
+      "n_test": 31,
+      "ap_control": {
+        "incendio": 1.0
+      },
+      "ap_ovr": {
+        "incendio": 1.0
+      }
+    },
+    "xbd:tuscaloosa-tornado": {
+      "n_test": 98,
+      "ap_control": {
+        "tornado": 1.0
+      },
+      "ap_ovr": {
+        "tornado": 1.0
+      }
+    },
+    "xbd:woolsey-fire": {
+      "n_test": 39,
+      "ap_control": {
+        "incendio": 1.0
+      },
+      "ap_ovr": {
+        "incendio": 1.0
+      }
+    }
+  },
+  "completo": true,
+  "n_tiles_evaluados": 1351,
+  "clases_evaluadas": [
+    "huracan",
+    "inundacion",
+    "sismo",
+    "incendio",
+    "volcan",
+    "tornado",
+    "otro"
+  ],
+  "ap_control": {
+    "huracan": 0.12,
+    "inundacion": 0.2937,
+    "sismo": 0.5034,
+    "incendio": 0.3361,
+    "volcan": 0.2595,
+    "tornado": 0.4676,
+    "otro": 0.0223
+  },
+  "ap_ovr": {
+    "huracan": 0.1055,
+    "inundacion": 0.3177,
+    "sismo": 0.2713,
+    "incendio": 0.464,
+    "volcan": 0.316,
+    "tornado": 0.3107,
+    "otro": 0.0422
+  },
+  "macro_ap_control": 0.2861,
+  "macro_ap_ovr": 0.2611,
+  "weighted_ap_control": 0.3294,
+  "weighted_ap_ovr": 0.2871,
+  "adoptada": false,
+  "minutos": 50.4,
+  "veredicto": "se adopta OvR si macro AP mejora >2 pts; si no, se documenta como no adoptada"
+}

@@ -8,7 +8,17 @@ picamera2 sólo corre en la Pi (ver ``_demo``).
 import numpy as np
 import pytest
 
-from cansat.imx500 import (COCO_PERSON, COCO_VEHICLES, SSD_PERSON, Deteccion, contar, parse_ssd_output, rescale)
+from cansat.imx500 import (
+    COCO_PERSON,
+    COCO_VEHICLES,
+    SSD_PERSON,
+    SSD_VEHICLES,
+    Deteccion,
+    contar,
+    parse_ssd_output,
+    parse_ssd_outputs,
+    rescale,
+)
 
 
 def _fila_ssd(y0, x0, y1, x1, score, cls):
@@ -66,8 +76,33 @@ def test_conteo_personas_y_vehiculos_coco():
     assert cajas[0] == (0, 0, 10, 10, 0)     # formato del pipeline
 
 
-def test_ids_ssd_y_coco_son_conjuntos_distintos():
-    """El SSD del IMX500 usa COCO-91 (person=1); YOLO usa COCO-80 (person=0)."""
-    assert 1 in SSD_PERSON and 0 not in SSD_PERSON
-    assert 0 in COCO_PERSON and 1 not in COCO_PERSON
-    assert not (SSD_PERSON & COCO_PERSON) or True  # documentado, no requisito
+def test_ssd_usa_coco_80_persona_cero():
+    """Medido en hardware 2026-10-03: el SSD preempaquetado es COCO-80 (person=0)."""
+    assert SSD_PERSON == COCO_PERSON == frozenset({0})
+    assert SSD_VEHICLES == COCO_VEHICLES == frozenset({1, 2, 3, 5, 7})
+
+
+def test_parsea_formato_real_lista_3_tensores():
+    """El formato REAL de get_outputs(): [boxes, scores, classes]."""
+    boxes = np.array([[[0.1, 0.2, 0.6, 0.7]]], np.float32)   # (1,1,4) y0,x0,y1,x1
+    scores = np.array([[0.77]], np.float32)
+    classes = np.array([[0]], np.float32)                    # persona COCO-80
+    dets = parse_ssd_outputs([boxes, scores, classes], score_thresh=0.5)
+    assert len(dets) == 1
+    d = dets[0]
+    assert (d.x1, d.y1, d.x2, d.y2) == pytest.approx((0.2, 0.1, 0.7, 0.6))
+    assert d.cls == 0 and d.score == pytest.approx(0.77)
+
+
+def test_parsea_lista_descarta_baja_confianza():
+    boxes = np.array([[0.0, 0.0, 0.5, 0.5], [0.1, 0.1, 0.2, 0.2]], np.float32)
+    scores = np.array([0.2, 0.9], np.float32)
+    classes = np.array([0, 2], np.float32)
+    dets = parse_ssd_outputs([boxes, scores, classes], score_thresh=0.5)
+    assert len(dets) == 1 and dets[0].cls == 2
+
+
+def test_parsea_lista_vacia_o_corta_no_explota():
+    assert parse_ssd_outputs(None) == []
+    assert parse_ssd_outputs([np.zeros((1, 4)), np.zeros((1,))]) == []   # <3 tensores
+    assert parse_ssd_outputs([np.zeros((0, 4)), np.zeros((0,)), np.zeros((0,))]) == []

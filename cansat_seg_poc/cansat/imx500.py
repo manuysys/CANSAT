@@ -21,9 +21,14 @@ Cómo se usa (lado pipeline):
 Requisitos en la Pi: ``sudo apt install imx500-all`` (firmware + modelos
 preempaquetados + post-proceso de rpicam-apps). Ver pi/guia_pi.md.
 
-⚠ ESTADO: implementado contra la API oficial de picamera2 (IMX500 + metadata) y
-  con el parser del tensor SSD cubierto por tests sintéticos, pero **no fue
-  validado en hardware todavía**. La primera prueba en la Pi debe ser:
+✅ VALIDADO EN HARDWARE (2026-10-03, Pi Zero W v1 + AI Camera): el demo oficial
+  (`rpicam-still --post-process-file .../imx500_mobilenet_ssd.json`) detectó
+  `person 77%` sobre una persona real. Eso destapó DOS bugs de este módulo, ya
+  corregidos:
+    · el formato real de `imx500.get_outputs()` es una LISTA de 3 tensores
+      `[boxes, scores, classes]` (el parser esperaba una matriz Nx7);
+    · el SSD preempaquetado usa **COCO-80** (persona = 0), no COCO-91.
+  La prueba en la Pi:
       python -m cansat.imx500 --model /usr/share/imx500-models/<modelo>.rpk
   que imprime las detecciones por frame.
 """
@@ -34,12 +39,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Clases COCO (redes preempaquetadas del AI Camera: SSD MobileNet / YOLO).
+# Clases COCO-80 (las que usan las redes preempaquetadas del AI Camera).
+# Medido en hardware 2026-10-03: el demo oficial detectó 'person 77%' con el
+# SSD preempaquetado y su lista de etiquetas arranca en person=0 → es COCO-80.
 COCO_PERSON: frozenset[int] = frozenset({0})
 COCO_VEHICLES: frozenset[int] = frozenset({1, 2, 3, 5, 7})   # bicycle, car, moto, bus, truck
-# El SSD del IMX500 usa 91 clases COCO (indexadas 1..90 con 0=background).
-SSD_PERSON: frozenset[int] = frozenset({1})                  # 'person' en el dataset COCO-91
-SSD_VEHICLES: frozenset[int] = frozenset({2, 4, 6, 8})       # bicycle, car, motorcycle, bus
+# El SSD preempaquetado del IMX500 usa COCO-80 (persona = 0), NO COCO-91.
+SSD_PERSON: frozenset[int] = COCO_PERSON
+SSD_VEHICLES: frozenset[int] = COCO_VEHICLES
 
 
 @dataclass
@@ -97,6 +104,46 @@ def parse_ssd_output(output: np.ndarray, score_thresh: float = 0.5,
         if len(dets) >= max_det:
             break
     return dets
+
+
+def parse_ssd_outputs(outputs, score_thresh: float = 0.5,
+                      max_det: int = 25) -> list[Deteccion]:
+    """
+    Parser del formato REAL de ``imx500.get_outputs(metadata)``.
+
+    Devuelve una **lista de 3 tensores** ``[boxes, scores, classes]``:
+      · ``boxes``   ``(N, 4)`` normalizadas ``[y0, x0, y1, x1]`` (a veces
+        ``(1, N, 4)`` con ``add_batch=True``);
+      · ``scores``  ``(N,)`` o ``(1, N)``;
+      · ``classes`` ``(N,)`` o ``(1, N)`` índices COCO-80.
+
+    También acepta el formato matricial legacy vía ``parse_ssd_output`` para no
+    romper con re-exports distintos. Validado contra el demo oficial en la Pi.
+    """
+    if outputs is None:
+        return []
+    if isinstance(outputs, (list, tuple)) and len(outputs) < 3:
+        return []                    # lista incompleta: no es el formato real
+    if isinstance(outputs, (list, tuple)):
+        boxes = np.asarray(outputs[0], dtype=np.float32)
+        scores = np.asarray(outputs[1], dtype=np.float32).reshape(-1)
+        clases = np.asarray(outputs[2], dtype=np.float32).reshape(-1)
+        if boxes.ndim == 3 and boxes.shape[0] == 1:
+            boxes = boxes[0]
+        if boxes.ndim != 2 or boxes.shape[1] < 4:
+            return []
+        n = min(len(boxes), len(scores), len(clases))
+        dets: list[Deteccion] = []
+        for i in range(n):
+            if float(scores[i]) < score_thresh:
+                continue
+            y0, x0, y1, x1 = boxes[i][:4]
+            dets.append(Deteccion(float(x0), float(y0), float(x1), float(y1),
+                                  float(scores[i]), int(clases[i])))
+            if len(dets) >= max_det:
+                break
+        return dets
+    return parse_ssd_output(outputs, score_thresh, max_det)
 
 
 def rescale(dets: list[Deteccion], width: int, height: int,
@@ -212,7 +259,7 @@ class Imx500Camera:
             cajas: list[tuple[int, int, int, int, int]] = []
             try:
                 out = self._imx500.get_outputs(meta, add_batch=True)
-                dets = parse_ssd_output(out)
+                dets = parse_ssd_outputs(out)
                 if dets:
                     h, w = bgr.shape[:2]
                     # El SSD del IMX500 entrega cajas normalizadas; si algún

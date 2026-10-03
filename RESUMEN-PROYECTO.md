@@ -245,7 +245,7 @@ deterministas sobre máscaras y telemetría.
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 (banda ±0.04); redistribuye sin subir la media → no adoptado |
 | Confianza limitada | ✅ bloque en `summary.json` + sección en el Informe (bruma ≥45 %, humidex ≥46) |
 | **Pi Zero W v1 (medido 2026-09-25)** | **tiny@224 ~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → vuelo CPU con tiny; resto post-vuelo |
-| **AI Camera IMX500 (validada 2026-10-02)** | cámara OK en la Zero v1 · detección on-sensor **~3 fps sin CPU** · pipeline `--camera --det-backend imx500` OK |
+| **AI Camera IMX500 (validada 2026-10-03)** | cámara OK en la Zero v1 · **persona real detectada** (demo oficial 77 %; pipeline `personas=1` con caja) · 2 bugs del módulo corregidos (lista de tensores + COCO-80) · captura: usar `--shutter` corto (60 ms automáticos → blur) |
 | EDSR | 287.9 s por frame 1024² en CPU |
 | CI | 3 jobs verdes · 366 tests en CI |
 

@@ -566,17 +566,23 @@ limitaciones:
   - id: imx500-hardware
     estado: vigente
     texto: |
-      AI Camera (Sony IMX500) VALIDADA en la Pi Zero W v1 (2026-10-02): la
-      cámara es compatible con todos los modelos de Pi y quedó probada en la
-      placa. `rpicam-still --list-cameras` la detecta (4056x3040 10-bit RGGB);
-      primera foto en 7.3 s. La detección on-sensor con el modelo preempaquetado
-      SSD-MobileNetV2 corre a ~3 fps (37 frames en 12 s) SIN usar CPU. El
-      pipeline integra con `--camera --det-backend imx500`: 5 frames con el tiny
-      (5.4 s/frame total, ~1.5 s de segmentación) y telemetría escrita. En una
-      escena vacía da 0 detecciones (declarado); la captura con objeto real es
-      evidencia complementaria. La conversión de NUESTROS modelos a .rpk sigue
-      pendiente (Edge-MDT/Linux). Evidencia: docs/benchmarks/pi_zero_w_imx500.json
-      y docs/evidencia/11_pi_imx500.png + 11b_pi_imx500_foto.png.
+      AI Camera (Sony IMX500) VALIDADA en la Pi Zero W v1 (2026-10-03): cámara
+      detectada (4056x3040), y **detección de personas real funcionando** con el
+      NPU. El demo oficial (`rpicam-still --post-process-file
+      /usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json`) marcó
+      `person 77%`; eso destapó DOS bugs de `cansat/imx500.py`, ya corregidos:
+      (1) `get_outputs()` devuelve una LISTA [boxes, scores, classes] y el
+      parser esperaba una matriz Nx7; (2) el SSD preempaquetado usa COCO-80
+      (persona=0), no COCO-91. Con el fix: 84 frames en 12 s con 1 persona +
+      caja en ~80 frames, y el pipeline (`--camera --frames 4
+      --det-backend imx500 --onnx tiny`) registró `personas=1` con xyxy en
+      cam_003 (3.5 s/frame). HALLAZGO de captura: con luz baja rpicam usa ~60 ms
+      de exposición → motion blur a pulso (nitidez 2.1/100); con
+      `--shutter 8000 --gain 16` la imagen es usable. PENDIENTE: fijar la
+      obturación máxima en la captura de vuelo y dejar el foco manual clavado.
+      La conversión de NUESTROS modelos a .rpk sigue pendiente (Edge-MDT/Linux).
+      Evidencia: docs/benchmarks/pi_zero_w_imx500.json y docs/evidencia/
+      11_pi_imx500.png (frame con caja) + 11b_pi_imx500_foto.png.
 
   - id: modelo-vuelo-tiny
     estado: vigente

@@ -1,31 +1,50 @@
 {
-  "generado": "2026-10-02T03:46:51.528786+00:00",
-  "prueba": "AI Camera IMX500 validada en la Pi Zero W v1 (2026-10-02)",
+  "generado": "2026-10-03T20:23:19.940528+00:00",
+  "prueba": "AI Camera IMX500 validada en la Pi Zero W v1 (2026-10-03)",
   "hardware": {
     "placa": "Raspberry Pi Zero W v1 (ARMv6)",
-    "camara": "Raspberry Pi AI Camera (Sony IMX500), modos 4056x3040 y 2028x1520",
+    "camara": "Raspberry Pi AI Camera (Sony IMX500), 4056x3040",
     "os": "Raspbian 13 Trixie"
   },
-  "rpicam_still": {
-    "list_cameras": "0 : imx500 [4056x3040 10-bit RGGB]",
-    "primera_foto_s": 7.3,
-    "archivo": "/home/pi/test.jpg (920 KB)"
+  "demo_oficial": {
+    "comando": "rpicam-still --post-process-file /usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json",
+    "resultado": "person 77% con caja dibujada sobre una persona real"
   },
-  "deteccion_on_sensor": {
-    "modelo": "imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk",
-    "frames": 37,
+  "modulo_cansat_imx500": {
+    "frames": 84,
     "segundos": 12,
-    "fps_aprox": 3.1,
-    "detecciones": 0,
-    "nota": "escena vacia (c?mara apuntando a una pared/techo); el pipeline on-sensor corre sin CPU"
+    "detecciones": "1 persona + 1 caja en ~80 de 84 frames (2 en un frame)",
+    "bugs_corregidos": [
+      "imx500.get_outputs() devuelve una LISTA [boxes, scores, classes]; el parser esperaba una matriz Nx7",
+      "el SSD preempaquetado usa COCO-80 (persona = 0), no COCO-91"
+    ],
+    "nota": "corregido y cubierto por tests (parse_ssd_outputs + COCO-80)"
   },
   "pipeline_con_camara": {
-    "comando": "mission_pipeline.py --camera --frames 5 --no-damage --det-backend imx500 --onnx tiny",
-    "frames": 5,
-    "s_por_frame_total": 5.4,
-    "segmentacion_ms": 1500,
-    "detecciones": 0,
-    "telemetria": "cam_000..cam_004 con terreno del tiny"
+    "comando": "mission_pipeline.py --camera --frames 4 --no-damage --det-backend imx500 --onnx tiny",
+    "frames": 4,
+    "cam_003": {
+      "personas": 1,
+      "detecciones": [
+        {
+          "tipo": "persona",
+          "xyxy": [
+            11,
+            5,
+            550,
+            409
+          ]
+        }
+      ],
+      "ms_total": 3463.2
+    }
   },
-  "pendiente": "capturar una deteccion real (persona/objeto) para la evidencia visual"
+  "foco_y_exposicion": {
+    "hallazgo": "con luz baja rpicam usa ~60 ms de exposicion -> motion blur a pulso (nitidez 2.1); con --shutter 8000 --gain 16 la imagen es usable y el SSD detecta",
+    "pendiente": "fijar la obturaci?n m?xima en la captura de vuelo (integrar en el pipeline)"
+  },
+  "evidencia": [
+    "docs/evidencia/11_pi_imx500.png (frame con caja)",
+    "docs/evidencia/11b_pi_imx500_foto.png (foto del sensor)"
+  ]
 }

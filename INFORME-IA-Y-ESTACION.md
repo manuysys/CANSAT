@@ -19,7 +19,7 @@
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
 | Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
-| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · ✅ **NPU IMX500 validado en la Pi** (~3 fps on-sensor, sin CPU) |
+| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · ✅ **NPU IMX500 validado en la Pi**: persona real detectada (demo oficial 77 %; pipeline `personas=1` con caja, sin CPU) |
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
