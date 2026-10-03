@@ -593,8 +593,10 @@ limitaciones:
       --det-backend imx500 --onnx tiny`) registró `personas=1` con xyxy en
       cam_003 (3.5 s/frame). HALLAZGO de captura: con luz baja rpicam usa ~60 ms
       de exposición → motion blur a pulso (nitidez 2.1/100); con
-      `--shutter 8000 --gain 16` la imagen es usable. PENDIENTE: fijar la
-      obturación máxima en la captura de vuelo y dejar el foco manual clavado.
+      `--shutter 8000 --gain 16` la imagen es usable. INTEGRADO al pipeline
+      (2026-10-03): `--shutter`/`--gain` en mission_pipeline → controles de
+      picamera2 (verificado en la placa: ExposureTime 7995 µs, gain 16.0).
+      PENDIENTE: dejar el foco manual clavado (seguir ajustando el anillo).
       La conversión de NUESTROS modelos a .rpk sigue pendiente (Edge-MDT/Linux).
       Evidencia: docs/benchmarks/pi_zero_w_imx500.json y docs/evidencia/
       11_pi_imx500.png (frame con caja) + 11b_pi_imx500_foto.png.

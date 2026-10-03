@@ -82,6 +82,17 @@ def test_ssd_usa_coco_80_persona_cero():
     assert SSD_VEHICLES == COCO_VEHICLES == frozenset({1, 2, 3, 5, 7})
 
 
+def test_controles_camara_shutter_y_gain():
+    """La captura puede fijar obturación/ganancia (anti motion-blur)."""
+    from cansat.imx500 import Imx500Camera, controles_camara
+
+    assert controles_camara(10) == {"FrameRate": 10}
+    c = controles_camara(30, shutter_us=8000, gain=16)
+    assert c["ExposureTime"] == 8000 and c["AnalogueGain"] == 16
+    cam = Imx500Camera("modelo.rpk", shutter_us=8000, gain=16)
+    assert cam.shutter_us == 8000 and cam.gain == 16
+
+
 def test_parsea_formato_real_lista_3_tensores():
     """El formato REAL de get_outputs(): [boxes, scores, classes]."""
     boxes = np.array([[[0.1, 0.2, 0.6, 0.7]]], np.float32)   # (1,1,4) y0,x0,y1,x1

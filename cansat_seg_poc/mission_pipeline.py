@@ -512,6 +512,13 @@ def build_parser():
     src.add_argument("--image", default=None, help="una sola imagen")
     src.add_argument("--folder", default=None, help="carpeta con .png")
     src.add_argument("--camera", action="store_true", help="picamera2 (Raspberry)")
+    # Medido 2026-10-03 en la Pi: con luz baja rpicam elige ~60 ms de exposición
+    # y los frames salen con motion blur (nitidez 2/100). Fijar --shutter corto
+    # (8000 µs) con --gain alto (16) deja la imagen usable para el SSD/terreno.
+    src.add_argument("--shutter", type=int, default=None, metavar="US",
+                     help="obturación fija en microsegundos (p. ej. 8000)")
+    src.add_argument("--gain", type=float, default=None,
+                     help="ganancia analógica fija (p. ej. 16) junto con --shutter")
     src.add_argument("--frames", type=int, default=5)
     src.add_argument("--interval", type=float, default=2.0, help="segundos entre frames")
     src.add_argument("--shuffle", action="store_true", help="muestrear al azar (simulacro)")
@@ -959,7 +966,8 @@ def main(argv=None):
             # sólo lee metadata (clave en la Zero v1, sin torch).
             from cansat.imx500 import Imx500Camera
 
-            cam = Imx500Camera(args.imx500_model)
+            cam = Imx500Camera(args.imx500_model, shutter_us=args.shutter,
+                               gain=args.gain)
             cam.start()
             print(f"  [IMX500] detección on-sensor: {Path(args.imx500_model).name}")
         else:

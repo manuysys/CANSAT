@@ -176,6 +176,23 @@ def contar(dets: list[Deteccion],
     return personas, vehiculos, cajas
 
 
+def controles_camara(fps: int, shutter_us: int | None = None,
+                     gain: float | None = None) -> dict:
+    """
+    Controles de picamera2 para la captura: FrameRate + obturación/ganancia.
+
+    Medido 2026-10-03: con luz baja el automático elige ~60 ms de exposición y
+    a pulso eso es motion blur (el SSD no detecta). Fijar ``--shutter`` corto
+    (p. ej. 8000 µs) con ``--gain`` alto (16) deja la imagen usable.
+    """
+    ctrl: dict = {"FrameRate": max(1, int(fps))}
+    if shutter_us is not None:
+        ctrl["ExposureTime"] = int(shutter_us)
+    if gain is not None:
+        ctrl["AnalogueGain"] = float(gain)
+    return ctrl
+
+
 class Imx500Camera:
     """
     Cámara AI (IMX500) con inferencia on-sensor.
@@ -186,10 +203,12 @@ class Imx500Camera:
 
     def __init__(self, model: str, width: int = 640, height: int = 480,
                  fps: int = 10, person_ids: frozenset[int] = SSD_PERSON,
-                 veh_ids: frozenset[int] = SSD_VEHICLES):
+                 veh_ids: frozenset[int] = SSD_VEHICLES,
+                 shutter_us: int | None = None, gain: float | None = None):
         self.model = str(model)
         self.width, self.height, self.fps = width, height, fps
         self.person_ids, self.veh_ids = person_ids, veh_ids
+        self.shutter_us, self.gain = shutter_us, gain
         self._picam = None
         self._imx500 = None
         self._normalized = True
@@ -216,7 +235,9 @@ class Imx500Camera:
         self._picam = Picamera2(self._imx500.camera_num)
         cfg = self._picam.create_preview_configuration(
             main={"size": (self.width, self.height), "format": "BGR888"},
-            controls={"FrameRate": min(self.fps, getattr(intr, "inference_rate", 30))},
+            controls=controles_camara(
+                min(self.fps, getattr(intr, "inference_rate", 30)),
+                self.shutter_us, self.gain),
             buffer_count=8,
         )
         self._picam.configure(cfg)

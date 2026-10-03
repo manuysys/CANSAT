@@ -332,7 +332,8 @@ deterministas sobre máscaras y telemetría.
   0x76/0x68); los sensores sobrevivieron a una conexión invertida.
 - **One-vs-rest (tipo)**: rechazado con evidencia (AP macro 0.286 vs 0.261).
 - **Hallazgo de captura**: 60 ms de exposición automática → motion blur;
-  usar `--shutter` corto (pendiente integrarlo al pipeline de vuelo).
+  integrado `--shutter`/`--gain` al pipeline (verificado en placa: 7995 µs,
+  gain 16) y documentado para el vuelo.
 
 **Bring-up Pi Zero W v1 (2026-09-25, hardware real)**
 - SD 16 GB flasheada (Raspbian 13 **Trixie**, no Bookworm) → SSH por clave,
