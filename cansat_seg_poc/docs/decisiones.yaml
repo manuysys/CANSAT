@@ -365,6 +365,21 @@ limitaciones:
       se corta, el LOEO acepta --eventos (tramos) + --loeo-json. Evidencia:
       docs/benchmarks/tipo_balanceado.json.
 
+  - id: tipo-one-vs-rest
+    estado: vigente
+    texto: |
+      Experimento pedido por el equipo: "¿un binario por tipo de desastre
+      generaliza mejor que el multiclase de 7 clases?". Protocolo justo
+      (tools/loeo_one_vs_rest.py): mismo split LOEO, misma semilla y mismo
+      presupuesto para las dos ramas (2 épocas, ≤250 tiles/clase), comparación
+      por Average Precision por clase (sin umbral) sobre los eventos held-out
+      (14 eventos con ≥30 tiles en ese presupuesto). Resultado: macro AP
+      multiclase 0.2861 vs one-vs-rest 0.2611; weighted 0.3294 vs 0.2871 →
+      NO se adopta. Confirma que el cuello es la generalización cross-evento
+      (dominio), no la cantidad de cabezas: los tipos sin firma visual propia
+      (sismo/tornado/huracán/volcán) se confunden entre sí y un binario aprende
+      señales del evento. Evidencia: docs/benchmarks/tipo_one_vs_rest.json.
+
   - id: calibracion-por-clase
     estado: vigente
     texto: |

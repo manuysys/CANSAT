@@ -322,6 +322,18 @@ deterministas sobre máscaras y telemetría.
   - Diferido a V11: MoE, UDA, difusión/LoRA, capas Sentinel Hub (rompen el modo
     offline), replay continuo.
 
+**Validación de hardware final (2026-10-02/03)**
+- **AI Camera IMX500**: cámara OK, **persona real detectada por el NPU** (demo
+  oficial 77 %; pipeline `personas=1` con caja). Se corrigieron **2 bugs** de
+  `cansat/imx500.py` que sólo aparecen en hardware: `get_outputs()` devuelve
+  lista `[boxes, scores, classes]` y el SSD es COCO-80 (persona=0).
+- **UART por GPIO15**: 40/40 paquetes Heltec→Pi y pipeline `--uart-state`.
+- **Heltec + BME280 + MPU6050**: sensores reales en el contrato v2 (scan I2C
+  0x76/0x68); los sensores sobrevivieron a una conexión invertida.
+- **One-vs-rest (tipo)**: rechazado con evidencia (AP macro 0.286 vs 0.261).
+- **Hallazgo de captura**: 60 ms de exposición automática → motion blur;
+  usar `--shutter` corto (pendiente integrarlo al pipeline de vuelo).
+
 **Bring-up Pi Zero W v1 (2026-09-25, hardware real)**
 - SD 16 GB flasheada (Raspbian 13 **Trixie**, no Bookworm) → SSH por clave,
   `apt full-upgrade`, `imx500-all` instalado, escritorio apagado
@@ -390,6 +402,7 @@ deterministas sobre máscaras y telemetría.
 | Calibración por clase (tipo) | ECE 0.131 vs 0.123 global; rompe ranking de incendio | No adoptada (`calibracion_por_clase.json`) |
 | Augmentación UAV (daño) | Fine-tune limpio 0.374 → 0.265 | No adoptado; A/B correcto en V11 (`aug_uav_dano.json`) |
 | Tipo con pesos por clase | LOEO 0.317 vs 0.330 (ruido ±0.04); mejora 3 eventos, hunde 4 | No adoptado; checkpoint intacto (`tipo_balanceado.json`) |
+| Un binario por tipo (one-vs-rest) | AP macro 0.286 (multiclase) vs 0.261 (OvR); weighted 0.329 vs 0.287 | No adoptado; el cuello es cross-evento, no las cabezas (`tipo_one_vs_rest.json`) |
 
 ---
 
