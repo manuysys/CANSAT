@@ -72,9 +72,21 @@ def leer_filas(src: Path):
     return head, rows
 
 
-def fila_rafaga(base: list, head: list, rng: random.Random, k: int) -> list:
+def fila_rafaga(prev: list, next_: list, head: list, rng: random.Random,
+                k: int, n: int) -> list:
+    """
+    Fila de ráfaga interpolada entre las dos filas vecinas del punto de
+    inserción.
+
+    ⚠ Antes copiaba una fila POSTERIOR (menor altitud) y le restaba 2 m más:
+    al insertarla ANTES, el CSV quedaba con altitud no monótona y la escena 3D
+    "volvía a subir" (bug visual reportado en el ensayo del 2026-10-03).
+    """
     idx = {c: i for i, c in enumerate(head)}
-    r = list(base)
+    frac = (k + 1) / (n + 1)
+    t0, t1 = float(prev[idx["t_s"]]), float(next_[idx["t_s"]])
+    a0, a1 = float(prev[idx["alt_m"]]), float(next_[idx["alt_m"]])
+    r = list(prev)
     r[idx["src"]] = f"cap_{9000 + k:04d}"
     r[idx["alert"]] = "1"
     r[idx["danado_pct"]] = f"{rng.uniform(55, 90):.1f}"
@@ -82,8 +94,8 @@ def fila_rafaga(base: list, head: list, rng: random.Random, k: int) -> list:
     r[idx["verdict"]] = "ALTO ESTRÉS URBANO"
     r[idx["sample_pri"]] = "HIGH"
     r[idx["sample_score"]] = f"{rng.uniform(0.7, 0.95):.2f}"
-    r[idx["t_s"]] = f"{float(base[idx['t_s']]) + 1.5 * (k + 1):.1f}"
-    r[idx["alt_m"]] = f"{max(1.0, float(base[idx['alt_m']]) - 2 * (k + 1)):.1f}"
+    r[idx["t_s"]] = f"{t0 + (t1 - t0) * frac:.1f}"
+    r[idx["alt_m"]] = f"{max(1.0, a0 + (a1 - a0) * frac):.1f}"
     return r
 
 
@@ -118,7 +130,10 @@ def main() -> None:
 
     if args.rafaga:
         punto = int(len(rows) * 0.6)
-        extra = [fila_rafaga(rows[min(punto + k, len(rows) - 1)], head, rng, k) for k in range(args.rafaga)]
+        prev = rows[max(0, punto - 1)]
+        next_ = rows[min(punto, len(rows) - 1)]
+        extra = [fila_rafaga(prev, next_, head, rng, k, args.rafaga)
+                 for k in range(args.rafaga)]
         rows = rows[:punto] + extra + rows[punto:]
         log(f"ráfaga inyectada: {args.rafaga} filas alert=1 desde la posición {punto}")
 

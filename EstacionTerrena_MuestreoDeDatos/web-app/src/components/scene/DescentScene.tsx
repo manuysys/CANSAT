@@ -108,12 +108,13 @@ function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
     }
     if (dome.current) {
       // Desplegado: scale 1 a y=2.08. Plegado (ascenso): scale 0.14.
-      // Aterrizado: el paracaídas se colapsa SOBRE el cuerpo (no bajo tierra).
-      const targetScale = stowed ? 0.14 : landed ? 0.22 : 1
+      // Aterrizado: la tela se desploma SOBRE el cuerpo pero VISIBLE (antes
+      // scale 0.22 a y=0.55 quedaba dentro del cuerpo y "desaparecía").
+      const targetScale = stowed ? 0.14 : landed ? 0.5 : 1
       const sc = THREE.MathUtils.damp(dome.current.scale.x, targetScale, 3, dt)
       dome.current.scale.set(sc, sc, sc)
       dome.current.position.y = THREE.MathUtils.damp(
-        dome.current.position.y, landed ? 0.55 : DOME_Y, 2, dt)
+        dome.current.position.y, landed ? 0.95 : DOME_Y, 2, dt)
     }
     // Cuerdas: visibles en descenso; se desvanecen plegadas o aterrizado.
     if (cuerdas.current) {
@@ -389,7 +390,10 @@ export function DescentScene() {
 
   const ticks = [1, 0.75, 0.5, 0.25, 0].map(p => Math.round(altMin + (altMax - altMin) * p))
   const phase = missionPhase(frames, summary)
-  const stowed = phase.id === 'ascenso' || phase.id === 'sin-tlm'
+  // El paracaídas se pliega SOLO en el ascenso real. Antes 'sin-tlm' también
+  // lo plegaba: con un dropout de telemetría la tela se encogía a mitad del
+  // descenso (bug visual reportado en el ensayo del 2026-10-03).
+  const stowed = phase.id === 'ascenso'
   // El paracaídas sigue al FRAME que se está mirando (focus), no al resumen de
   // la misión: en post-vuelo se puede estar viendo un frame de descenso a
   // 108 m y debe verse desplegado con las cuerdas sosteniendo el CanSat.

@@ -227,8 +227,11 @@ export function Consulta() {
           )}
 
           <p className="mt-3 text-[10.5px] text-muted-foreground/70">
-            Motor simbólico (sin LLM): plantillas en español → operaciones sobre
-            las máscaras de clase por frame. Lo que no mapea, no se responde.
+            Motor simbólico, sin IA generativa: entiende plantillas en español
+            (área, conteo, distancia, existencia) y las resuelve sobre las
+            máscaras de clase por frame. Si la pregunta no entra en una
+            plantilla, responde <span className="text-muted-foreground">“consulta no soportada”</span> y
+            sugiere una parecida. No es un chatbot: no inventa respuestas.
           </p>
         </div>
       </Card>

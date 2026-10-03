@@ -1,9 +1,12 @@
 /* Trayectoria GPS del descenso (DPD: "asociar posición a cada imagen").
  *
- * Sin basemap (la estación corre offline en la PC del laboratorio): se dibuja
- * lat/lon en un scatter con el eje X/Y invertidos para que "arriba" sea norte
- * y "derecha" sea este, con la altitud en el tooltip y las alertas en rojo.
- * Click en un punto → selecciona ese frame. */
+ * Sin basemap (la estación corre offline en la PC del laboratorio): la traza
+ * se dibuja en un scatter con coordenadas LOCALES EN METROS para que la forma
+ * no salga estirada (antes se graficaba lat/lon con escalas independientes y
+ * una traza de ~200 m se veía deformada). El dominio es cuadrado (mismo rango
+ * en x e y), así que el norte siempre queda arriba y el este a la derecha.
+ * Altitud en el tamaño del punto y tooltip con src/alt/lat/lon. Click en un
+ * punto → selecciona ese frame. */
 import { useMemo } from 'react'
 import { motion } from 'motion/react'
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart,
@@ -16,6 +19,33 @@ import { useMission } from '@/store/mission'
 import { gpsDe } from '@/components/Sampling'
 import { num } from '@/lib/format'
 
+const M_POR_GRADO_LAT = 111320
+
+interface PuntoLocal {
+  src: string
+  lat: number
+  lon: number
+  alt: number
+  alert: boolean
+  x: number          // este local (m)
+  y: number          // norte local (m)
+}
+
+function TooltipPunto({ active, payload }: {
+  active?: boolean
+  payload?: Array<{ payload: PuntoLocal }>
+}) {
+  if (!active || !payload?.length) return null
+  const p = payload[0].payload
+  return (
+    <div className="rounded-lg border border-[#263241] bg-[#121a24] px-2.5 py-1.5 font-mono text-[10.5px] leading-relaxed shadow-lg">
+      <div className="text-[#dbe4ee]">{p.src}</div>
+      <div className="text-[#8b9aab]">alt {num(p.alt, 1)} m</div>
+      <div className="text-[#8b9aab]">lat {p.lat.toFixed(5)} · lon {p.lon.toFixed(5)}</div>
+    </div>
+  )
+}
+
 export function GpsTrack() {
   const frames = useMission(s => s.frames)
   const select = useMission(s => s.select)
@@ -24,7 +54,35 @@ export function GpsTrack() {
   const conAlerta = puntos.filter(p => p.alert)
   const normales = puntos.filter(p => !p.alert)
 
-  if (puntos.length < 2) {
+  /* Proyección local: metros al este/norte respecto del centroide. */
+  const geo = useMemo(() => {
+    if (puntos.length < 2) return null
+    const lat0 = puntos.reduce((a, p) => a + p.lat, 0) / puntos.length
+    const lon0 = puntos.reduce((a, p) => a + p.lon, 0) / puntos.length
+    const mPorLon = M_POR_GRADO_LAT * Math.cos((lat0 * Math.PI) / 180)
+    const local: PuntoLocal[] = puntos.map(p => ({
+      ...p,
+      x: (p.lon - lon0) * mPorLon,
+      y: (p.lat - lat0) * M_POR_GRADO_LAT,
+    }))
+    const xs = local.map(p => p.x)
+    const ys = local.map(p => p.y)
+    const xMin = Math.min(...xs), xMax = Math.max(...xs)
+    const yMin = Math.min(...ys), yMax = Math.max(...ys)
+    const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2
+    // Dominio CUADRADO: mismo rango en ambos ejes → sin deformación.
+    const half = Math.max(xMax - xMin, yMax - yMin) / 2 * 1.25 + 5
+    return {
+      local, lat0, lon0, mPorLon, cx, cy, half,
+      dominioX: [cx - half, cx + half] as [number, number],
+      dominioY: [cy - half, cy + half] as [number, number],
+      // Ticks en grados (mismos valores que antes) aunque la escala sea métrica.
+      tickLon: (x: number) => (lon0 + x / mPorLon).toFixed(4),
+      tickLat: (y: number) => (lat0 + y / M_POR_GRADO_LAT).toFixed(4),
+    }
+  }, [puntos])
+
+  if (!geo) {
     return (
       <EmptyState
         icon={MapPin}
@@ -34,12 +92,6 @@ export function GpsTrack() {
       />
     )
   }
-
-  const latMin = Math.min(...puntos.map(p => p.lat))
-  const latMax = Math.max(...puntos.map(p => p.lat))
-  const lonMin = Math.min(...puntos.map(p => p.lon))
-  const lonMax = Math.max(...puntos.map(p => p.lon))
-  const pad = Math.max(1e-4, (latMax - latMin) * 0.15, (lonMax - lonMin) * 0.15)
 
   const click = (data: unknown) => {
     const p = data as { src?: string } | undefined
@@ -67,30 +119,23 @@ export function GpsTrack() {
             <ScatterChart margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
               <CartesianGrid stroke="#263241" strokeDasharray="3 3" />
               <XAxis
-                type="number" dataKey="lon" name="Longitud"
-                domain={[lonMin - pad, lonMax + pad]} reversed={false}
+                type="number" dataKey="x" name="Este"
+                domain={geo.dominioX} reversed={false}
                 tick={{ fill: '#8b9aab', fontSize: 10 }}
-                tickFormatter={(v: number) => v.toFixed(4)}
+                tickFormatter={geo.tickLon}
                 stroke="#263241"
               />
               <YAxis
-                type="number" dataKey="lat" name="Latitud"
-                domain={[latMin - pad, latMax + pad]}
+                type="number" dataKey="y" name="Norte"
+                domain={geo.dominioY}
                 tick={{ fill: '#8b9aab', fontSize: 10 }}
-                tickFormatter={(v: number) => v.toFixed(4)}
+                tickFormatter={geo.tickLat}
                 stroke="#263241" width={54}
               />
               <ZAxis type="number" dataKey="alt" range={[40, 140]} name="Altitud (m)" />
               <Tooltip
                 cursor={{ strokeDasharray: '3 3' }}
-                contentStyle={{ background: '#121a24', border: '1px solid #263241', borderRadius: 10, fontSize: 11 }}
-                labelStyle={{ color: '#dbe4ee' }} itemStyle={{ color: '#8b9aab' }}
-                formatter={(value, name) => {
-                  const v = Number(value)
-                  return name === 'Altitud (m)'
-                    ? [`${num(v, 1)} m`, String(name)]
-                    : [v.toFixed(5), String(name)]
-                }}
+                content={<TooltipPunto />}
               />
               <Scatter name="frames" data={normales} fill="#3ddc84" onClick={click} cursor="pointer" />
               <Scatter name="alertas" data={conAlerta} fill="#ff4d5e" onClick={click} cursor="pointer" />
@@ -98,8 +143,9 @@ export function GpsTrack() {
           </ResponsiveContainer>
         </div>
         <p className="border-t border-border/50 px-5 py-2 text-[10.5px] text-muted-foreground/70">
-          Arriba = norte · derecha = este · el tamaño del punto es la altitud ·
-          click en un punto abre ese frame. Sin basemap: la estación funciona offline.
+          Arriba = norte · derecha = este · escala cuadrada (sin deformar) · el
+          tamaño del punto es la altitud · click en un punto abre ese frame.
+          Sin basemap: la estación funciona offline.
         </p>
       </Card>
     </motion.div>
