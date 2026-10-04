@@ -1091,11 +1091,15 @@ def main(argv=None):
                               f"(fallas consecutivas: {bmp_fail_streak})")
                 else:
                     bmp_fail_streak = 0
+            evento_vuelo: str | None = None
             if reading is None and bmp is None and args.uart_state:
                 # Sin barómetro en la Pi: usar la última lectura del ESP32 que
                 # dejó el listener (incluye humedad del BME280 del DPD).
                 us = PROTO.read_uart_state(args.uart_state)
                 if us is not None:
+                    # U3: evento de vuelo (despegue/aterrizaje) del MPU6050 de
+                    # la Heltec, vía las líneas debug que parsea el listener.
+                    evento_vuelo = us.get("evento")
                     p_u, temp_u = us["p_hPa"], us["temp_C"]
                     if us["lat"] or us["lon"]:
                         lat_f, lon_f = us["lat"], us["lon"]
@@ -1358,6 +1362,8 @@ def main(argv=None):
                 "t_s": round(t, 1), "alt_m": round(alt, 1),
                 "p_hPa": round(p, 1), "temp_c": round(temp, 2),
                 "pi_temp_c": (round(temp_pi, 1) if temp_pi is not None else None),
+                # U3: último evento de vuelo visto por el listener (o None).
+                "evento_vuelo": evento_vuelo,
                 "hum_pct": (round(hum, 1) if hum is not None else None),
                 "terrain": {n: round(v, 1)
                             for n, v in zip(CLASS_NAMES, pcts, strict=False)},

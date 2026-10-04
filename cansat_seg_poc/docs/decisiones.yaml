@@ -526,6 +526,33 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: soak-uart-10min
+    estado: vigente
+    texto: |
+      SOAK UART (U1): 10 min continuos del contrato v2 con la placa de vuelo
+      (Heltec por COM4, 115200): 597/597 paquetes válidos, 0 perdidos por
+      contador, 0 checksums malos, 0 fallos de parseo; gaps p50 1.00 s /
+      p95 1.02 / max 1.02 (1 Hz estable); temp 22.5-23.4 °C, hum 53.8-62.8 %.
+      Las 119 líneas "no-paquete" son el debug del MPU6050 (muestras en el
+      JSON), no ruido. Herramienta: tools/soak_uart.py (reusable en la Pi con
+      --port /dev/serial0). Evidencia: docs/benchmarks/soak_uart.json.
+
+  - id: eventos-vuelo-mpu
+    estado: vigente
+    texto: |
+      EVENTOS DE VUELO CON EL MPU6050 (U3): la Heltec corre una máquina de
+      estados con histéresis (desvío de 1g > 2 m/s² por 3 s → DESPEGUE;
+      desvío < 0.6 m/s² por 15 s → ATERRIZAJE) y emite "# EVENTO ..." como
+      línea debug, FUERA del contrato de radio (respeta la decisión
+      mpu-fuera-contrato). El listener parsea esas líneas
+      (`cansat.protocol.parse_event`), las propaga AL INSTANTE a
+      uart_state.json y las loguea en uart_events.jsonl; el pipeline las lleva
+      al JSONL por frame (`evento_vuelo`). VALIDADO EN HARDWARE (2026-10-04):
+      sacudiendo la placa → DESPEGUE a t_ms=1165718; 15 s quieta → ATERRIZAJE
+      a t_ms=1202354 (36.6 s después). Cadena software validada con
+      --stdin (listener→estado→read_uart_state) y 3 tests nuevos. Evidencia:
+      docs/benchmarks/eventos_vuelo_mpu.json.
+
   - id: pull-vivo-estacion
     estado: vigente
     texto: |

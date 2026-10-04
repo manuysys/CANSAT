@@ -369,3 +369,34 @@ def test_read_uart_state_incluye_humedad(tmp_path):
                  encoding="utf-8")
     st = P.read_uart_state(f)
     assert st is not None and st["hum_pct"] == 0.0
+
+
+# ── U3: eventos de vuelo (líneas debug del MPU6050) ────────────────────── #
+
+
+def test_parse_event_despegue_y_aterrizaje():
+    ev = P.parse_event("# EVENTO DESPEGUE t_ms=12345")
+    assert ev == {"evento": "despegue", "t_ms": 12345}
+    ev = P.parse_event("# EVENTO aterrizaje")
+    assert ev == {"evento": "aterrizaje", "t_ms": None}
+
+
+def test_parse_event_ignora_otras_lineas():
+    assert P.parse_event("# MPU6050 accel (m/s2): 0.1, 0.2, 9.8") is None
+    assert P.parse_event("# EVENTO APOGEO t_ms=1") is None   # no soportado
+    assert P.parse_event("$LB135,2,1") is None               # no es debug
+    assert P.parse_event("# EVENTO") is None                 # sin tipo
+
+
+def test_read_uart_state_incluye_evento(tmp_path):
+    f = tmp_path / "uart_state.json"
+    f.write_text('{"p_hPa": 990.0, "temp_C": 18.5, "evento": "despegue",'
+                 ' "evento_ms": 12345}', encoding="utf-8")
+    st = P.read_uart_state(f)
+    assert st is not None
+    assert st["evento"] == "despegue" and st["evento_ms"] == 12345
+    # Evento desconocido o corrupto → None (no rompe el estado).
+    f.write_text('{"p_hPa": 990.0, "temp_C": 18.5, "evento": "apogeo",'
+                 ' "evento_ms": "x"}', encoding="utf-8")
+    st = P.read_uart_state(f)
+    assert st is not None and st["evento"] is None and st["evento_ms"] is None

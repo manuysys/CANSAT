@@ -1,0 +1,20 @@
+{
+  "generado": "2026-10-04",
+  "prueba": "Eventos de vuelo con MPU6050 (U3) en la placa de vuelo",
+  "firmware": "firmware/heltec_lb135_uart (heltec_wifi_lora_32_V3): maquina de estados con histeresis",
+  "umbrales": {
+    "mov_m_s2": 2.0,
+    "quieto_m_s2": 0.6,
+    "n_mov_s": 3,
+    "n_quieto_s": 15
+  },
+  "canal": "lineas debug '# EVENTO DESPEGUE/ATERRIZAJE t_ms=...' FUERA del contrato de radio (decision mpu-fuera-contrato); el listener de la Pi las parsea",
+  "prueba_fisica_2026-10-04": {
+    "metodo": "sacudir la Heltec ~10 s y despues dejarla quieta",
+    "despegue": {"t_ms": 1165718, "contexto": "~10 s de movimiento con desvio > 2 m/s2"},
+    "aterrizaje": {"t_ms": 1202354, "contexto": "15 s de quietud (N_QUIETO) con desvio < 0.6 m/s2"},
+    "delta_s": 36.6
+  },
+  "cadena_software": "uart_listener --stdin con paquete + '# EVENTO DESPEGUE t_ms=12345' -> uart_state.json (evento propagado al instante) + uart_events.jsonl -> PROTO.read_uart_state -> JSONL por frame (evento_vuelo)",
+  "tests": "3 nuevos en tests/test_protocol.py (parse_event, variantes, read_uart_state con evento); 386 pasan en total"
+}

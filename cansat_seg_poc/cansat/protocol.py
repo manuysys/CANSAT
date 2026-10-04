@@ -329,6 +329,39 @@ def parse(line: str) -> Packet | None:
     return None
 
 
+#: Eventos de vuelo que el firmware emite como línea debug (fuera del
+#: contrato de radio: ver decisión `mpu-fuera-contrato`).
+EVENTOS: tuple[str, ...] = ("despegue", "aterrizaje")
+
+
+def parse_event(line: str) -> dict[str, Any] | None:
+    """
+    Parsea una línea debug de evento de vuelo (U3, MPU6050 en la Heltec)::
+
+        # EVENTO DESPEGUE t_ms=12345
+
+    Devuelve ``{"evento": "despegue", "t_ms": 12345}`` (``t_ms`` puede ser
+    ``None``) o ``None`` si la línea no es un evento conocido.
+    """
+    s = line.strip()
+    if not s.startswith("#"):
+        return None
+    partes = s.lstrip("#").strip().split()
+    if len(partes) < 2 or partes[0].upper() != "EVENTO":
+        return None
+    tipo = partes[1].lower()
+    if tipo not in EVENTOS:
+        return None
+    t_ms = None
+    for p in partes[2:]:
+        if p.lower().startswith("t_ms="):
+            try:
+                t_ms = int(p.split("=", 1)[1])
+            except ValueError:
+                t_ms = None
+    return {"evento": tipo, "t_ms": t_ms}
+
+
 # ══════════════════════════════════════════════════════════════════════ #
 #  Atmosfera
 # ══════════════════════════════════════════════════════════════════════ #
@@ -378,7 +411,8 @@ def read_uart_state(path: str | Path, max_age_s: float = 10.0) -> dict | None:
     """
     Última lectura fresca que dejó ``uart_listener.py`` en ``--state``.
 
-    Devuelve un dict ``{"p_hPa", "temp_C", "lat", "lon"}`` o ``None`` si el
+    Devuelve un dict ``{"p_hPa", "temp_C", "lat", "lon", "hum_pct",
+    "evento", "evento_ms"}`` (el evento puede ser ``None``) o ``None`` si el
     archivo no existe, está corrupto o es más viejo que ``max_age_s``.
 
     ⚠ Antes este archivo lo escribía el listener y **nadie lo leía**: el
@@ -399,6 +433,14 @@ def read_uart_state(path: str | Path, max_age_s: float = 10.0) -> dict | None:
         lat = float(data.get("lat") or 0.0)
         lon = float(data.get("lon") or 0.0)
         hum = float(data.get("hum_pct") or 0.0)
+        # Evento de vuelo (U3): lo deja el listener al ver "# EVENTO ...".
+        ev = str(data.get("evento") or "").lower()
+        evento = ev if ev in EVENTOS else None
+        evento_ms = data.get("evento_ms")
+        try:
+            evento_ms = int(evento_ms) if evento_ms is not None else None
+        except (TypeError, ValueError):
+            evento_ms = None
     except (OSError, ValueError, KeyError, TypeError):
         return None
     if not (300.0 < p_hpa < 1200.0) or math.isnan(temp):
@@ -407,4 +449,5 @@ def read_uart_state(path: str | Path, max_age_s: float = 10.0) -> dict | None:
         lat = lon = 0.0
     if math.isnan(hum) or not (0.0 <= hum <= 100.0):
         hum = 0.0
-    return {"p_hPa": p_hpa, "temp_C": temp, "lat": lat, "lon": lon, "hum_pct": hum}
+    return {"p_hPa": p_hpa, "temp_C": temp, "lat": lat, "lon": lon,
+            "hum_pct": hum, "evento": evento, "evento_ms": evento_ms}

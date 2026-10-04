@@ -98,6 +98,30 @@ def main(argv=None) -> int:
     perdidos = 0
     reconnects = 0
     last_state_write = 0.0
+    # U3: último evento de vuelo visto en las líneas debug del firmware
+    # ("# EVENTO DESPEGUE t_ms=..."). Se propaga por uart_state.json.
+    evento_actual: dict | None = None
+    ultimo_pkt_obj: PROTO.Packet | None = None
+
+    def escribir_estado(pkt: PROTO.Packet) -> None:
+        """Vuelca el estado que lee el pipeline (con el evento vigente)."""
+        if not args.state:
+            return
+        try:
+            Path(args.state).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.state).write_text(json.dumps({
+                "alt_m": pkt.alt_m, "p_hPa": pkt.p_hPa,
+                "temp_C": pkt.temp_C, "pkt": pkt.pkt,
+                "t_s": pkt.t_s, "rx_wall": pkt.rx_wall,
+                "version": pkt.version,
+                "lat": pkt.lat, "lon": pkt.lon, "hum_pct": pkt.hum_pct,
+                # U3: evento de vuelo (puede ser None).
+                "evento": (evento_actual or {}).get("evento"),
+                "evento_ms": (evento_actual or {}).get("t_ms"),
+                "evento_rx_wall": (evento_actual or {}).get("rx_wall"),
+            }, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
 
     with open(args.out, mode, encoding="utf-8") as log:
         try:
@@ -135,7 +159,25 @@ def main(argv=None) -> int:
                 if not text:
                     continue
                 if text.startswith("#"):
-                    if not args.quiet:
+                    ev = PROTO.parse_event(text)
+                    if ev is not None:
+                        ev["rx_wall"] = datetime.now(
+                            timezone.utc).isoformat(timespec="milliseconds")
+                        evento_actual = ev
+                        print(f"[EVENTO] {ev['evento']} t_ms={ev['t_ms']}")
+                        # Log aparte de eventos (no ensucia el JSONL de paquetes).
+                        try:
+                            eventos_path = Path(args.out).with_name(
+                                "uart_events.jsonl")
+                            with eventos_path.open("a", encoding="utf-8") as fe:
+                                fe.write(json.dumps(ev, ensure_ascii=False) + "\n")
+                        except OSError:
+                            pass
+                        # Propagar YA al estado (sin esperar el próximo
+                        # paquete: el evento es un flanco, no un dato periódico).
+                        if ultimo_pkt_obj is not None:
+                            escribir_estado(ultimo_pkt_obj)
+                    elif not args.quiet:
                         print(f"[DBG] {text}")
                     continue
 
@@ -170,6 +212,7 @@ def main(argv=None) -> int:
                 log.flush()
                 n_ok += 1
                 ultimo_pkt = pkt.pkt
+                ultimo_pkt_obj = pkt
 
                 if not args.quiet:
                     extra = "" if pkt.checksum_ok is not False else " [CS!]"
@@ -193,17 +236,7 @@ def main(argv=None) -> int:
                 now = time.monotonic()
                 if args.state and (now - last_state_write) >= 1.0:
                     last_state_write = now
-                    try:
-                        Path(args.state).parent.mkdir(parents=True, exist_ok=True)
-                        Path(args.state).write_text(json.dumps({
-                            "alt_m": pkt.alt_m, "p_hPa": pkt.p_hPa,
-                            "temp_C": pkt.temp_C, "pkt": pkt.pkt,
-                            "t_s": pkt.t_s, "rx_wall": pkt.rx_wall,
-                            "version": pkt.version,
-                            "lat": pkt.lat, "lon": pkt.lon, "hum_pct": pkt.hum_pct,
-                        }, ensure_ascii=False), encoding="utf-8")
-                    except OSError:
-                        pass
+                    escribir_estado(pkt)
         except KeyboardInterrupt:
             print("\n[UART] interrumpido por el operador.")
         finally:

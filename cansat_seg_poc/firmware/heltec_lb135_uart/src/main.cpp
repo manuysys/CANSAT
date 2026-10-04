@@ -122,6 +122,47 @@ void setup() {
   Serial.println("# GPS: no hay -> lat/lon SIMULADOS (declarado)");
 }
 
+// ── U3: eventos de vuelo con el MPU6050 ──────────────────────────────────
+// Máquina de estados con histéresis, evaluada 1×/s (el loop ya es 1 Hz):
+//   EN_TIERRA → |a| se aparta de 1g N_MOV muestras seguidas → DESPEGUE
+//   EN_VUELO  → |a| vuelve a ~1g N_QUIETO muestras seguidas → ATERRIZAJE
+// Los eventos van por líneas debug "# EVENTO ..." (FUERA del contrato de
+// radio: ver decisión `mpu-fuera-contrato`); el listener de la Pi las parsea
+// y las propaga por uart_state.json → JSONL (`evento_vuelo`).
+static bool en_vuelo = false;
+static int n_mov = 0, n_quieto = 0;
+static const float UMBRAL_MOV = 2.0f;    // m/s² de desvío de 1g
+static const float UMBRAL_QUIETO = 0.6f;
+static const int N_MOV = 3;              // 3 s de movimiento → despegue
+static const int N_QUIETO = 15;          // 15 s quieto → aterrizaje
+
+void chequear_evento_vuelo() {
+  if (!mpu_ok) return;
+  sensors_event_t a, g, t;
+  mpu.getEvent(&a, &g, &t);
+  float amag = sqrtf(a.acceleration.x * a.acceleration.x +
+                     a.acceleration.y * a.acceleration.y +
+                     a.acceleration.z * a.acceleration.z);
+  float desvio = fabsf(amag - 9.81f);
+  if (!en_vuelo) {
+    n_mov = (desvio > UMBRAL_MOV) ? n_mov + 1 : 0;
+    if (n_mov >= N_MOV) {
+      en_vuelo = true;
+      n_quieto = 0;
+      Serial.print("# EVENTO DESPEGUE t_ms=");
+      Serial.println(millis());
+    }
+  } else {
+    n_quieto = (desvio < UMBRAL_QUIETO) ? n_quieto + 1 : 0;
+    if (n_quieto >= N_QUIETO) {
+      en_vuelo = false;
+      n_mov = 0;
+      Serial.print("# EVENTO ATERRIZAJE t_ms=");
+      Serial.println(millis());
+    }
+  }
+}
+
 void loop() {
   float t_s = (float)pkt;  // 1 Hz
   float alt, p, temp, hum;
@@ -185,7 +226,9 @@ void loop() {
   Serial.print('*');
   Serial.println(cs);
 
-  // MPU6050: chequeo cada 5 paquetes, SOLO por serial (fuera del contrato).
+  // MPU6050: eventos de vuelo (U3) cada segundo + debug cada 5 paquetes.
+  // Todo por serial, fuera del contrato de radio.
+  chequear_evento_vuelo();
   if (mpu_ok && (pkt % 5) == 0) {
     sensors_event_t a, g, t;
     mpu.getEvent(&a, &g, &t);
@@ -194,7 +237,9 @@ void loop() {
     Serial.print(", ");
     Serial.print(a.acceleration.y, 2);
     Serial.print(", ");
-    Serial.println(a.acceleration.z, 2);
+    Serial.print(a.acceleration.z, 2);
+    Serial.print(" | en_vuelo=");
+    Serial.println(en_vuelo ? 1 : 0);
   }
 
   pkt++;
