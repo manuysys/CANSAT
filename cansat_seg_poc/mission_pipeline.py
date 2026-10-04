@@ -900,7 +900,10 @@ def main(argv=None):
 
     sampler = AdaptiveSampler(uncert_max=args.uncert_max) if args.sampler else None
     hi_dir, full_dir, th_dir = (out / "high_res", out / "full_res", out / "thumb")
-    if sampler is not None:
+    # Con sampler se guardan por prioridad; en modo cámara SIEMPRE full_res
+    # (el post-vuelo de la PC necesita los frames crudos; sin la carpeta el
+    # imwrite fallaba en silencio).
+    if sampler is not None or args.camera:
         for d in (hi_dir, full_dir, th_dir):
             d.mkdir(parents=True, exist_ok=True)
     pri_count: Counter = Counter()
@@ -1311,6 +1314,11 @@ def main(argv=None):
                     cv2.imwrite(str(dst / f"{name}.png"), bgr)
             else:
                 dec = {"priority": "FULL", "score": 0.0, "review": False}
+                if args.camera:
+                    # En vuelo (cámara) los frames crudos se guardan SIEMPRE en
+                    # full_res: el post-vuelo de la PC los necesita (en modo
+                    # carpeta ya están en disco y no se re-escriben).
+                    cv2.imwrite(str(full_dir / f"{name}.png"), bgr)
 
             # ── Evidencia visual ────────────────────────────────────────
             if not args.no_vis:

@@ -454,7 +454,15 @@ def main(argv=None) -> int:
 
         pct_flood = pct_fw = None
         if sess_f:
-            pf = np.argmax(sess_f.run({"input": tensor})[0], axis=0)
+            # El flood specialist es 224 px: antes se le pasaba el tensor de 320
+            # y ORT abortaba (bug destapado por la demo Pi→PC el 2026-10-03).
+            sz = sess_f.size_px or 224
+            t_f = tensor if sz == 320 else PP.preprocess_bgr(img, sz)
+            pf = np.argmax(sess_f.run({"input": t_f})[0], axis=0)
+            if sz != 320:
+                # Las máscaras de flood se guardan al tamaño del frame válido.
+                pf = cv2.resize(pf.astype(np.uint8), (valid.shape[1], valid.shape[0]),
+                                interpolation=cv2.INTER_NEAREST)
             pct_flood = float(((pf == 1) & valid).sum()) / n_valid * 100.0
             pct_fw = float(((pf == 2) & valid).sum()) / n_valid * 100.0
 

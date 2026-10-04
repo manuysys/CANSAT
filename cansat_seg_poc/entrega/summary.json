@@ -1,44 +1,74 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "mision": "LB135",
   "n_frames": 3,
   "alt_max_m": 250.0,
-  "alt_min_m": 244.0,
+  "alt_min_m": 238.0,
   "veredictos": {
-    "ZONA SALUDABLE": 2,
-    "ALTO ESTRÉS URBANO": 1
+    "SIN DATOS": 3
   },
   "personas_total": 0,
   "vehiculos_total": 0,
   "alertas": [],
   "danado_pct_por_frame": {
-    "4191": 27.1,
-    "4192": 0.3,
-    "4193": 6.5
+    "cam_001": 0.0,
+    "cam_000": 0.0,
+    "cam_002": 0.0
   },
-  "danado_pct_prom": 11.3,
+  "danado_pct_prom": 0.0,
   "terrain_b5_por_frame": {
-    "4191": {
-      "veg": 62.0,
-      "bui": 0.2,
-      "wat": 30.0,
-      "bare": 1.0,
-      "oth": 6.9
+    "cam_001": {
+      "veg": 6.8,
+      "bui": 0.0,
+      "wat": 93.2,
+      "bare": 0.0,
+      "oth": 0.0
     },
-    "4192": {
-      "veg": 3.5,
-      "bui": 34.1,
-      "wat": 0.0,
-      "bare": 15.8,
-      "oth": 46.5
+    "cam_000": {
+      "veg": 8.0,
+      "bui": 0.0,
+      "wat": 92.0,
+      "bare": 0.0,
+      "oth": 0.0
     },
-    "4193": {
-      "veg": 39.5,
-      "bui": 1.6,
-      "wat": 23.7,
-      "bare": 3.0,
-      "oth": 32.2
+    "cam_002": {
+      "veg": 9.6,
+      "bui": 0.0,
+      "wat": 90.4,
+      "bare": 0.0,
+      "oth": 0.0
     }
+  },
+  "perdidas": {
+    "area_relevada_m2": 49168.0,
+    "area_danada_m2": 0.0,
+    "personas_expuestas": 44.2,
+    "personas_afectadas": 0.0,
+    "perdidas_estimadas": 0.0,
+    "perdidas_min": 0.0,
+    "perdidas_max": 0.0,
+    "supuestos": {
+      "pop_density": 1500.0,
+      "occupancy": 0.6,
+      "collapse_frac": 0.3,
+      "fatality": 0.1,
+      "vulnerabilidad": 1.0
+    },
+    "colapso_usado": 0.3,
+    "colapso_fuente": "supuesto",
+    "ocupacion_usada": 0.6,
+    "ocupacion_fuente": "supuesto",
+    "n_frames_con_dano": 3,
+    "nota": "Estimación de EXPOSICIÓN con supuestos declarados, no una predicción de víctimas. La banda refleja la incertidumbre de los factores de vulnerabilidad."
+  },
+  "confianza_limitada": {
+    "n_frames": 0,
+    "frames": [],
+    "umbrales": {
+      "haze_pct": 45.0,
+      "humidex": 46.0
+    },
+    "nota": "Frames con veredicto emitido bajo estrés ambiental medido: interpretar con cautela."
   },
   "archivos": {
     "rutas": {
@@ -46,17 +76,19 @@
       "telemetry": "outputs/mission/telemetry.csv",
       "enhanced": null,
       "evidencias": "outputs/mission/vis",
-      "ens_seg": "entrega/b5_seg"
+      "ens_seg": null,
+      "masks": "entrega/masks"
     },
     "conteos": {
-      "vis": 38,
-      "high_res": 15,
-      "full_res": 11,
-      "thumb": 2,
+      "vis": 3,
+      "high_res": 0,
+      "full_res": 3,
+      "thumb": 0,
       "enhanced": 0,
-      "ens_seg": 3
+      "ens_seg": 0,
+      "masks": 21
     }
   },
-  "generado": "2026-09-17T22:06:59.395371+00:00",
-  "nota": "Post-vuelo generado por post_flight.py · ensemble B5"
+  "generado": "2026-10-04T00:53:56.980980+00:00",
+  "nota": "Post-vuelo generado por post_flight.py"
 }
