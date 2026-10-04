@@ -526,6 +526,20 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: autostart-systemd
+    estado: vigente
+    texto: |
+      ARRANQUE AUTOMÁTICO DEL VUELO (U6): servicio systemd
+      `pi/cansat-vuelo.service` (Type=oneshot, TimeoutStartSec=infinity — el
+      default de 90 s mataría el vuelo a mitad de camino; FRAMES=1000 por
+      Environment, override para pruebas). `pi/run_flight.sh` quedó actualizado
+      a la config MEDIDA (tiny@224 + YOLO11n on-sensor + shutter 8000/gain 16 +
+      listener UART; antes usaba v2@224 = 243 s/frame en la Zero). Validado en
+      la placa (2026-10-04): unit instalado, `systemctl start` con override
+      FRAMES=2 → status=0/SUCCESS con telemetría + pi_health.json; el unit
+      queda DISABLED para no arrancar un vuelo accidental en la mesa. Para el
+      vuelo real: `sudo systemctl enable cansat-vuelo`.
+
   - id: distill-tiny-no-mejora
     estado: descartada
     texto: |

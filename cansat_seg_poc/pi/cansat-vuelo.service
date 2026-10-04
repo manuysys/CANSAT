@@ -1,0 +1,32 @@
+# CanSat LB135 — vuelo autónomo al arrancar (systemd).
+# Instalar en la Pi:
+#   sudo cp /home/pi/cansat_seg_poc/pi/cansat-vuelo.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable cansat-vuelo      # arranca en cada boot
+# Prueba sin reiniciar (2 frames): ver pi/guia_pi.md §7.
+[Unit]
+Description=CanSat LB135 - vuelo autonomo (captura + IA + telemetria)
+Documentation=file:/home/pi/cansat_seg_poc/pi/guia_pi.md
+After=multi-user.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/cansat_seg_poc
+# FRAMES=1000: graba hasta que se corte la energía (la telemetría se flushea
+# por frame). Para pruebas: override con `systemctl edit` (ver guía).
+Environment=FRAMES=1000
+ExecStart=/home/pi/cansat_seg_poc/pi/run_flight.sh
+# El vuelo dura lo que dure: sin timeout de arranque (el default de 90 s lo
+# mataría a mitad de vuelo).
+TimeoutStartSec=infinity
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+# Si el pipeline muere, no reiniciar en loop (llenaría la SD de vuelos).
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

@@ -198,11 +198,30 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
   pasar `--onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224`
   (si no, el vuelo no avanza). `demo_vivo.sh` ya lo hace.
 
-Arranque automático: `crontab -e` →
+Arranque automático del vuelo (recomendado: **systemd**):
 
+```bash
+sudo cp /home/pi/cansat_seg_poc/pi/cansat-vuelo.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable cansat-vuelo     # arranca en cada boot (FRAMES=1000)
+
+# Prueba SIN reiniciar (2 frames) con un override temporal:
+sudo mkdir -p /etc/systemd/system/cansat-vuelo.service.d
+printf '[Service]\nEnvironment=FRAMES=2\n' | \
+  sudo tee /etc/systemd/system/cansat-vuelo.service.d/override.conf
+sudo systemctl daemon-reload
+sudo systemctl start cansat-vuelo
+systemctl status cansat-vuelo          # el log queda en la SD: <vuelo>/vuelo.log
+sudo rm -rf /etc/systemd/system/cansat-vuelo.service.d   # volver a FRAMES=1000
+sudo systemctl daemon-reload
+
+# Manual (sin systemd):
+FRAMES=20 bash pi/run_flight.sh
 ```
-@reboot /home/pi/cansat_seg_poc/pi/run_flight.sh
-```
+
+El unit es `Type=oneshot` con `TimeoutStartSec=infinity`: el default de 90 s
+mataría el vuelo a mitad de camino. Alternativa por crontab:
+`@reboot /home/pi/cansat_seg_poc/pi/run_flight.sh`.
 
 ## 8. UART con la ESP32 (contrato LB135)
 
