@@ -596,12 +596,14 @@ limitaciones:
       `--shutter 8000 --gain 16` la imagen es usable. INTEGRADO al pipeline
       (2026-10-03): `--shutter`/`--gain` en mission_pipeline → controles de
       picamera2 (verificado en la placa: ExposureTime 7995 µs, gain 16.0).
-      FOCO MANUAL (2026-10-04): se barrió el anillo en pasos con medición de
-      nitidez; en luz baja el pico es ~6/100 (la métrica está limitada por
-      ruido de gain y escena poco texturada). La imagen es reconocible y el
-      NPU detecta personas (12/12 frames en el ensayo); no se logró nitidez
-      plena en interiores. Para el vuelo (luz de día) re-ajustar con la
-      herramienta de foco y verificar con rpicam-still --shutter 4000.
+      FOCO MANUAL (2026-10-04): se barrió el anillo con medición y se dejó una
+      HERRAMIENTA DE VISTA EN VIVO (pi/camara_en_vivo.py, MJPEG en :8080 con la
+      nitidez dibujada) para ajustarlo a mano. El operador lo ajustó hasta
+      ~20/100 en la escena del ajuste (amarillo); la métrica depende del
+      contenido (5-7 en escenas poco texturadas) y de la escala. La imagen es
+      reconocible y el NPU detecta personas (12/12 frames en el ensayo). Para
+      el vuelo (luz de día) re-ajustar con la vista en vivo o rpicam-still
+      --shutter 4000.
       La conversión de NUESTROS modelos a .rpk sigue pendiente (Edge-MDT/Linux).
       Evidencia: docs/benchmarks/pi_zero_w_imx500.json y docs/evidencia/
       11_pi_imx500.png (frame con caja) + 11b_pi_imx500_foto.png.
