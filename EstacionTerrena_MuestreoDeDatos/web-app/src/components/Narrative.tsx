@@ -41,9 +41,11 @@ export function Narrative() {
         </div>
         <div className="mission-brief-main">
           <div className="min-w-0 flex-1">
-            <h2>Descenso <span>recuperado.</span></h2>
+            <h2>{altMax - altMin < 2 ? <>Captura <span>estática.</span></> : <>Descenso <span>recuperado.</span></>}</h2>
             <p className="mission-lead">
-              La misión <strong>{summary?.mision || 'LB135'}</strong> recorrió {num(altMax, 0)} m → {num(altMin, 0)} m y dejó una secuencia completa de evidencia aérea.
+              {altMax - altMin < 2
+                ? <>La misión <strong>{summary?.mision || 'LB135'}</strong> registró {frames.length} frames a {num(altMax, 0)} m: secuencia completa de evidencia aérea.</>
+                : <>La misión <strong>{summary?.mision || 'LB135'}</strong> recorrió {num(altMax, 0)} m → {num(altMin, 0)} m y dejó una secuencia completa de evidencia aérea.</>}
               {crit && Number(crit.danado_pct) > 0 ? <> El momento más crítico fue <strong className="font-mono">{crit.src}</strong>, con {num(crit.danado_pct, 1)}% de daño a {num(crit.alt_m, 0)} m.</> : null}
             </p>
             <p className="mission-copy">
@@ -55,6 +57,13 @@ export function Narrative() {
             <span className="mission-critical-label">Terreno dominante</span>
             <strong>{dom.t.label}</strong>
             <span>{num(dom.v, 1)}% promedio · {frames.length} frames</span>
+            {/* Barra apilada del terreno promedio: más visual que solo texto. */}
+            <span className="mt-2 flex h-2 w-full overflow-hidden rounded-full border border-border/60">
+              {means.map(({ t, v }) => (
+                <span key={t.key} title={`${t.label} ${num(v, 1)}%`}
+                  style={{ width: `${Math.max(0, v)}%`, background: t.hex }} />
+              ))}
+            </span>
           </div>
         </div>
         {crit && (

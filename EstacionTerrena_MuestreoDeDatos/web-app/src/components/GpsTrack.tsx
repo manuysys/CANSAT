@@ -143,9 +143,7 @@ export function GpsTrack() {
           </ResponsiveContainer>
         </div>
         <p className="border-t border-border/50 px-5 py-2 text-[10.5px] text-muted-foreground/70">
-          Arriba = norte · derecha = este · escala cuadrada (sin deformar) · el
-          tamaño del punto es la altitud · click en un punto abre ese frame.
-          Sin basemap: la estación funciona offline.
+          Norte arriba · escala real · punto = altitud · click abre el frame · offline
         </p>
       </Card>
     </motion.div>

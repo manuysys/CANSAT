@@ -248,7 +248,7 @@ export function Detail() {
               className="flex w-fit flex-col items-center justify-center"
             >
               <div className="relative w-fit">
-                <img src={url} alt={`${tabLabel} de ${f.src}`} className="max-h-[46vh] w-auto max-w-full rounded-lg border border-border/40 bg-[#070a0f] object-contain shadow-[0_24px_60px_-28px_rgba(0,0,0,.95)] xl:max-h-[520px]" />
+                <img src={url} alt={`${tabLabel} de ${f.src}`} className="max-h-[56vh] w-auto max-w-full rounded-lg border border-border/40 bg-[#070a0f] object-contain shadow-[0_24px_60px_-28px_rgba(0,0,0,.95)] xl:max-h-[620px]" />
                 {gcamURL && (
                   <img
                     src={gcamURL} alt={`Grad-CAM de ${f.src}`} data-testid="gradcam-overlay"
