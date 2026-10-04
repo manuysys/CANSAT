@@ -30,7 +30,7 @@ Vuelo → Detalle → Post-vuelo → Informe → Jurado, con la Pi en vivo como 
 | 5 | 3:30–4:30 | **Informe** | `Imprimir/PDF` (sale en tinta). "Todo lo que se ve sale de la telemetría medida." |
 | 6 | 4:30–5:30 | **Consulta Terrestre** (en Vuelo/Sampling) | Probar un chip: "¿cuántas personas hay a menos de 200 m de una vía?" → motor simbólico, sin inventar. |
 | 7 | 5:30–6:30 | **Jurado** | Portada + frames críticos. "Honestidad: LOEO 0.33, el tipo es pista contextual; la señal fuerte es daño/severidad." |
-| 8 | 6:30–8:30 | **Pi en vivo** (opcional) | Mostrar la Pi capturando (terminal o vista en vivo) y la telemetría con BME280 real; correr `demo_pi.ps1 -Frames 6` y mostrar el resultado en la estación. |
+| 8 | 6:30–8:30 | **Pi en vivo** (opcional) | Mostrar la Pi capturando (terminal o vista en vivo) y la telemetría con BME280 real; correr `demo_pi.ps1 -Frames 6` y mostrar el resultado en la estación. Alternativa **pull en vivo**: con `pi/servidor_vivo.py` corriendo en la Pi, `python tools/vivo_pi.py` sincroniza el vuelo cada 2 s y la web se actualiza sola. |
 | 9 | 8:30–9:30 | Cierre | "Métricas medidas, límites declarados: hardware validado en placa (tiny ~3 s/frame, NPU ~3 fps, UART 40/40)." |
 
 ## Teclas útiles (atajos de la estación)
@@ -51,8 +51,16 @@ CSV · `P` presentación automática · `Esc` cerrar. (Ver pie de la app.)
 ## Datos para memorizar (respuestas a preguntas típicas)
 
 - Terreno de vuelo: tiny@224, **~3 s/frame medido** (v2@224 tarda ~4 min: no vuela).
-- NPU IMX500: persona detectada, **~3 fps sin CPU**; `.rpk` propio pendiente (Edge-MDT/Linux).
-- UART: **40/40 paquetes** por GPIO15 con la Heltec; contrato v2 con checksum.
+- Detección NPU: **YOLO11n mAP 0.374** (~7 fps sin CPU) vs SSD 0.218; segmentación
+  DeepLabV3+ a ~1 fps (no vuela, queda de herramienta); pose **descartada** con
+  evidencia (mAP 0.188, sin esqueleto confiable). `.rpk` propio pendiente (Edge-MDT).
+- UART: **40/40 por GPIO15** y **soak 10 min: 597/597 paquetes, 0 pérdidas**;
+  contrato v2 con checksum; eventos de vuelo por MPU6050 (despegue/aterrizaje)
+  validados en hardware.
+- Pi: salud en `pi_health.json` (40–42 °C, sin throttling); autostart del vuelo
+  por **systemd** validado (`cansat-vuelo.service`); pull en vivo por HTTP.
 - Tipo de desastre: LOEO **0.33** (varianza ±0.04); no se adopta one-vs-rest (0.26).
 - Calibración: ECE 0.47 → 0.12, pero monótona sobre p_incendio: la política no cambia.
+- Experimentos descartados CON evidencia: destilado B5→tiny (0.433 vs 0.440),
+  aug UAV, tipo balanceado, calibración por clase, tiny flood/fuego.
 - Todo el detalle en `INFORME-IA-Y-ESTACION.md` y `RESUMEN-PROYECTO.md`.

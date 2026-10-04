@@ -48,20 +48,20 @@ la placa.
   `validate_int8_mission.py`.
 
 ## 4. Simulacro de descenso (prueba de integridad N.º 6 del DPD)
-- Fuente: `outputs/mission/telemetry.csv` (12 paquetes).
+- Fuente: `outputs/mission/telemetry.csv` (3 paquetes).
 - Altitud: 10 m → 10 m.
-- Veredictos: ALTO ESTRÉS URBANO: 12.
-- Diagnósticos: SIN DESASTRE: 12.
-- Alertas: 0 de 12 frames.
-- Sampler: FULL: 12.
-- Nitidez (Laplaciano): min 4 · mediana 4 · max 4 · 12 frame(s) bajo 50.
+- Veredictos: ZONA SALUDABLE: 3.
+- Diagnósticos: AGUA EXTENSA (lago/rio): 3.
+- Alertas: 0 de 3 frames.
+- Sampler: FULL: 3.
+- Nitidez (Laplaciano): min 42 · mediana 42 · max 43 · 3 frame(s) bajo 50.
 
 ## 5. Evidencias generadas
 - Tiles Test segmentados: 10
-- Frames de evidencia de misión: 12
+- Frames de evidencia de misión: 3
 - Detecciones YOLO anotadas: 5
 - Frames alta prioridad (sampler): 0
-- Frames prioridad media: 12
+- Frames prioridad media: 3
 - Thumbnails: 0
 - Overlays ensemble (post-vuelo): 12
 - Frames mejorados con EDSR: 3
