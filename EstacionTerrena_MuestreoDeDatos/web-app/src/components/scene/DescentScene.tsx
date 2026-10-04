@@ -365,12 +365,14 @@ export function DescentScene() {
 
   const alts = frames.map(f => Number(f.alt_m) || 0)
   const altMax = frames.length ? Math.max(...alts) : 250
-  const altMin = frames.length ? Math.min(...alts) : 0
   const liveFrame = frames.length ? frames[frames.length - 1] : null
   const sel = frames.find(f => f.src === selected)
   const focus = playing || !live ? sel ?? null : liveFrame
   const alt = focus ? Number(focus.alt_m) || 0 : altMax
-  const norm = Math.min(1, Math.max(0, (alt - altMin) / Math.max(1, altMax - altMin)))
+  // Escala 0 → techo redondeado (mínimo 20 m): con una captura estática
+  // (10 m fijos) los ticks no colapsan todos en el mismo valor.
+  const escalaMax = Math.max(20, Math.ceil(altMax / 10) * 10)
+  const norm = Math.min(1, Math.max(0, alt / escalaMax))
 
   // ▶ Descenso: reproduce la misión sin robar el scroll de la página.
   useEffect(() => {
@@ -388,7 +390,7 @@ export function DescentScene() {
     return () => window.clearInterval(id)
   }, [playing])
 
-  const ticks = [1, 0.75, 0.5, 0.25, 0].map(p => Math.round(altMin + (altMax - altMin) * p))
+  const ticks = [1, 0.75, 0.5, 0.25, 0].map(p => Math.round(escalaMax * p))
   const phase = missionPhase(frames, summary)
   // El paracaídas se pliega SOLO en el ascenso real. Antes 'sin-tlm' también
   // lo plegaba: con un dropout de telemetría la tela se encogía a mitad del

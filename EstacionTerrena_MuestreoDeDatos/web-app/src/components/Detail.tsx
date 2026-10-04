@@ -342,6 +342,14 @@ export function Detail() {
             <Gloss term={f.diag ?? 'SINDESASTRE'}>{f.diag || 'sin diagnóstico'}</Gloss>
             {isAlert ? ' · alerta activa' : ''}
           </div>
+          {/* Escena fuera de la referencia de entrenamiento: los veredictos
+              siguen mostrándose (honestidad) pero se declaran poco fiables. */}
+          {ex?.ood_flag === true && (
+            <p className="mt-1.5 rounded-md border border-[#ffb020]/30 bg-[#ffb020]/8 px-2 py-1 text-[10px] leading-snug text-[#ffd08a]">
+              escena fuera de la distribución de entrenamiento: interpretá el
+              veredicto y los porcentajes con cautela
+            </p>
+          )}
           {/* Contrato v3: hash corto del ONNX que produjo cada campo (trazabilidad) */}
           {ex?.model_ids && Object.keys(ex.model_ids).length > 0 && (
             <p

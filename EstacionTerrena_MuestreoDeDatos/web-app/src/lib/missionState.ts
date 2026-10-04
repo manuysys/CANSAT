@@ -20,6 +20,15 @@ export function missionPhase(frames: Frame[], summary: Summary | null): Phase {
       ? { id: 'post-vuelo', label: 'post-vuelo', color: '#3f8fd1' }
       : { id: 'aterrizado', label: 'aterrizado', color: '#ffb020' }
   }
+  // Captura ESTÁTICA (banco de pruebas, cámara a 10 m fijos): un ±0.5 m de
+  // ruido del barómetro NO es un ascenso. Antes esto marcaba "ascenso" y el
+  // paracaídas 3D aparecía plegado en una misión que no despegó.
+  const rango = Math.max(...alts) - Math.min(...alts)
+  if (rango < 2) {
+    return summary
+      ? { id: 'post-vuelo', label: 'post-vuelo', color: '#3f8fd1' }
+      : { id: 'descenso', label: 'captura estática', color: '#3ddc84' }
+  }
   if (alts.length >= 2 && last > alts[alts.length - 2]) {
     return { id: 'ascenso', label: 'ascenso', color: '#7ee8b0' }
   }
