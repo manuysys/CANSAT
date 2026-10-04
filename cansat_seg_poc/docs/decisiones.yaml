@@ -526,6 +526,19 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: distill-tiny-no-mejora
+    estado: descartada
+    texto: |
+      DESTILACIÓN B5→tiny: no mejora. Con la misma receta del v2 (KD T=4,
+      alpha=0.5, 8 épocas, lr 2e-4, batch 8, seed 42) y evaluando con el MISMO
+      protocolo (LoveDA Val remapeada, 1669 pares @224): tiny base 0.4395 vs
+      tiny destilado 0.4331 (−0.6 pts; vegetación 0.515→0.507, agua 0.486→0.475,
+      otras 0.421→0.400; construcción y suelo casi igual). La destilación no
+      cierra la brecha con el B5 (0.5664) en esta arquitectura: se DESCARTA y
+      el vuelo sigue con el tiny base (cansat_seg_terrain_tiny_224.onnx).
+      Evidencia: docs/benchmarks/distill_tiny.json. El ONNX destilado queda
+      como artefacto NO usado en outputs/.
+
   - id: salud-pi-vuelo
     estado: vigente
     texto: |

@@ -1,0 +1,28 @@
+{
+  "generado": "2026-10-04",
+  "prueba": "destilacion SegFormer-B5 -> tiny de vuelo (LR-ASPP MV3-S @224)",
+  "script": "distill_terrain_tiny.py",
+  "protocolo": "LoveDA Val remapeada (1669 pares) @224, sin aug, seed 42",
+  "teacher": "outputs/best_terrain_segformer_b5.pth",
+  "receta": {
+    "epocas": 8,
+    "T": 4.0,
+    "alpha": 0.5,
+    "lr": 2e-4,
+    "batch": 8
+  },
+  "resultado": {
+    "tiny_base_miou": 0.4395,
+    "tiny_destilado_miou": 0.4331,
+    "delta": -0.0064,
+    "por_clase": {
+      "vegetation": {"base": 0.515, "destilado": 0.507},
+      "building": {"base": 0.415, "destilado": 0.416},
+      "water": {"base": 0.486, "destilado": 0.475},
+      "bare_ground": {"base": 0.362, "destilado": 0.368},
+      "other": {"base": 0.421, "destilado": 0.400}
+    }
+  },
+  "conclusion": "No mejora (empeora -0.6 pts): se descarta; el vuelo sigue con el tiny base. La destilacion no cierra la brecha con el B5 (0.5664) en esta arquitectura/receta.",
+  "nota": "outputs/cansat_seg_terrain_tiny_224_distilled.onnx queda como artefacto NO usado."
+}
