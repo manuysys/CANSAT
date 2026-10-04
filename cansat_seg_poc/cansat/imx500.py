@@ -35,7 +35,9 @@ preempaquetados + post-proceso de rpicam-apps). Ver pi/guia_pi.md.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -47,6 +49,11 @@ COCO_VEHICLES: frozenset[int] = frozenset({1, 2, 3, 5, 7})   # bicycle, car, mot
 # El SSD preempaquetado del IMX500 usa COCO-80 (persona = 0), NO COCO-91.
 SSD_PERSON: frozenset[int] = COCO_PERSON
 SSD_VEHICLES: frozenset[int] = COCO_VEHICLES
+
+#: Umbral de score para los YOLO del NPU. Medido en la placa (2026-10-04) con
+#: yolo11n en luz baja: la persona da 0.32-0.44 (los YOLO calibran scores más
+#: bajos que el SSD, que daba 0.77 en la misma escena). Con 0.5 se perdían.
+YOLO_SCORE_THRESH: float = 0.35
 
 
 @dataclass
@@ -101,6 +108,44 @@ def parse_ssd_output(output: np.ndarray, score_thresh: float = 0.5,
             continue
         dets.append(Deteccion(box[0], box[1], box[2], box[3],
                               float(score), int(cls)))
+        if len(dets) >= max_det:
+            break
+    return dets
+
+
+def parse_yolo_outputs(outputs, score_thresh: float = 0.5,
+                       max_det: int = 25) -> list[Deteccion]:
+    """
+    Parser del formato REAL de los YOLO (yolo11n/yolov8n) pp del IMX500.
+
+    Medido en hardware (2026-10-04) con ``yolo11n_pp.rpk``: 4 tensores
+    ``[boxes, scores, classes, count]`` con
+      · ``boxes``  ``(1, N, 4)`` en PÍXELES del input del modelo (640×640) con
+        orden ``[x0, y0, x1, y1]`` (el demo oficial usa ``--bbox-order xy``);
+      · ``scores`` ``(1, N)``; ``classes`` ``(1, N)`` (COCO-80);
+      · ``count``  ``(1, 1)`` = cantidad de detecciones válidas.
+    Las cajas se reescalan al frame en ``capture()`` (no vienen normalizadas).
+    """
+    if outputs is None or len(outputs) < 3:
+        return []
+    boxes = np.asarray(outputs[0], dtype=np.float32)
+    scores = np.asarray(outputs[1], dtype=np.float32).reshape(-1)
+    clases = np.asarray(outputs[2], dtype=np.float32).reshape(-1)
+    if boxes.ndim == 3 and boxes.shape[0] == 1:
+        boxes = boxes[0]
+    if boxes.ndim != 2 or boxes.shape[1] < 4:
+        return []
+    n = min(len(boxes), len(scores), len(clases))
+    if len(outputs) >= 4:
+        with contextlib.suppress(ValueError, IndexError):
+            n = min(n, int(np.asarray(outputs[3]).reshape(-1)[0]))
+    dets: list[Deteccion] = []
+    for i in range(n):
+        if float(scores[i]) < score_thresh:
+            continue
+        x0, y0, x1, y1 = boxes[i][:4]
+        dets.append(Deteccion(float(x0), float(y0), float(x1), float(y1),
+                              float(scores[i]), int(clases[i])))
         if len(dets) >= max_det:
             break
     return dets
@@ -209,6 +254,9 @@ class Imx500Camera:
         self.width, self.height, self.fps = width, height, fps
         self.person_ids, self.veh_ids = person_ids, veh_ids
         self.shutter_us, self.gain = shutter_us, gain
+        # Formato de salida del .rpk: los YOLO pp traen 4 tensores con cajas en
+        # píxeles del input; el SSD trae 3 con cajas normalizadas [y0,x0,y1,x1].
+        self.formato = "yolo" if "yolo" in Path(self.model).name.lower() else "ssd"
         self._picam = None
         self._imx500 = None
         self._normalized = True
@@ -236,7 +284,7 @@ class Imx500Camera:
         cfg = self._picam.create_preview_configuration(
             main={"size": (self.width, self.height), "format": "BGR888"},
             controls=controles_camara(
-                min(self.fps, getattr(intr, "inference_rate", 30)),
+                min(self.fps, getattr(intr, "inference_rate", 30) or 30),
                 self.shutter_us, self.gain),
             buffer_count=8,
         )
@@ -280,14 +328,28 @@ class Imx500Camera:
             cajas: list[tuple[int, int, int, int, int]] = []
             try:
                 out = self._imx500.get_outputs(meta, add_batch=True)
-                dets = parse_ssd_outputs(out)
+                if self.formato == "yolo":
+                    dets = parse_yolo_outputs(out, score_thresh=YOLO_SCORE_THRESH)
+                    if dets:
+                        h, w = bgr.shape[:2]
+                        try:
+                            in_w, in_h = self._imx500.get_input_size()
+                        except Exception:
+                            in_w, in_h = 640, 640
+                        sx, sy = w / max(1, in_w), h / max(1, in_h)
+                        dets = [Deteccion(d.x1 * sx, d.y1 * sy,
+                                          d.x2 * sx, d.y2 * sy,
+                                          d.score, d.cls) for d in dets]
+                else:
+                    dets = parse_ssd_outputs(out)
+                    if dets:
+                        h, w = bgr.shape[:2]
+                        # El SSD del IMX500 entrega cajas normalizadas; si algún
+                        # valor supera 1.5 se asume que ya están en píxeles.
+                        norm = max(d.x2 for d in dets) <= 1.5
+                        self._normalized = norm
+                        dets = rescale(dets, w, h, normalized=norm)
                 if dets:
-                    h, w = bgr.shape[:2]
-                    # El SSD del IMX500 entrega cajas normalizadas; si algún
-                    # valor supera 1.5 se asume que ya están en píxeles.
-                    norm = max(d.x2 for d in dets) <= 1.5
-                    self._normalized = norm
-                    dets = rescale(dets, w, h, normalized=norm)
                     personas, vehiculos, cajas = contar(
                         dets, self.person_ids, self.veh_ids)
             except Exception:

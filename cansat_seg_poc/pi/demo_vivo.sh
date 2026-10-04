@@ -20,10 +20,17 @@ OUT="${2:-$HOME/vuelos/demo_$(date +%Y%m%d_%H%M%S)}"
 STATE="$OUT/uart_state.json"
 mkdir -p "$OUT"
 
+# Detector del NPU: YOLO11n (mAP 0.374, descargado) si está; si no, el SSD del
+# paquete apt (mAP 0.218). Licencia YOLO11n: AGPL-3.0 (se declara; el .rpk no
+# se versiona en el repo).
+DET_MODEL="${DET_MODEL:-$HOME/cansat_seg_poc/models_rpk/yolo11n_pp.rpk}"
+[ -f "$DET_MODEL" ] || DET_MODEL="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk"
+
 echo "════════ DEMO EN VIVO ════════"
 echo "  frames : $FRAMES"
 echo "  salida : $OUT"
 echo "  UART   : /dev/serial0 (Heltec por GPIO15)"
+echo "  det    : $(basename "$DET_MODEL")"
 
 # 1) Listener UART en segundo plano (deja uart_state.json fresco para el pipeline).
 venv/bin/python uart_listener.py --port /dev/serial0 \
@@ -42,7 +49,7 @@ fi
 venv/bin/python mission_pipeline.py --camera --frames "$FRAMES" --interval 0 \
     --no-damage --overwrite \
     --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224 \
-    --det-backend imx500 --shutter 8000 --gain 16 \
+    --det-backend imx500 --imx500-model "$DET_MODEL" --shutter 8000 --gain 16 \
     --uart-state "$STATE" \
     --out-dir "$OUT/mission" | tail -8
 

@@ -41,7 +41,32 @@
   },
   "foco_y_exposicion": {
     "hallazgo": "con luz baja rpicam usa ~60 ms de exposicion -> motion blur a pulso (nitidez 2.1); con --shutter 8000 --gain 16 la imagen es usable y el SSD detecta",
-    "pendiente": "fijar la obturaci?n m?xima en la captura de vuelo (integrar en el pipeline)"
+    "pendiente": "fijar la obturación máxima en la captura de vuelo (integrar en el pipeline)"
+  },
+  "yolo11n_npu": {
+    "actualizado": "2026-10-04",
+    "modelo": "imx500_network_yolo11n_pp.rpk (repo oficial raspberrypi/imx500-models)",
+    "tamano_bytes": 3268840,
+    "sha256": "c8e53dd9208debff3cd72044600095624952d6fb4e67910e2e8098251e0307fa",
+    "licencia": "AGPL-3.0 (Ultralytics); el .rpk no se versiona en el repo",
+    "formato_salida": "4 tensores [boxes(1,300,4) xyxy en px del input 640, scores(1,300), classes(1,300) COCO-80, count(1,1)]",
+    "umbral_usado": 0.35,
+    "medicion": {
+      "frames": 68,
+      "segundos": 10,
+      "fps": 6.8,
+      "deteccion": "1 persona con score 0.32-0.44 en luz baja (SSD: 0.77 en la misma escena)",
+      "nota": "mAP oficial yolo11n 0.374 vs SSD 0.218 -> detector recomendado"
+    },
+    "pipeline": {
+      "comando": "bash pi/demo_vivo.sh 3 (usa YOLO11n si models_rpk/yolo11n_pp.rpk existe)",
+      "frames": 3,
+      "personas": "3/3 frames con 1 persona"
+    },
+    "bugs_corregidos": [
+      "inference_rate del rpk YOLO es None -> fallback a 30 fps en controles_camara",
+      "parser nuevo parse_yolo_outputs (4 tensores, cajas en px del input) + reescalado al frame"
+    ]
   },
   "evidencia": [
     "docs/evidencia/11_pi_imx500.png (frame con caja)",

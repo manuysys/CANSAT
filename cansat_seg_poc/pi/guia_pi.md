@@ -164,6 +164,7 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
     --no-detect --no-damage --enhance \
     --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224 \
     --det-backend imx500 \
+    --imx500-model /home/pi/cansat_seg_poc/models_rpk/yolo11n_pp.rpk \
     --shutter 8000 --gain 16 \
     --pop-density 1500 \
     --out-dir /home/pi/vuelos/$(date +%Y%m%d_%H%M%S)
@@ -178,7 +179,9 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
   SSD no detecta). Con 8 ms + gain 16 la imagen es usable (verificado en la
   placa: ExposureTime 7995 µs). Ajustar según la luz del predio.
 - `--det-backend imx500` reemplaza a YOLO por el NPU del AI Camera (si la
-  cámara no es la AI Camera, usar `--no-detect`).
+  cámara no es la AI Camera, usar `--no-detect`). `--imx500-model` apunta al
+  **YOLO11n** descargado (mAP 0.374 vs 0.218 del SSD, ver §9); si el archivo no
+  está, omitir el flag y usa el SSD del paquete apt.
 - `--enhance` ayuda con la nitidez (denoise + unsharp) y cuesta poco.
 - `--p0-alt <altitud del predio>` para altitud absoluta del BMP280.
 - Sin BMP280: simula atmósfera o usa `--uart-state` (ver paso 8); con
@@ -234,6 +237,34 @@ soportado por Ultralytics, así que es un proyecto aparte
 (ver `docs/DATASETS-Y-TECNICAS.md` §3.3). El flood specialist re-entrenado ya
 **pasa la auditoría** `audit_imx500.py` (opset 17, autocontenido, 1 entrada):
 es el primer candidato a probar en el NPU.
+
+### Detector recomendado: YOLO11n en el NPU (mAP 0.374 vs 0.218 del SSD)
+
+El `.rpk` oficial de YOLO11n no viene en el paquete apt (solo hasta
+`imx500-models 1:1.0.0-1`); se descarga del repo oficial de modelos (una vez):
+
+```bash
+mkdir -p ~/cansat_seg_poc/models_rpk
+curl -L -o ~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk \
+  https://raw.githubusercontent.com/raspberrypi/imx500-models/main/imx500_network_yolo11n_pp.rpk
+# sha256 c8e53dd9208debff3cd72044600095624952d6fb4e67910e2e8098251e0307fa
+```
+
+- Licencia **AGPL-3.0** (Ultralytics): se declara en el informe; el `.rpk` no
+  se versiona en el repo (está en `models_rpk/`, ignorado).
+- El módulo `cansat/imx500.py` detecta el formato por nombre de archivo:
+  los YOLO traen 4 tensores `[boxes(xyxy px), scores, classes, count]` y usan
+  umbral 0.35 (`YOLO_SCORE_THRESH`); el SSD trae 3 tensores normalizados y usa
+  0.5. Medido en la placa (2026-10-04): ~6-7 fps, persona a 0.32-0.44 en luz
+  baja (el SSD daba 0.77 en la misma escena pero menos mAP).
+- `pi/demo_vivo.sh` lo usa automáticamente si el archivo existe; si no, cae al
+  SSD del paquete apt. Manual:
+
+```bash
+python -m cansat.imx500 --model ~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk --seconds 10
+python mission_pipeline.py --camera --frames 5 --no-damage \
+    --det-backend imx500 --imx500-model ~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk
+```
 
 ## 10. Problemas conocidos
 

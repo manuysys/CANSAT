@@ -608,6 +608,26 @@ limitaciones:
       Evidencia: docs/benchmarks/pi_zero_w_imx500.json y docs/evidencia/
       11_pi_imx500.png (frame con caja) + 11b_pi_imx500_foto.png.
 
+  - id: detector-yolo11n-npu
+    estado: vigente
+    texto: |
+      DETECCIÓN DE PERSONAS: el vuelo usa YOLO11n en el NPU del IMX500, no el
+      SSD del paquete apt. Motivo medido: mAP oficial 0.374 (yolo11n) vs 0.218
+      (SSD mobilenetv2 fpnlite). El .rpk oficial NO viene en imx500-models
+      1:1.0.0-1 (el apt llega hasta ahí): se descargó del repo oficial
+      raspberrypi/imx500-models (3268840 B, sha256 c8e53dd9...) a
+      ~/cansat_seg_poc/models_rpk/ y NO se versiona (licencia AGPL-3.0 de
+      Ultralytics: se declara). Formato de salida medido en la placa
+      (2026-10-04): 4 tensores [boxes(1,300,4) xyxy en píxeles del input 640,
+      scores(1,300), classes(1,300) COCO-80, count(1,1)]; el parser nuevo
+      `parse_yolo_outputs` reescala al frame. Umbral 0.35 (los YOLO calibran
+      scores más bajos: persona 0.32-0.44 en luz baja vs 0.77 del SSD en la
+      misma escena). Rendimiento: ~6.8 fps (68 frames/10 s), sin CPU. Validado
+      en la cadena real (`pi/demo_vivo.sh 3`): 3/3 frames con 1 persona. El SSD
+      queda como fallback si el .rpk no está. Evidencia:
+      docs/benchmarks/pi_zero_w_imx500.json (bloque yolo11n_npu); guía en
+      pi/guia_pi.md §9.
+
   - id: modelo-vuelo-tiny
     estado: vigente
     texto: |

@@ -93,6 +93,32 @@ def test_controles_camara_shutter_y_gain():
     assert cam.shutter_us == 8000 and cam.gain == 16
 
 
+def test_parsea_formato_yolo_4_tensores():
+    """YOLO11n pp: [boxes(xyxy px), scores, classes, count] — medido en placa."""
+    from cansat.imx500 import parse_yolo_outputs
+
+    boxes = np.array([[[320.0, 200.0, 525.0, 400.0], [10.0, 10.0, 50.0, 50.0]]],
+                     np.float32)
+    scores = np.array([[0.9, 0.2]], np.float32)
+    classes = np.array([[0, 24]], np.float32)          # persona, mochila
+    count = np.array([[2]], np.float32)
+    dets = parse_yolo_outputs([boxes, scores, classes, count], score_thresh=0.5)
+    assert len(dets) == 1
+    assert dets[0].cls == 0 and dets[0].score == pytest.approx(0.9)
+    assert (dets[0].x1, dets[0].y1, dets[0].x2, dets[0].y2) == (320, 200, 525, 400)
+
+
+def test_yolo_respeta_el_conteo_de_validas():
+    from cansat.imx500 import parse_yolo_outputs
+
+    boxes = np.zeros((1, 3, 4), np.float32) + 10
+    scores = np.array([[0.9, 0.9, 0.9]], np.float32)
+    classes = np.zeros((1, 3), np.float32)
+    count = np.array([[1]], np.float32)                # solo 1 válida
+    dets = parse_yolo_outputs([boxes, scores, classes, count])
+    assert len(dets) == 1
+
+
 def test_parsea_formato_real_lista_3_tensores():
     """El formato REAL de get_outputs(): [boxes, scores, classes]."""
     boxes = np.array([[[0.1, 0.2, 0.6, 0.7]]], np.float32)   # (1,1,4) y0,x0,y1,x1
