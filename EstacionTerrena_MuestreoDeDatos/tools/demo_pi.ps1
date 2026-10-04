@@ -40,8 +40,10 @@ if (-not $SaltarPostVuelo) {
     Write-Host "3/5 Post-vuelo completo en la PC (sin EDSR)..." -ForegroundColor Cyan
     Push-Location $Flight
     try {
-        # En modo cámara los frames crudos van a full_res (high_res es del sampler).
-        python post_flight.py --frames outputs\mission\full_res --n $Frames --no-edsr
+        # --no-pipeline: usa la telemetría que ya generó la Pi (con UART/BME y
+        # detecciones del NPU). Sin esto, la segunda pasada del pipeline en la
+        # PC reescribía el CSV con atmósfera simulada y pisaba los valores reales.
+        python post_flight.py --frames outputs\mission\full_res --n $Frames --no-edsr --no-pipeline
         if ($LASTEXITCODE -ne 0) { throw "post_flight.py falló (exit $LASTEXITCODE)" }
     } finally { Pop-Location }
 } else {
