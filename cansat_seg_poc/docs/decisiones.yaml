@@ -647,6 +647,21 @@ limitaciones:
       12_pi_imx500_seg.png y bloque deeplabv3plus_npu en
       docs/benchmarks/pi_zero_w_imx500.json.
 
+  - id: pose-npu-no-viable
+    estado: descartada
+    texto: |
+      POSE / FALLEN PERSON en el NPU: se decodificó el formato real del
+      higherhrnet del apt (3 tensores (1,30,17) = tags, índices y·192+x sobre
+      144x192 y valores) usando el postprocess oficial de picamera2
+      (`postprocess_higherhrnet`; necesita `munkres`, instalado en el venv).
+      MEDICIÓN en la placa (2026-10-04, persona de cuerpo completo a varias
+      distancias con luz interior): score de keypoint máximo 0.102-0.133 (un
+      codo), sin esqueleto utilizable; el agrupamiento devuelve cajas
+      degeneradas con score ~0.01. Coherente con el mAP oficial 0.188.
+      DECISIÓN: no se integra al vuelo (la detección de personas queda en
+      YOLO11n, mAP 0.374). Evidencia: bloque higherhrnet_pose en
+      docs/benchmarks/pi_zero_w_imx500.json. Reintentable con otra escena/luz.
+
   - id: modelo-vuelo-tiny
     estado: vigente
     texto: |

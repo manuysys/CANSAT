@@ -87,6 +87,20 @@
     "evidencia": "docs/evidencia/12_pi_imx500_seg.png (overlay de la máscara)",
     "uso": "python -m cansat.imx500_seg --seconds 10 [--shutter 8000 --gain 16] [--guardar salida.png]"
   },
+  "higherhrnet_pose": {
+    "actualizado": "2026-10-04",
+    "modelo": "imx500_network_higherhrnet_coco.rpk (paquete apt; MIT)",
+    "mAP_oficial": 0.188,
+    "formato_salida": "3 tensores (1,30,17): [tags, indices (y*192+x, salida 144x192), valores]",
+    "decodificacion": "picamera2.devices.imx500.postprocess_highernet.postprocess_higherhrnet (requiere `munkres`, instalado en el venv)",
+    "medicion": {
+      "escena": "persona de cuerpo completo a varias distancias (incluye ~2-3 m), luz interior",
+      "frames_con_salida": 31,
+      "score_keypoint_max": 0.133,
+      "resultado": "sin esqueleto utilizable; el agrupamiento devuelve cajas degeneradas con score ~0.01"
+    },
+    "decision": "NO viable para el vuelo (coherente con mAP 0.188); no se integra. Formato documentado para reintentar con otra escena/luz."
+  },
   "evidencia": [
     "docs/evidencia/11_pi_imx500.png (frame con caja)",
     "docs/evidencia/11b_pi_imx500_foto.png (foto del sensor)",
