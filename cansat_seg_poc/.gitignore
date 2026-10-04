@@ -18,6 +18,8 @@ outputs/*
 !outputs/metrics/
 runs/
 wandb/
+# Post-vuelo generado (summary, máscaras, ens_seg, enhanced): artefactos.
+entrega/
 # PlatformIO: build + librerías descargadas (se regeneran solas al compilar).
 # Sin esto, `git add -A` metía ~180 archivos de libdeps en el repo.
 .pio/
