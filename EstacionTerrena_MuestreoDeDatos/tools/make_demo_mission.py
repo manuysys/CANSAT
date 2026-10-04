@@ -921,9 +921,10 @@ def main(argv=None) -> int:
                 # pipeline real; el demo las simula para ejercitar la UI).
                 "colapso_fuente": "medido",
                 "pop_fuente": "demo",
-                # U4: densidad poblacional simulada del frame (crece con lo
-                # construido) para ejercitar el overlay WorldPop de la traza.
-                "pop_density": round(300.0 + 25.0 * float(r.get("bui") or 0), 1),
+                # U4: densidad poblacional simulada del frame (rural→urbano,
+                # crece con lo construido) para ejercitar el overlay WorldPop
+                # de la traza (umbral de "alta" = 1000 hab/km²).
+                "pop_density": round(100.0 + 90.0 * float(r.get("bui") or 0), 1),
                 "ocupacion_fuente": "demo",
                 # Política fire_only_v1 (idéntica a cansat/tipos.py): el demo
                 # confirma "incendio" solo en frames con fuego visible; el resto
