@@ -88,6 +88,10 @@ export interface SampleExtra {
   colapso_fuente?: string | null
   pop_fuente?: string | null
   ocupacion_fuente?: string | null
+  /* U4: densidad poblacional del frame (WorldPop por GPS o supuesto) */
+  pop_density?: number | null
+  /* U3: último evento de vuelo visto por el MPU6050 (despegue/aterrizaje) */
+  evento_vuelo?: string | null
   tipo_desastre?: string | null
   tipo_conf?: number | null
   /* Política fire_only_v1: solo incendio confirmado es predicción válida */

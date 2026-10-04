@@ -27,6 +27,8 @@ interface PuntoLocal {
   lon: number
   alt: number
   alert: boolean
+  dens: number | null   // U4: hab/km² (WorldPop por GPS o supuesto)
+  fuente: string | null
   x: number          // este local (m)
   y: number          // norte local (m)
 }
@@ -42,17 +44,33 @@ function TooltipPunto({ active, payload }: {
       <div className="text-[#dbe4ee]">{p.src}</div>
       <div className="text-[#8b9aab]">alt {num(p.alt, 1)} m</div>
       <div className="text-[#8b9aab]">lat {p.lat.toFixed(5)} · lon {p.lon.toFixed(5)}</div>
+      {p.dens != null && (
+        <div className="text-[#ffb020]">
+          población {num(p.dens, 0)} hab/km²
+          {p.fuente ? ` · ${p.fuente}` : ''}
+        </div>
+      )}
     </div>
   )
 }
 
+/* U4: umbral de densidad "alta" (hab/km²). WorldPop da valores continuos;
+ * 1000 separa rural de urbano-periurbano denso (declarado, no normativo). */
+const DENS_ALTA = 1000
+
 export function GpsTrack() {
   const frames = useMission(s => s.frames)
+  const samples = useMission(s => s.samples)
   const select = useMission(s => s.select)
 
-  const puntos = useMemo(() => gpsDe(frames), [frames])
+  const puntos = useMemo(() => gpsDe(frames).map(p => ({
+    ...p,
+    dens: (samples[p.src]?.pop_density as number | undefined) ?? null,
+    fuente: (samples[p.src]?.pop_fuente as string | undefined) ?? null,
+  })), [frames, samples])
   const conAlerta = puntos.filter(p => p.alert)
-  const normales = puntos.filter(p => !p.alert)
+  const densos = puntos.filter(p => !p.alert && (p.dens ?? 0) >= DENS_ALTA)
+  const normales = puntos.filter(p => !p.alert && (p.dens ?? 0) < DENS_ALTA)
 
   /* Proyección local: metros al este/norte respecto del centroide. */
   const geo = useMemo(() => {
@@ -138,12 +156,14 @@ export function GpsTrack() {
                 content={<TooltipPunto />}
               />
               <Scatter name="frames" data={normales} fill="#3ddc84" onClick={click} cursor="pointer" />
+              <Scatter name="densidad alta" data={densos} fill="#ffb020" onClick={click} cursor="pointer" />
               <Scatter name="alertas" data={conAlerta} fill="#ff4d5e" onClick={click} cursor="pointer" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
         <p className="border-t border-border/50 px-5 py-2 text-[10.5px] text-muted-foreground/70">
-          Norte arriba · escala real · punto = altitud · click abre el frame · offline
+          Norte arriba · escala real · punto = altitud · naranja ≥ {DENS_ALTA} hab/km²
+          (WorldPop) · rojo = alerta · click abre el frame · offline
         </p>
       </Card>
     </motion.div>
