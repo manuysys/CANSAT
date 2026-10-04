@@ -191,6 +191,12 @@ python mission_pipeline.py --camera --frames 1000 --interval 0 \
   (`cansat/casualties.py`): usar la densidad real del predio.
 - La telemetría queda en `telemetry_<timestamp>.csv` + copia a `telemetry.csv`
   (y el `.jsonl` con la incertidumbre y los tiempos por etapa).
+- **Salud de la Pi (U2)**: cada frame del `.jsonl` trae `pi_temp_c` y al
+  terminar se escribe `pi_health.json` (temp min/max/prom, uptime, flags de
+  `vcgencmd get_throttled`). Validado en la Zero: 40.6-41.2 °C sin throttling.
+- ⚠ En la Pi el `--onnx` por defecto es el v2@320 (~250 s/frame): SIEMPRE
+  pasar `--onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224`
+  (si no, el vuelo no avanza). `demo_vivo.sh` ya lo hace.
 
 Arranque automático: `crontab -e` →
 

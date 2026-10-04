@@ -526,6 +526,22 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: salud-pi-vuelo
+    estado: vigente
+    texto: |
+      SALUD DE LA PI EN VUELO (U2): `cansat/salud_pi.py` lee temperatura
+      (/sys/class/thermal), uptime (/proc/uptime) y throttling (vcgencmd) con
+      lecturas inyectables (6 tests corren en la PC, sin placa). El pipeline
+      muestrea la temperatura por frame (JSONL: `pi_temp_c`) y el throttling
+      cada 15 frames, y al terminar escribe `pi_health.json` (temp
+      min/max/prom, uptime inicio/fin, flags con OR lógico) — aditivo, fuera
+      del contrato CSV. Validado en la placa (2026-10-04, 3 frames reales):
+      temp 40.6-41.2 °C, sin throttling, uptime 20319.8→20335.7 s. HALLAZGO de
+      uso: el `--onnx` por defecto del pipeline es el v2@320 (~250 s/frame en
+      la Zero) — en la Pi SIEMPRE pasar
+      `--onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224`
+      (demo_vivo.sh ya lo hace).
+
   - id: estres-tiny-vuelo
     estado: vigente
     texto: |
