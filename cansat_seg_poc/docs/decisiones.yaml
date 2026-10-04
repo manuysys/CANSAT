@@ -526,6 +526,20 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: tiny-flood-fuego-no-aporta
+    estado: descartada
+    texto: |
+      TINY DE FLOOD/FUEGO PARA EL NPU/CPU (U7): se EVALÚA y NO se hace. Motivo
+      medido: el presupuesto de vuelo ya está tomado por el terreno tiny
+      (~3 s/frame en la Zero v1, 20-40 frames por descenso); dos modelos tiny
+      más sumarían ~1.5-2 s de inferencia cada uno (proyección desde la
+      medición del tiny, no medido) y recortarían la cobertura a la mitad,
+      mientras que el post-vuelo en la PC ya corre los especialistas
+      COMPLETOS (flood 0.489, fuego 0.791-0.806) en segundos con onnxruntime.
+      No hay ganancia de misión: se descarta entrenarlos en la arquitectura
+      tiny. (Si el DPD pidiera detección de inundación en vuelo, el camino
+      sería priorizar frames por el terreno y analizarlos post-vuelo.)
+
   - id: soak-uart-10min
     estado: vigente
     texto: |
