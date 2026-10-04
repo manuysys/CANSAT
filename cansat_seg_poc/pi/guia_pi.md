@@ -223,6 +223,13 @@ El unit es `Type=oneshot` con `TimeoutStartSec=infinity`: el default de 90 s
 mataría el vuelo a mitad de camino. Alternativa por crontab:
 `@reboot /home/pi/cansat_seg_poc/pi/run_flight.sh`.
 
+Modo **pull en vivo** (U5, para la estación terrena):
+
+```bash
+nohup venv/bin/python pi/servidor_vivo.py --port 8080 &   # en la Pi
+# y en la PC:  python tools/vivo_pi.py   (la web ya auto-refresca cada 3 s)
+```
+
 ## 8. UART con la ESP32 (contrato LB135)
 
 En la Pi: `sudo raspi-config` → Interface Options → Serial Port:

@@ -526,6 +526,22 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: pull-vivo-estacion
+    estado: vigente
+    texto: |
+      PULL EN VIVO (U5): la estación ya auto-refresca /api/mission cada 3 s, así
+      que el "modo en vivo" se resolvió SIN tocar el frontend: (1) servidor
+      stdlib en la Pi (`pi/servidor_vivo.py`, sólo lectura, pensado para la red
+      local) que sirve el último vuelo (/status con n_frames + salud + último
+      veredicto + lista de archivos; telemetry.csv/jsonl, pi_health.json,
+      summary.json, vis/*.jpg y /frame.jpg); (2) puller en la PC
+      (`tools/vivo_pi.py`, repo estación) que sincroniza a outputs/mission cada
+      2 s y BORRA los archivos que ya no están en la Pi (un summary.json viejo
+      quedaba pegado y contradecía los frames en vivo). Validado (2026-10-04):
+      pull de un vuelo real de 2 frames → /api/mission con 2 frames y src
+      cam_000, temp de la Pi en el status, huérfanos limpiados. Evidencia:
+      EstacionTerrena_MuestreoDeDatos/README-web.md §5 y pi/guia_pi.md §7.
+
   - id: autostart-systemd
     estado: vigente
     texto: |

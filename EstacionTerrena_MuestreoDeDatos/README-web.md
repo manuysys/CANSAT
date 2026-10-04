@@ -123,6 +123,30 @@ distancia/zona se rechazan con motivo.
 re-animaciones ni parpadeo. Los frames nuevos entran por diff (slide-in en
 alertas, layout en corredor y tabla, toast informativo).
 
+### Modo pull en vivo desde la Pi (U5)
+
+Con el mismo auto-refresh, la estación queda **en vivo** sin tocar el frontend:
+un puller sincroniza el último vuelo de la Pi a `outputs/mission` cada 2 s.
+
+```bash
+# En la PI (una vez por sesión):
+nohup venv/bin/python pi/servidor_vivo.py --port 8080 &
+
+# En la PC (mientras dura la demo; Ctrl+C para salir):
+python tools/vivo_pi.py                # loop 2 s
+python tools/vivo_pi.py --once         # una pasada (verificación)
+```
+
+- El servidor de la Pi es stdlib (sin dependencias), de **sólo lectura** y para
+  la red local (no exponerlo a Internet). Sirve `/status` (n_frames, salud,
+  último veredicto, lista de archivos), el contrato (`telemetry.csv/jsonl`,
+  `pi_health.json`, `summary.json`) y las evidencias (`/vis/*.jpg`,
+  `/frame.jpg` = última).
+- El puller borra los archivos locales que ya no existen en la Pi (p. ej. un
+  `summary.json` viejo) para que el panel no mezcle vuelos.
+- Sin `summary.json` (vuelo recién capturado, sin post-vuelo) la web muestra
+  los frames igual; el resumen aparece cuando la PC corre `post_flight.py`.
+
 ---
 
 ## 6. Pruebas
