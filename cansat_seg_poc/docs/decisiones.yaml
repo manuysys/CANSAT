@@ -628,6 +628,25 @@ limitaciones:
       docs/benchmarks/pi_zero_w_imx500.json (bloque yolo11n_npu); guía en
       pi/guia_pi.md §9.
 
+  - id: seg-npu-deeplabv3plus
+    estado: vigente
+    texto: |
+      SEGMENTACIÓN en el NPU: el deeplabv3plus oficial (VOC 21 clases, mIoU
+      0.7214 declarado como referencia) corre on-sensor y entrega el mapa de
+      clases YA en argmax: un tensor (1, 320, 320) float32 con índices 0-20
+      (persona = 15). Medido en la placa (2026-10-04): warm-up 3.7 s (carga de
+      la red en el sensor) y después ~0.8 s/frame (1.1 fps) con máscara en
+      todos los frames; en primer plano la persona ocupa 32-66% del frame.
+      Módulo nuevo `cansat/imx500_seg.py` (cobertura por clase, resumen
+      persona/vehículos, overlay) + 5 tests. HALLAZGO de medición: el primer
+      `import cv2` en la Zero tarda ~20 s y falseaba el fps si se dibujaba
+      dentro del loop de captura; ahora se precarga antes de medir. NO se
+      integra al vuelo: el detector YOLO ya cubre personas a ~6.8 fps (≈6×
+      más) y la segmentación transfiere más metadata; queda como herramienta
+      de validación/post-vuelo. Evidencia: docs/evidencia/
+      12_pi_imx500_seg.png y bloque deeplabv3plus_npu en
+      docs/benchmarks/pi_zero_w_imx500.json.
+
   - id: modelo-vuelo-tiny
     estado: vigente
     texto: |

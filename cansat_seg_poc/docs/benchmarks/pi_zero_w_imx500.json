@@ -68,8 +68,28 @@
       "parser nuevo parse_yolo_outputs (4 tensores, cajas en px del input) + reescalado al frame"
     ]
   },
+  "deeplabv3plus_npu": {
+    "actualizado": "2026-10-04",
+    "modelo": "imx500_network_deeplabv3plus.rpk (paquete apt imx500-models)",
+    "tarea": "segmentation",
+    "formato_salida": "un tensor (1, 320, 320) float32 = mapa de clases VOC ya en argmax (persona = 15)",
+    "clases": "VOC2012 (21); mIoU oficial 0.7214 (referencia, NO medición propia)",
+    "medicion": {
+      "warm_up_s": 3.7,
+      "frames": 10,
+      "segundos": 8.9,
+      "fps": 1.1,
+      "ms_por_frame": 800,
+      "mascara_en_todos_los_frames": true,
+      "persona_pct": "32-66% en primer plano (escena de prueba)"
+    },
+    "hallazgo": "el primer import de cv2 en la Zero tarda ~20 s y falseaba el fps si se dibujaba dentro del loop: se precarga antes de medir",
+    "evidencia": "docs/evidencia/12_pi_imx500_seg.png (overlay de la máscara)",
+    "uso": "python -m cansat.imx500_seg --seconds 10 [--shutter 8000 --gain 16] [--guardar salida.png]"
+  },
   "evidencia": [
     "docs/evidencia/11_pi_imx500.png (frame con caja)",
-    "docs/evidencia/11b_pi_imx500_foto.png (foto del sensor)"
+    "docs/evidencia/11b_pi_imx500_foto.png (foto del sensor)",
+    "docs/evidencia/12_pi_imx500_seg.png (segmentación NPU con overlay)"
   ]
 }
