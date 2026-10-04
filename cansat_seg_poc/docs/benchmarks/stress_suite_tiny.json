@@ -1,0 +1,486 @@
+{
+  "generado": "2026-10-04T20:28:31.922586+00:00",
+  "script": "tools/stress_suite.py",
+  "seed": 42,
+  "max_images": 120,
+  "img_size": 224,
+  "corruptions": [
+    "lluvia",
+    "niebla",
+    "motion_blur",
+    "subexposicion",
+    "sobreexposicion",
+    "escala",
+    "sombras",
+    "vibracion"
+  ],
+  "n_images": {
+    "terreno": 120
+  },
+  "resultados": {
+    "terreno": {
+      "modelo": "outputs/cansat_seg_terrain_tiny_224.onnx",
+      "modelo_sha256_16": "7a35b3ede89d04c9",
+      "num_clases": 5,
+      "nombres_clases": [
+        "vegetation",
+        "building",
+        "water",
+        "bare_ground",
+        "other"
+      ],
+      "img_size": 224,
+      "fuente": "LoveDA Val ['Rural', 'Urban'] · 120 imgs (remapeadas)",
+      "limpio": {
+        "miou": 0.424966,
+        "pixel_acc": 0.610611,
+        "n_pixels": 5909943,
+        "por_clase": {
+          "vegetation": {
+            "iou": 0.471614,
+            "precision": 0.776997,
+            "recall": 0.545443,
+            "f1": 0.640948,
+            "soporte_px": 1935783
+          },
+          "building": {
+            "iou": 0.417441,
+            "precision": 0.494865,
+            "recall": 0.727379,
+            "f1": 0.589006,
+            "soporte_px": 581093
+          },
+          "water": {
+            "iou": 0.446732,
+            "precision": 0.488357,
+            "recall": 0.839776,
+            "f1": 0.617574,
+            "soporte_px": 612710
+          },
+          "bare_ground": {
+            "iou": 0.348169,
+            "precision": 0.55866,
+            "recall": 0.480268,
+            "f1": 0.516506,
+            "soporte_px": 494759
+          },
+          "other": {
+            "iou": 0.440873,
+            "precision": 0.621281,
+            "recall": 0.6029,
+            "f1": 0.611953,
+            "soporte_px": 2285598
+          }
+        },
+        "nitidez_media": 25.4
+      },
+      "estresado": {
+        "lluvia": {
+          "miou": 0.300036,
+          "pixel_acc": 0.493874,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.291774,
+              "precision": 0.620049,
+              "recall": 0.355299,
+              "f1": 0.451742,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.362015,
+              "precision": 0.574645,
+              "recall": 0.494534,
+              "f1": 0.531588,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.229629,
+              "precision": 0.398827,
+              "recall": 0.351186,
+              "f1": 0.373493,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.227838,
+              "precision": 0.338918,
+              "recall": 0.410087,
+              "f1": 0.371121,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.388922,
+              "precision": 0.482394,
+              "recall": 0.66746,
+              "f1": 0.560034,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 17.39,
+          "parametros": {
+            "gotas": 943.0,
+            "angulo": 12.0,
+            "contraste": 0.85,
+            "alpha": 0.45
+          },
+          "delta_miou": -0.12493,
+          "delta_pixel_acc": -0.116737,
+          "delta_nitidez": -8.01
+        },
+        "niebla": {
+          "miou": 0.162473,
+          "pixel_acc": 0.306086,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.099086,
+              "precision": 0.883516,
+              "recall": 0.100398,
+              "f1": 0.180306,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.198324,
+              "precision": 0.208561,
+              "recall": 0.801622,
+              "f1": 0.331003,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.203278,
+              "precision": 0.224452,
+              "recall": 0.683026,
+              "f1": 0.337874,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.084397,
+              "precision": 0.235038,
+              "recall": 0.116358,
+              "f1": 0.155656,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.227278,
+              "precision": 0.499413,
+              "recall": 0.294331,
+              "f1": 0.370378,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 7.57,
+          "parametros": {
+            "beta": 1.4,
+            "atm_light": 0.8365,
+            "haze_pct": 97.5822,
+            "visibility": 0.4118
+          },
+          "delta_miou": -0.262493,
+          "delta_pixel_acc": -0.304525,
+          "delta_nitidez": -17.83
+        },
+        "motion_blur": {
+          "miou": 0.424509,
+          "pixel_acc": 0.612081,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.475447,
+              "precision": 0.76542,
+              "recall": 0.556542,
+              "f1": 0.644479,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.413841,
+              "precision": 0.487807,
+              "recall": 0.731852,
+              "f1": 0.585414,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.479856,
+              "precision": 0.535088,
+              "recall": 0.822973,
+              "f1": 0.648517,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.31467,
+              "precision": 0.554298,
+              "recall": 0.421258,
+              "f1": 0.478706,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.438731,
+              "precision": 0.606371,
+              "recall": 0.613442,
+              "f1": 0.609886,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 5.49,
+          "parametros": {
+            "k": 15.0,
+            "angulo": 35.0,
+            "sigma": 4.0
+          },
+          "delta_miou": -0.000457,
+          "delta_pixel_acc": 0.00147,
+          "delta_nitidez": -19.91
+        },
+        "subexposicion": {
+          "miou": 0.347007,
+          "pixel_acc": 0.533166,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.366894,
+              "precision": 0.788961,
+              "recall": 0.40682,
+              "f1": 0.536829,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.370863,
+              "precision": 0.499453,
+              "recall": 0.590241,
+              "f1": 0.541065,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.330161,
+              "precision": 0.358542,
+              "recall": 0.806617,
+              "f1": 0.496423,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.268174,
+              "precision": 0.395316,
+              "recall": 0.45469,
+              "f1": 0.422929,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.398943,
+              "precision": 0.571355,
+              "recall": 0.569347,
+              "f1": 0.570349,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 6.11,
+          "parametros": {
+            "ev": -1.2
+          },
+          "delta_miou": -0.077959,
+          "delta_pixel_acc": -0.077445,
+          "delta_nitidez": -19.29
+        },
+        "sobreexposicion": {
+          "miou": 0.303011,
+          "pixel_acc": 0.465926,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.322637,
+              "precision": 0.783045,
+              "recall": 0.354309,
+              "f1": 0.487869,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.232251,
+              "precision": 0.253779,
+              "recall": 0.732471,
+              "f1": 0.376955,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.443477,
+              "precision": 0.506778,
+              "recall": 0.78024,
+              "f1": 0.614457,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.212571,
+              "precision": 0.446311,
+              "recall": 0.288706,
+              "f1": 0.350611,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.304119,
+              "precision": 0.487798,
+              "recall": 0.446796,
+              "f1": 0.466398,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 66.09,
+          "parametros": {
+            "ev": 1.2
+          },
+          "delta_miou": -0.121955,
+          "delta_pixel_acc": -0.144685,
+          "delta_nitidez": 40.69
+        },
+        "escala": {
+          "miou": 0.437933,
+          "pixel_acc": 0.623474,
+          "n_pixels": 5909945,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.466842,
+              "precision": 0.811654,
+              "recall": 0.52356,
+              "f1": 0.636527,
+              "soporte_px": 1935886
+            },
+            "building": {
+              "iou": 0.41996,
+              "precision": 0.49765,
+              "recall": 0.729005,
+              "f1": 0.59151,
+              "soporte_px": 580749
+            },
+            "water": {
+              "iou": 0.497724,
+              "precision": 0.554167,
+              "recall": 0.830127,
+              "f1": 0.664641,
+              "soporte_px": 613086
+            },
+            "bare_ground": {
+              "iou": 0.343491,
+              "precision": 0.586864,
+              "recall": 0.45304,
+              "f1": 0.511341,
+              "soporte_px": 494376
+            },
+            "other": {
+              "iou": 0.461649,
+              "precision": 0.603427,
+              "recall": 0.662713,
+              "f1": 0.631682,
+              "soporte_px": 2285848
+            }
+          },
+          "nitidez_media": 11.22,
+          "parametros": {
+            "factor": 0.5262
+          },
+          "delta_miou": 0.012967,
+          "delta_pixel_acc": 0.012863,
+          "delta_nitidez": -14.18
+        },
+        "sombras": {
+          "miou": 0.421492,
+          "pixel_acc": 0.607132,
+          "n_pixels": 5909943,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.452064,
+              "precision": 0.789657,
+              "recall": 0.513953,
+              "f1": 0.62265,
+              "soporte_px": 1935783
+            },
+            "building": {
+              "iou": 0.410052,
+              "precision": 0.487691,
+              "recall": 0.720337,
+              "f1": 0.581612,
+              "soporte_px": 581093
+            },
+            "water": {
+              "iou": 0.454136,
+              "precision": 0.498909,
+              "recall": 0.834997,
+              "f1": 0.624613,
+              "soporte_px": 612710
+            },
+            "bare_ground": {
+              "iou": 0.345611,
+              "precision": 0.563981,
+              "recall": 0.471628,
+              "f1": 0.513686,
+              "soporte_px": 494759
+            },
+            "other": {
+              "iou": 0.445598,
+              "precision": 0.607719,
+              "recall": 0.625516,
+              "f1": 0.616489,
+              "soporte_px": 2285598
+            }
+          },
+          "nitidez_media": 24.92,
+          "parametros": {
+            "n": 1.525,
+            "factor": 0.45,
+            "borde": 21.0
+          },
+          "delta_miou": -0.003474,
+          "delta_pixel_acc": -0.003479,
+          "delta_nitidez": -0.48
+        },
+        "vibracion": {
+          "miou": 0.426063,
+          "pixel_acc": 0.61231,
+          "n_pixels": 5909711,
+          "por_clase": {
+            "vegetation": {
+              "iou": 0.473354,
+              "precision": 0.79332,
+              "recall": 0.539939,
+              "f1": 0.642553,
+              "soporte_px": 1935778
+            },
+            "building": {
+              "iou": 0.414343,
+              "precision": 0.491445,
+              "recall": 0.725351,
+              "f1": 0.585916,
+              "soporte_px": 580216
+            },
+            "water": {
+              "iou": 0.455858,
+              "precision": 0.498611,
+              "recall": 0.841684,
+              "f1": 0.62624,
+              "soporte_px": 612414
+            },
+            "bare_ground": {
+              "iou": 0.343411,
+              "precision": 0.555163,
+              "recall": 0.47378,
+              "f1": 0.511253,
+              "soporte_px": 494635
+            },
+            "other": {
+              "iou": 0.44335,
+              "precision": 0.615244,
+              "recall": 0.613429,
+              "f1": 0.614335,
+              "soporte_px": 2286668
+            }
+          },
+          "nitidez_media": 21.27,
+          "parametros": {
+            "dx": 0.012,
+            "dy": -0.1957,
+            "ang": 0.0611
+          },
+          "delta_miou": 0.001097,
+          "delta_pixel_acc": 0.001699,
+          "delta_nitidez": -4.13
+        }
+      }
+    }
+  },
+  "nota": "Corrupción SINTÉTICA con severidad fija (parámetros en cansat/corrupt.py). No reemplaza validación de vuelo real: mide robustez relativa del mismo modelo contra sí mismo. La niebla se verifica con haze_metrics."
+}

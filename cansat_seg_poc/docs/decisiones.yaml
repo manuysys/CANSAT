@@ -526,6 +526,20 @@ limitaciones:
       lo muestra en el Informe (sección sin número) y la demo lo trae con
       n_frames 0 (su bruma máxima es 27 %). Espejo TS en summarySchema.ts.
 
+  - id: estres-tiny-vuelo
+    estado: vigente
+    texto: |
+      ROBUSTEZ DEL MODELO DE VUELO (tiny LR-ASPP MV3-S @224) medida con la
+      misma suite que el v2 (120 imgs LoveDA Val, 8 corrupciones, seed 42;
+      docs/benchmarks/stress_suite_tiny.json): limpio 42.5% (vs 51.0% del v2,
+      la brecha conocida), lluvia 30.0% (vs 20.2: el tiny es +9.8 pts MÁS
+      robusto a la lluvia), niebla 16.2% (vs 16.3: ambos colapsan),
+      motion_blur 42.5% (vs 43.1), subexposición 34.7% (vs 44.9: el tiny cae
+      10 pts más), sobreexposición 30.3% (vs 29.3), escala 43.8% (vs 50.2).
+      La degradación no es uniforme: el vuelo hereda el perfil del tiny y el
+      sistema ya lo declara con confianza_limitada (bruma ≥ 45%). Evidencia:
+      docs/benchmarks/stress_suite_tiny.json.
+
   - id: uart-heltec
     estado: vigente
     texto: |
