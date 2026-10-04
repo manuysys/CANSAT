@@ -99,6 +99,15 @@
       "score_keypoint_max": 0.133,
       "resultado": "sin esqueleto utilizable; el agrupamiento devuelve cajas degeneradas con score ~0.01"
     },
+    "reintento_cuerpo_completo": {
+      "fecha": "2026-10-04",
+      "escena": "persona de cuerpo completo, luz interior",
+      "persona0_score": "0.17-0.28 (estable)",
+      "keypoints_sobre_0.2": "7-8 por frame",
+      "score_keypoint_crudo_max": 0.734,
+      "resultado": "detecta keypoints pero el agrupamiento pega el esqueleto al BRAZO: hombros y caderas quedan con score 0 -> el ángulo de torso (necesario para 'persona caída') NO es confiable",
+      "evidencia": "docs/evidencia/13_pi_imx500_pose.png"
+    },
     "decision": "NO viable para el vuelo (coherente con mAP 0.188); no se integra. Formato documentado para reintentar con otra escena/luz."
   },
   "evidencia": [

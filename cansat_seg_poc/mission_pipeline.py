@@ -932,6 +932,16 @@ def main(argv=None):
     if mode == "w":
         writer.writerow(CSV_COLUMNS)
 
+    # ── Salud de la Pi (U2) ─────────────────────────────────────────────
+    # Temperatura por frame (lectura barata) + throttling cada 15 frames
+    # (vcgencmd es un subproceso, ~50 ms en la Zero). Fuera de la Pi devuelve
+    # None y no se genera pi_health.json. Ver cansat/salud_pi.py.
+    from cansat import salud_pi as SALUD
+
+    salud_muestras: list[dict] = []
+    salud_uptime0 = SALUD.leer_uptime_s()
+    salud_throttled: dict | None = None
+
     # ── Sensores ────────────────────────────────────────────────────────
     bmp = None
     p0 = 1013.25
@@ -1328,10 +1338,26 @@ def main(argv=None):
                     diag=diag, sharp=sharp, sharp_ok=sharp_ok)
                 cv2.imwrite(str(vis_dir / f"{name}_evid.jpg"), vis)
 
+            # Salud de la Pi (U2): muestra del frame (temp siempre, throttling
+            # cada 15 frames) para pi_health.json y el JSONL.
+            temp_pi = SALUD.leer_temp_c()
+            if i % 15 == 0 or salud_throttled is None:
+                thr = SALUD.leer_throttled()
+                if thr is not None:
+                    salud_throttled = thr
+            if temp_pi is not None or salud_throttled is not None:
+                salud_muestras.append({
+                    "temp_c": temp_pi,
+                    "uptime_s": (salud_uptime0 + t
+                                 if salud_uptime0 is not None else None),
+                    "throttled": salud_throttled,
+                })
+
             # ── Registro ────────────────────────────────────────────────
             pkt = {
                 "t_s": round(t, 1), "alt_m": round(alt, 1),
                 "p_hPa": round(p, 1), "temp_c": round(temp, 2),
+                "pi_temp_c": (round(temp_pi, 1) if temp_pi is not None else None),
                 "hum_pct": (round(hum, 1) if hum is not None else None),
                 "terrain": {n: round(v, 1)
                             for n, v in zip(CLASS_NAMES, pcts, strict=False)},
@@ -1474,6 +1500,20 @@ def main(argv=None):
         if cam:
             with contextlib.suppress(Exception):
                 cam.stop()
+
+    # pi_health.json: salud de la Pi durante el vuelo (U2; aditivo, fuera del
+    # contrato CSV). Si no hay datos (PC sin sensores), no se escribe nada.
+    if salud_muestras:
+        salud = SALUD.agregar(salud_muestras)
+        try:
+            (out / "pi_health.json").write_text(
+                json.dumps(salud, ensure_ascii=False, indent=2),
+                encoding="utf-8")
+            print(f"  Salud de la Pi: temp "
+                  f"{salud['temp_c_min']}-{salud['temp_c_max']} °C · "
+                  f"throttled={'sí' if salud['throttled_alguna_vez'] else 'no'}")
+        except OSError as e:
+            print(f"  [WARN] no se pudo escribir pi_health.json: {e}")
 
     # La estación terrena lee siempre outputs/mission/telemetry.csv: dejamos ahí
     # una copia del vuelo recién terminado (sin pisar el histórico versionado).

@@ -668,13 +668,16 @@ limitaciones:
       higherhrnet del apt (3 tensores (1,30,17) = tags, índices y·192+x sobre
       144x192 y valores) usando el postprocess oficial de picamera2
       (`postprocess_higherhrnet`; necesita `munkres`, instalado en el venv).
-      MEDICIÓN en la placa (2026-10-04, persona de cuerpo completo a varias
-      distancias con luz interior): score de keypoint máximo 0.102-0.133 (un
-      codo), sin esqueleto utilizable; el agrupamiento devuelve cajas
-      degeneradas con score ~0.01. Coherente con el mAP oficial 0.188.
-      DECISIÓN: no se integra al vuelo (la detección de personas queda en
-      YOLO11n, mAP 0.374). Evidencia: bloque higherhrnet_pose en
-      docs/benchmarks/pi_zero_w_imx500.json. Reintentable con otra escena/luz.
+      MEDICIÓN en la placa (2026-10-04): de cerca, score de keypoint máximo
+      0.102-0.133 (un codo), sin esqueleto utilizable. REINTENTO con la persona
+      de cuerpo completo: persona0 estable con score 0.17-0.28 y 7-8 keypoints
+      >0.2 (score crudo máximo 0.734), PERO el agrupamiento pega el esqueleto
+      al BRAZO: hombros y caderas quedan con score 0, así que el ángulo de
+      torso (necesario para decidir "persona caída") NO es confiable.
+      Coherente con el mAP oficial 0.188. DECISIÓN: no se integra al vuelo (la
+      detección de personas queda en YOLO11n, mAP 0.374). Evidencia: bloque
+      higherhrnet_pose en docs/benchmarks/pi_zero_w_imx500.json y
+      docs/evidencia/13_pi_imx500_pose.png.
 
   - id: modelo-vuelo-tiny
     estado: vigente
