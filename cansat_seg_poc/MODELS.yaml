@@ -617,21 +617,22 @@ validacion_int8:
     acuerdo_veredicto: 0.95
     acuerdo_alerta: 1.00
   estado_2026_09_17: "NO DEPLOYABLE en la Pi objetivo"
-  estado_2026_09_20: "RE-MEDICIÓN PENDIENTE EN LA PLACA (bloqueada: falta microSD para flashear la Pi Zero W v1)"
-  mediciones:
-    acuerdo_pixel_medio: 0.905
-    acuerdo_pixel_min: 0.665
-    miou_fp32: 0.4595
-    miou_int8: 0.4315
-    fuente: "medición read-only del 2026-09-17 (20 frames Val, indicativa)"
+  estado_2026_10_04: "CERRADO: QDQ estático probado en la placa y DESCARTADO (más lento y diverge del FP32). Vuela FP32."
+  mediciones_2026_10_04:
+    modelo: "cansat_seg_terrain_tiny_224 (modelo de VUELO)"
+    acuerdo_pixel_fp32_int8: 0.2031
+    umbral_acuerdo: 0.95
+    fp32_ms_placa: [1524, 1646]
+    int8_qdq_ms_placa: [1760, 1879]
+    fuente: "quantize_onnx.py en PC (100 Val) + sonda cv2.dnn en la Pi Zero W v1 (3 inferencias)"
+    veredicto: "el QDQ SÍ carga en cv2.dnn, pero ~14% más lento; en precisión diverge (20.3% de acuerdo)"
   notas: |
-    Los `*_int8.onnx` que existen son cuantización DINÁMICA (quantize_all.py):
-    · OpenCV DNN NO los carga (opcode DynamicQuantizeLinear no soportado, ni en
-      OpenCV 5.0) → inútiles para la Pi Zero v1.
-    · Con ORT son 23-26× MÁS LENTOS que FP32 en CPU (ConvInteger sin kernels
-      optimizados) y el acuerdo no llega al 95 %.
-    · El único camino INT8 viable es QDQ estático (quantize_onnx.py, nunca
-      ejecutado) verificado en la placa. Hasta entonces: FP32.
+    Historial: los `*_int8.onnx` dinámicos (quantize_all.py) no cargaban en
+    OpenCV DNN y con ORT eran 23-26× más lentos. El único camino viable era el
+    QDQ estático (quantize_onnx.py), que se ejecutó el 2026-10-04 sobre el tiny:
+    · carga en cv2.dnn en la Pi, pero es ~14% MÁS LENTO que el FP32;
+    · el acuerdo de predicción por píxel FP32↔INT8 fue 20.31% (<< 95%).
+    Decisión `int8`: se vuela FP32; INT8 queda cerrado salvo QAT real.
 
 experimentales:
   - nombre: "best_terrain_cbam.pth"

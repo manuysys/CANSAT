@@ -139,14 +139,21 @@ decisiones:
       chicas, PENDIENTE de medir en la placa.
 
   - id: int8
-    estado: pendiente
+    estado: descartada
     texto: |
-      Cuantización INT8: decisión PENDIENTE DE RE-MEDICIÓN. La anterior
-      ("descartada para vuelo, coincidencia 87.6% < umbral 95%") se basó en una
-      medición inválida; ver modelo_vuelo.nota_precision. Se vuela en FP32 hasta
-      re-medir. Adicionalmente, quantize_all.py usa quantize_dynamic, que en una
-      CNN sólo cuantiza pesos: el "~2x más rápido" que prometía su docstring no
-      es realista, y los artefactos ni cargan en cv2.dnn.
+      CUANTIZACIÓN INT8: CERRADA con medición (2026-10-04). Se generó el QDQ
+      estático del tiny de vuelo (`quantize_onnx.py --in
+      outputs/cansat_seg_terrain_tiny_224.onnx --out
+      outputs/cansat_seg_terrain_tiny_224_int8_qdq.onnx --img-size 224`,
+      calibración 100 imgs de Train, validación 100 imgs de Val, semilla 42):
+      · Precisión (PC): acuerdo de predicción por píxel FP32↔INT8 = **20.31 %**
+        (umbral 95 %): diverge fuerte del FP32.
+      · Placa (cv2.dnn, Pi Zero W v1): el QDQ **sí carga** (a diferencia del
+        dinámico, que ni siquiera abría), pero es **~14 % MÁS LENTO**
+        (1760-1879 ms vs 1524-1646 ms por inferencia, 3 corridas) — cv2.dnn no
+        acelera QDQ.
+      DECISIÓN: el vuelo sigue en **FP32**. El camino INT8 queda cerrado salvo
+      QAT real. Evidencia: este texto + `MODELS.yaml` §validacion_int8.
 
   - id: veredictos
     estado: vigente
