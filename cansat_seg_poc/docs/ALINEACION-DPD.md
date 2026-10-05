@@ -19,7 +19,7 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
 |---|---|---|
 | Segmentación semántica del terreno | `mission_pipeline.py` + `cansat_seg_terrain_v2.onnx` (DeepLabV3+ MobileNetV2, 5 clases, **mIoU 52.19 %** en Val completo) | ✅ |
 | Porcentajes de vegetación/edificios/agua/suelo/otros | `cansat/indices.py` (fuente única) → CSV/JSONL/radio/estación | ✅ |
-| **Personas** | Detección con el fine-tune de **VisDrone** en PC/post-vuelo (medido: 254 vs 42 personas del COCO en imagen aérea) y **NPU del AI Camera (IMX500)** on-sensor en vuelo (`cansat/imx500.py`, `--det-backend imx500`) | 🟡 el modo IMX500 necesita validarse en la Pi |
+| **Personas** | Detección con el fine-tune de **VisDrone** en PC/post-vuelo (medido: 254 vs 42 personas del COCO en imagen aérea) y **NPU del AI Camera (IMX500)** on-sensor en vuelo (`cansat/imx500.py`, `--det-backend imx500`) con **YOLO11n** (mAP 0.374, ~6.8 fps sin CPU; 3/3 personas en la cadena real) | ✅ validado en la Pi; 🟡 medir a la GSD del descenso (persona ≈ 6 px a 250 m) |
 | Imágenes mejoradas con IA | EDSR x2 (`enhance_image.py`) en post-vuelo + `--enhance` (denoise+unsharp) a bordo | ✅ |
 | Mapa del terreno | `corridor_map.py` (corredor apilado) + **trayectoria GPS** en la estación (`GpsTrack.tsx`) + overlays de segmentación | ✅ |
 | Estrés ambiental por contaminación | USI (edificios/vegetación), GVI, densidad urbana, `flood_risk` y veredicto (`cansat/indices.py`) **+ bruma/aerosoles por imagen** (dark channel prior, `cansat/stress.py`) y **humidex** con temperatura+humedad del sensor; `haze_pct`/`humidex`/`stress_idx` (0-100) en la telemetría. Cubre el "junto con la información de los sensores" del DPD | ✅ |
@@ -66,15 +66,18 @@ Cada requisito del DPD → qué hay implementado → estado y qué falta.
    referencia cross-event. El principal xBD satura en UAV (62.7 % de "daño" en
    tiles sin daño). Umbral de voto recalibrado (10.2 %, F1 0.828, recall
    0.887). Detalle en `docs/DATASETS-Y-TECNICAS.md` y `MODELS.yaml`.
-2. **Validar el modo IMX500 y el pipeline en la Pi** (medir s/frame reales).
+2. ✅ **Modo IMX500 y pipeline validados en la Pi** (2026-10-04): s/frame
+   medidos (tiny ~3 s), YOLO11n ~6.8 fps sin CPU, segmentación ~1.1 fps, pose
+   descartada con evidencia.
 3. **Umbrales del consenso sin calibrar** con frames reales (`--damage-threshold`
    ya es configurable; el JSONL registra todo para calibrar).
 4. **Regenerar los pseudo-labels** de `train_v3` (los actuales usaron el flood
    roto como teacher de agua).
 5. **Migrar los splits de daño a "por desastre"** en los 4 scripts de
    entrenamiento (el evaluador ya lo hace).
-6. **Personas en vuelo**: validar cuántas detecta realmente el SSD del IMX500 a
-   la GSD del descenso (7.7 cm/px a 250 m ⇒ una persona ≈ 6 px).
+6. **Personas en vuelo**: validar cuántas detecta YOLO11n en el NPU a la GSD
+   del descenso (7.7 cm/px a 250 m ⇒ una persona ≈ 6 px; en banco detectó
+   persona a 0.32-0.44 de score con luz baja).
 
 ## 6. Extensión (no exigida por el DPD)
 

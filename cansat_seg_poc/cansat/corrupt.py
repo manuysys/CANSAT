@@ -188,15 +188,18 @@ def exposicion(bgr: np.ndarray, ev: float) -> tuple[np.ndarray, dict]:
 
 
 def escala(
-    bgr: np.ndarray, mask: np.ndarray | None, rng: np.random.Generator
+    bgr: np.ndarray, mask: np.ndarray | None, rng: np.random.Generator,
+    rango: tuple[float, float] | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, dict]:
     """
     Jitter de escala: down→up remuestreo (simula volar más alto).
 
     La máscara se remuestrea con vecino más cercano para conservar las clases.
+    ``rango`` permite un jitter más suave para AUGMENTACIÓN (p. ej. 0.7-0.9);
+    por defecto usa el de la suite de estrés (``ESCALA_RANGO``).
     """
     h, w = bgr.shape[:2]
-    f = float(rng.uniform(*ESCALA_RANGO))
+    f = float(rng.uniform(*(rango or ESCALA_RANGO)))
     pw, ph = max(1, round(w * f)), max(1, round(h * f))
     chico = cv2.resize(bgr, (pw, ph), interpolation=cv2.INTER_AREA)
     out = cv2.resize(chico, (w, h), interpolation=cv2.INTER_LINEAR)
@@ -269,12 +272,14 @@ def aplicar(
     bgr: np.ndarray,
     mask: np.ndarray | None,
     rng: np.random.Generator,
+    escala_rango: tuple[float, float] | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, dict]:
     """
     Aplica una corrupción y devuelve ``(bgr, mask, meta)``.
 
     ``escala`` y ``vibracion`` son geométricas y transforman la máscara igual;
     el resto es fotométrico y la deja intacta para que la GT siga alineada.
+    ``escala_rango`` sólo afecta a ``escala`` (augmentación con jitter suave).
     """
     if nombre == "lluvia":
         out, meta = lluvia(bgr, rng)
@@ -287,7 +292,7 @@ def aplicar(
     elif nombre == "sobreexposicion":
         out, meta = exposicion(bgr, +EXPOSICION_EV)
     elif nombre == "escala":
-        return escala(bgr, mask, rng)
+        return escala(bgr, mask, rng, rango=escala_rango)
     elif nombre == "sombras":
         out, meta = sombras(bgr, rng)
     elif nombre == "vibracion":

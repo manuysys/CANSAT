@@ -796,38 +796,22 @@ limitaciones:
 
 proximos_pasos:
   - |
-    Convertir el ONNX a formato IMX500 al llegar la Raspberry Pi, con las
-    herramientas oficiales. pi/convertir_modelos.sh NO fue probado (lo admite en
-    un comentario): pegar la salida de --help y ajustar la sintaxis.
+    Convertir NUESTROS modelos (terreno tiny, flood, fuego) a .rpk con el
+    converter Sony (MCT → imxconv-pt → imx500-package): requiere Linux; se
+    intenta vía Docker Desktop/WSL2 en la PC de desarrollo.
+    pi/convertir_modelos.sh NO fue probado (lo admite en un comentario): pegar
+    la salida de --help y ajustar la sintaxis.
   - |
-    Preparar la microSD según la placa REAL:
-      · Pi Zero W v1 (ARMv6): Raspberry Pi OS 32-bit + AI Camera + backend
-        cv2.dnn (no hay wheels de onnxruntime) + modelos autocontenidos
-        (tools/onnx_inline.py). Guía paso a paso en pi/guia_pi.md.
-      · Pi Zero 2 W / Pi 4 / Pi 5: Raspberry Pi OS 64-bit + requirements-flight.txt.
-    Medir s/frame en la placa antes de fijar --frames/--interval de vuelo.
+    Re-medir INT8 (QDQ estático) del tiny en la placa con cv2.dnn y decidir
+    FP32 vs INT8 con número medido (validate_int8_mission.py). Actualizar
+    modelo_vuelo.nota_precision y la decisión `int8`.
   - |
-    Verificar requirements-flight.txt EN UNA PI FÍSICA. pi/guia_pi.md instalaba
-    numpy + opencv-python-headless + onnxruntime y omitía ultralytics, que
-    mission_pipeline.py importa incondicionalmente: el script de vuelo no
-    arrancaba. Verificar además que el flavour de OpenCV incluya dnn_superres si
-    se va a correr EDSR en la Pi.
+    A/B correcto de augmentación UAV del daño (mismo init/receta ± aug, escala
+    suave 0.7-0.9, schedule largo, lr de fine-tune separado): resultado en
+    docs/benchmarks/aug_uav_dano_ab.json.
   - |
-    Re-medir la validación INT8 con validate_int8_mission.py corregido y recién
-    ahí decidir FP32 vs INT8. Actualizar modelo_vuelo.nota_precision y la
-    decisión `int8` con el resultado.
-  - |
-    Prueba real de UART Pi <-> ESP32 con el protocolo unificado de
-    cansat/protocol.py. Los tres formatos anteriores eran incompatibles entre sí
-    (el listener no podía leer lo que emitía el pipeline), así que esta prueba
-    nunca se pudo hacer.
-  - |
-    Ejecutar CHECKLIST-SIMULACRO.md de la estación terrena con sus cuatro
-    variantes obligatorias y llenar la tabla "Registro de corridas", que está
-    vacía. La fila 7 exige "cero errores de consola": verificarlo con el filtro
-    de consola del frontend desactivado, porque parchea console.warn.
-  - |
-    Regenerar las métricas con evaluate.py (unificado) y citar en el DPD sólo
-    números que salgan de outputs/metrics/*.json. En el repo convivían cuatro
-    mIoU distintos para el mismo modelo (46.36%, 52.44%, 0.5317 y "~0.5317"),
-    tres de ellos hardcodeados en un print().
+    V11 diferido post-presentación (detalle en PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md):
+    MoE de daño (condicionado a que el perfil rápido no alcance en la Pi),
+    UDA LoveDA→RescueNet, difusión/LoRA para clases raras, capas Sentinel Hub
+    opcionales con red, continual learning con replay (requiere 3-5 vuelos
+    reales anotados).

@@ -508,6 +508,27 @@ vuelo:
       En tiles satelitales (0.3 m/px) las personas siguen siendo sub-píxel: los
       conteos de simulacros sobre LoveDA NO son significativos.
 
+    npu_imx500_yolo11n:
+      archivo: "~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk (NO versionado)"
+      origen: "repo oficial raspberrypi/imx500-models (descarga directa)"
+      sha256: "c8e53dd9208debff3cd72044600095624952d6fb4e67910e2e8098251e0307fa"
+      tamano_bytes: 3268840
+      licencia: "AGPL-3.0 (Ultralytics): se declara; el .rpk no va al repo"
+      estado: "VUELA en la Pi (detector por defecto del NPU desde 2026-10-04)"
+      metricas:
+        mAP_oficial: "0.374 (yolo11n) vs 0.218 del SSD stock del apt"
+        medido_placa: "2026-10-04: ~6.8 fps sin CPU (68 frames/10 s); persona a
+          0.32-0.44 en luz baja (el SSD daba 0.77 en la misma escena pero menos
+          mAP); cadena real 3/3 frames con 1 persona"
+        formato_salida: "4 tensores (1,300,4)+(1,300)+(1,300)+(1,1): cajas xyxy
+          en px del input 640, scores, clases COCO-80 y conteo de validas"
+      notas: |
+        Decisión `detector-yolo11n-npu`. Umbral 0.35 (YOLO_SCORE_THRESH): los
+        YOLO calibran scores mas bajos que el SSD. El módulo detecta el formato
+        por nombre de archivo y el SSD queda de fallback si el .rpk no está.
+        Evidencia: docs/benchmarks/pi_zero_w_imx500.json (bloque yolo11n_npu) y
+        pi/guia_pi.md §9.
+
 post_vuelo:
   segformer_b5:
     onnx_preferido: "outputs/cansat_seg_terrain_segformer_b5_512.onnx"

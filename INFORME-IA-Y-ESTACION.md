@@ -19,7 +19,7 @@
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
 | Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
-| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · ✅ **NPU IMX500 validado en la Pi**: persona real detectada (demo oficial 77 %; pipeline `personas=1` con caja, sin CPU) |
+| Personas/vehículos | ✅ VisDrone en PC (254 vs 42 del COCO; v2 mAP50-95 0.164) · ✅ **NPU IMX500 validado en la Pi**: detector de vuelo **YOLO11n** (mAP 0.374 vs 0.218 del SSD; ~6.8 fps sin CPU; 3/3 personas en la cadena real) |
 | Mejora de imágenes con IA | ✅ EDSR x2 post-vuelo + `--enhance` a bordo |
 | Estimación de pérdidas humanas | ✅ modelo de exposición con supuestos declarados y banda |
 | Estrés ambiental | ✅ USI/GVI + **bruma (dark channel)** + **humidex (sensores)** |
@@ -29,9 +29,10 @@
 | Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
-| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; 🟡 pendiente GPIO15 en la Pi (header sin soldar) |
+| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; ✅ **GPIO15 en la Pi: 40/40** y **soak 10 min: 597/597, 0 pérdidas**; ✅ eventos de vuelo por MPU6050 (despegue/aterrizaje) validados en hardware |
 | **Pi Zero W v1 (medido 2026-09-25)** | ✅ tiny@224 **~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → el vuelo por CPU usa tiny; daño/flood/fuego/severidad post-vuelo en la PC |
-| Verificación | ✅ **374 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
+| Operación de la Pi | ✅ **salud** (`pi_health.json`: 40-42 °C, sin throttling) · ✅ **autostart systemd** validado · ✅ **pull en vivo** Pi→estación por HTTP (sin tocar el frontend) |
+| Verificación | ✅ **386 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 
 ---
 
@@ -196,9 +197,16 @@ red de seguridad para daño fuerte.
   instancias); mismo conteo en la imagen de prueba (~250). El ONNX está listo
   para convertir a `.rpk` en la PC Linux (Ultralytics `format="imx"` **requiere
   Linux** — verificado que en Windows falla con "Export only supported on Linux").
-- **Vuelo**: NPU del IMX500 (`--det-backend imx500`, `cansat/imx500.py`) con el
-  `.rpk` SSD stock. 🟡 Pendiente validar en hardware a la GSD del descenso
-  (a 250 m una persona ≈ 6 px: hay que medir cuántas detecta realmente).
+- **Vuelo**: NPU del IMX500 (`--det-backend imx500`, `cansat/imx500.py`) con
+  **YOLO11n** (`.rpk` oficial descargado, AGPL declarada; mAP 0.374 vs 0.218 del
+  SSD stock). Medido en la placa (2026-10-04): ~6.8 fps sin CPU, formato de 4
+  tensores decodificado, umbral 0.35 (scores de YOLO más bajos que el SSD) y
+  3/3 personas en la cadena real; el SSD queda de fallback. 🟡 Pendiente: validar
+  a la GSD del descenso (a 250 m una persona ≈ 6 px: medir cuántas detecta).
+  La **segmentación** DeepLabV3+ corre en el NPU a ~1.1 fps (máscara VOC ya en
+  argmax; herramienta de validación/post-vuelo, no de vuelo) y la **pose**
+  HigherHRNet quedó **descartada con evidencia** (mAP 0.188; sin esqueleto
+  confiable para "persona caída").
 
 ### 4.7 Mejora de imágenes con IA
 
@@ -393,6 +401,8 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `10_gradcam.png` | overlay Grad-CAM del modelo de daño de vuelo sobre un frame (qué regiones justifican el daño) |
 | `11_pi_imx500.png` | frame anotado del pipeline corriendo en la Pi con la AI Camera (`--camera --det-backend imx500`) |
 | `11b_pi_imx500_foto.png` | foto real de la AI Camera (IMX500) en la Pi Zero W v1 (4056x3040, reescalada) |
+| `12_pi_imx500_seg.png` | segmentación DeepLabV3+ en el NPU: overlay de la máscara VOC sobre el frame (persona en rojo) |
+| `13_pi_imx500_pose.png` | pose HigherHRNet en el NPU: esqueleto detectado (se engancha al brazo → por eso quedó descartada) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -465,26 +475,35 @@ npm run smoke
 
 | Pendiente | Impacto | Bloqueo |
 |---|---|---|
-| Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; ✅ **IMX500 validado (2026-10-02)**: cámara OK y detección on-sensor ~3 fps | — |
-| Conversión Edge-MDT (.rpk) de terreno/flood/fuego | Alto (NPU) | PC Linux con converter Sony (F4) |
+| Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; ✅ **IMX500 validado (2026-10-04)**: YOLO11n ~6.8 fps sin CPU (mAP 0.374 vs 0.218 del SSD), segmentación DeepLabV3+ a ~1.1 fps, pose descartada con evidencia | — |
+| Conversión Edge-MDT (.rpk) de NUESTROS modelos | Alto (NPU) | PC Linux con converter Sony (F4); se intenta vía Docker/WSL2 |
+| INT8 del tiny en la placa | Medio | Re-medición QDQ estático con `cv2.dnn` (2026-10-04) |
 | SegFormer-B5 mIoU | ✅ medido: 0.5664 full Val (1669 imgs) vs 0.5219 del v2; JSON `outputs/metrics/val_20260920_211054.json` | — |
 | EDSR tiempo/frame | ✅ medido: ~288 s por frame 1024² en CPU (PC de desarrollo); queda solo post-vuelo | — |
 | Stress flood+fuego | ✅ medido: flood IoU 0.489 → lluvia 0.256; fuego IoU 0.801 → lluvia 0.306 | — |
+| Stress del modelo de VUELO (tiny) | ✅ medido (2026-10-04): limpio 42.5 %; lluvia 30.0 (+9.8 vs v2), niebla 16.2, subexp 34.7 (−10.2 vs v2), escala 43.8; `docs/benchmarks/stress_suite_tiny.json` | — |
+| Destilación B5→tiny | ✅ cerrada como descartada (0.4331 vs 0.4395, mismo protocolo); `docs/benchmarks/distill_tiny.json` | — |
+| Tiny de flood/fuego | ✅ evaluado y descartado: el presupuesto de vuelo ya lo toma el terreno; el post-vuelo PC corre los especialistas completos | — |
 | Severidad → colapso medido en casualties | ✅ hecho (0.575 IoU de colapso) | más épocas opcionales |
-| Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame | — |
+| Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame + **overlay en la traza GPS de la estación** (U4) | — |
 | `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
 | UI de la estación para bruma/calor/fuego | ✅ hecho (detalle por frame + panel de muestreo) | — |
 | Pseudo-labels + re-destilado | ✅ cerrado como descartado: el KD ya empató (0.5196 vs 0.5219) y el pipeline viejo quedó congelado en `legacy/` | — |
 | Personas con posición (dist a vías/agua) | ✅ hecho (v2): bboxes por frame en `telemetry.jsonl` + punto de apoyo; smoke con consultas de personas | — |
-| UART Pi ↔ ESP32 | 🟡 firmware Heltec listo (`firmware/heltec_lb135_uart/`, contrato v2 validado contra el parser); cadena probada en PC con `sim_uart` (12/12) | flashear la placa y probar el listener real (USB `/dev/ttyACM0` y GPIO15) |
-| Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 62 asserts en verde | — |
-| Calibración por clase / aug UAV / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | el A/B correcto de aug queda en V11 |
+| UART Pi ↔ ESP32 | ✅ **cerrado**: GPIO15 40/40, soak 10 min 597/597 (0 pérdidas, gaps p95 1.02 s) y eventos de vuelo por MPU6050 (despegue/aterrizaje) validados en hardware | — |
+| Salud de la Pi en vuelo | ✅ hecho: `pi_temp_c` por frame + `pi_health.json` (40-42 °C, sin throttling) | — |
+| Autostart del vuelo | ✅ hecho y validado: `pi/cansat-vuelo.service` (systemd, oneshot con timeout infinito) | — |
+| Pull en vivo Pi→estación | ✅ hecho y validado: `pi/servidor_vivo.py` + `tools/vivo_pi.py` (la web auto-refresca) | — |
+| Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 64 asserts en verde | — |
+| Calibración por clase / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | — |
+| Augmentación UAV (daño) | 🟡 A/B correcto en curso (2026-10-04: mismo init/receta ± aug, escala suave 0.7-0.9, schedule largo) | resultado en `docs/benchmarks/aug_uav_dano_ab.json` |
 | Confianza limitada por estrés | ✅ hecho: bloque en `summary.json` + sección en el Informe + espejo TS | — |
 
-**Estado del hardware (2026-09-25)**: la Pi Zero W v1 quedó operativa
-(Raspbian 13 Trixie, OpenCV 4.10 de apt, escritorio apagado, `throttled=0x0`)
-y el s/frame está **medido**, no estimado: el tiny@224 corre a ~3 s/frame y el
-v2@224 a ~243 s (ARMv6 sin NEON) → el vuelo por CPU usa el tiny y el resto de
-la IA pasa a post-vuelo. Falta: la **AI Camera/IMX500** (detección on-sensor y
-personas) y el **UART real** (el ESP32-S3 está disponible; la Heltec no).
-Evidencia: `cansat_seg_poc/docs/benchmarks/pi_zero_w_sframe.json`.
+**Estado del hardware (2026-10-04)**: la Pi Zero W v1 está operativa y
+**validada de punta a punta**: Raspbian 13 Trixie, OpenCV 4.10, `imx500-all`,
+escritorio apagado, IP fija, SSH por clave; s/frame medido (tiny ~3 s, v2 243 s);
+AI Camera con YOLO11n/segmentación/pose medidas; UART GPIO15 con soak de 10 min;
+salud, autostart y pull en vivo probados. Pendiente mayor: convertir NUESTROS
+modelos a `.rpk` (requiere converter Sony en Linux; se intenta con Docker/WSL2).
+Evidencia: `cansat_seg_poc/docs/benchmarks/pi_zero_w_sframe.json`,
+`pi_zero_w_imx500.json`, `soak_uart.json`, `eventos_vuelo_mpu.json`.

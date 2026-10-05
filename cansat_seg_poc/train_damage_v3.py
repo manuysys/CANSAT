@@ -62,9 +62,13 @@ def rescue_loss(logits: torch.Tensor, y: torch.Tensor,
 
 
 class XBDv3(Dataset):
-    def __init__(self, rows, size=320, aug=False, aug_uav_p=0.0):
+    def __init__(self, rows, size=320, aug=False, aug_uav_p=0.0,
+                 aug_escala=(0.7, 0.9)):
         self.rows, self.size, self.aug = rows, size, aug
         self.aug_uav_p = aug_uav_p
+        # A/B de aug UAV (V11): la suite de estrés usa 0.45-0.60 (agresivo);
+        # para ENTRENAR se usa un jitter más suave por defecto.
+        self.aug_escala = tuple(aug_escala)
 
     def __len__(self):
         return len(self.rows)
@@ -103,7 +107,9 @@ class XBDv3(Dataset):
                 for nombre in COR.AUG_UAV:
                     if random.random() < self.aug_uav_p:
                         rng_uav = np.random.default_rng(random.randrange(1 << 30))
-                        img, msk, _meta = COR.aplicar(nombre, img, msk, rng_uav)
+                        img, msk, _meta = COR.aplicar(
+                            nombre, img, msk, rng_uav,
+                            escala_rango=self.aug_escala)
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         rgb = (rgb - MEAN) / STD
         return (torch.from_numpy(rgb.transpose(2, 0, 1)).float(),
@@ -168,6 +174,11 @@ def main():
                     help="augmentación UAV (motion_blur/escala/sombras/vibración)")
     ap.add_argument("--aug-uav-p", type=float, default=0.35,
                     help="prob. por op de --aug-uav")
+    ap.add_argument("--aug-escala-min", type=float, default=0.7,
+                    help="jitter de escala mínimo para el aug (A/B V11: "
+                         "0.7-0.9 suave; la suite de estrés usa 0.45-0.60)")
+    ap.add_argument("--aug-escala-max", type=float, default=0.9,
+                    help="jitter de escala máximo para el aug")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     set_seed(args.seed)
@@ -221,9 +232,12 @@ def main():
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     if args.aug_uav:
-        print(f"Augmentación UAV activa: {list(COR.AUG_UAV)} p={args.aug_uav_p}")
+        print(f"Augmentación UAV activa: {list(COR.AUG_UAV)} p={args.aug_uav_p} "
+              f"escala={args.aug_escala_min}-{args.aug_escala_max}")
     train_dl = DataLoader(XBDv3(train_rows, args.size, aug=True,
-                                aug_uav_p=args.aug_uav_p if args.aug_uav else 0.0),
+                                aug_uav_p=args.aug_uav_p if args.aug_uav else 0.0,
+                                aug_escala=(args.aug_escala_min,
+                                            args.aug_escala_max)),
                           batch_size=args.batch, shuffle=True,
                           num_workers=args.workers,
                           persistent_workers=args.workers > 0)

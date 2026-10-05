@@ -72,6 +72,16 @@ def test_escala_conserva_clases_y_factor():
     assert COR.ESCALA_RANGO[0] <= meta["factor"] <= COR.ESCALA_RANGO[1]
 
 
+def test_escala_rango_custom_para_augmentacion():
+    """A/B V11: el aug de entrenamiento usa jitter suave (0.7-0.9)."""
+    img, mask = _texturada(), _mascara()
+    _out, mask_out, meta = COR.aplicar(
+        "escala", img, mask, np.random.default_rng(5),
+        escala_rango=(0.7, 0.9))
+    assert 0.7 <= meta["factor"] <= 0.9
+    assert mask_out is not None and mask_out.shape == mask.shape
+
+
 def test_niebla_registra_bruma():
     img = _texturada()
     _out, meta = COR.niebla(img, np.random.default_rng(0))

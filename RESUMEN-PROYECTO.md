@@ -412,20 +412,27 @@ deterministas sobre máscaras y telemetría.
 1. ✅ **microSD y Pi operativa** (2026-09-25): Raspbian 13 Trixie, OpenCV 4.10,
    `imx500-all` instalado, SSH por clave, escritorio apagado.
 2. **s/frame**: ✅ medido (tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`).
-   **AI Camera/IMX500**: ✅ validada (2026-10-02): cámara OK, detección
-   on-sensor ~3 fps sin CPU, pipeline con `--det-backend imx500` funcionando.
-   🟡 Pendiente: conversión de nuestros modelos a .rpk (Edge-MDT/Linux).
-   **UART real**: ✅ probado con la placa de vuelo **Heltec V3 + BME280 +
-   MPU6050** (scan I2C 0x76/0x68, p/t/hum reales, 21/21 paquetes:
-   `docs/benchmarks/uart_hardware_heltec_pc.json`) y antes con un
-   ESP8266/CH340 (25/25: `uart_hardware_pc.json`). 🟡 pendiente GPIO15 en la
-   Pi (header sin soldar; UART de la Pi ya configurado).
-3. **Conversión Edge-MDT (.rpk)** de terreno/flood/fuego: requiere **PC Linux**
-   con el converter Sony.
-4. **INT8**: re-medir QDQ estático en la placa y decidir FP32 vs INT8
-   (el pipeline de cuantización ya está testeado end-to-end en PC).
-5. Checklist de simulacro: falta solo la **firma del operador** (variantes 1-4
-   ya verificadas automáticamente).
+   **AI Camera/IMX500**: ✅ validada a fondo (2026-10-04): cámara OK; detector
+   de vuelo **YOLO11n** (~6.8 fps sin CPU, mAP 0.374 vs 0.218 del SSD; 3/3
+   personas en la cadena real); segmentación DeepLabV3+ a ~1.1 fps; pose
+   descartada con evidencia. 🟡 Pendiente: conversión de nuestros modelos a
+   `.rpk` (Edge-MDT/Linux; se intenta vía Docker/WSL2).
+   **UART real**: ✅ **cerrado**: Heltec V3 + BME280 + MPU6050 (21/21 en PC),
+   ESP8266/CH340 (25/25), **GPIO15 en la Pi 40/40** y **soak de 10 min:
+   597/597 paquetes, 0 pérdidas** (`soak_uart.json`); eventos de vuelo
+   (despegue/aterrizaje) del MPU6050 validados en hardware
+   (`eventos_vuelo_mpu.json`).
+   **Operación**: ✅ salud de la Pi (`pi_health.json`, 40-42 °C sin
+   throttling), autostart systemd (`pi/cansat-vuelo.service`) y pull en vivo
+   Pi→estación (`pi/servidor_vivo.py` + `tools/vivo_pi.py`) validados.
+3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: requiere converter
+   Sony en Linux (se intenta con Docker Desktop/WSL2).
+4. **INT8**: re-medición QDQ estático en la placa con `cv2.dnn` (2026-10-04)
+   para decidir FP32 vs INT8 con número medido.
+5. Checklist de simulacro: ✅ **firmado** (Juan Manuel Iglesias, 2026-10-03,
+   variantes 1-4 + guion de 12 pasos en vivo).
+6. **A/B de augmentación UAV (daño)**: en curso (2026-10-04, mismo init/receta
+   ± aug con escala suave; resultado en `docs/benchmarks/aug_uav_dano_ab.json`).
 
 ---
 
@@ -440,6 +447,13 @@ python evaluate.py --onnx outputs/cansat_seg_terrain_v2.onnx
 
 # Stress suite (5 tareas, 6 corrupciones)
 python tools/stress_suite.py
+
+# Stress del modelo de VUELO (tiny@224)
+python tools/stress_suite.py --tasks terreno \
+    --onnx-terreno outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224
+
+# Soak UART del contrato v2 (COM4 en la PC, /dev/serial0 en la Pi)
+python tools/soak_uart.py --port COM4 --minutes 10
 
 # Consulta Terrestre (CLI)
 python tools/consulta.py --q "área de edificios inundados" \
