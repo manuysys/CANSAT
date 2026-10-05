@@ -202,9 +202,13 @@ decisiones:
       originales de RescueNet val remapeados; declarado) 0.2821 → 0.3549
       (+7.3 pts); retención en la fuente (LoveDA val 300, mismo subconjunto)
       0.3825 → 0.3790 (−0.35 pts). Por clase en el target: agua +34,
-      vegetación +20, edificio −4, "otro" −13. El student UDA queda como
-      artefacto de investigación (`outputs/best_terrain_tiny_uda.pth`); el
-      vuelo sigue con el tiny base. Integración al pipeline: pendiente.
+      vegetación +20, edificio −4, "otro" −13.
+      ADOPCIÓN EVALUADA Y RECHAZADA (2026-10-05): en el val COMPLETO de LoveDA
+      (1669 imgs) el UDA cae 0.4400 → 0.4117 (−2.8 pts) y en la suite de estrés
+      terreno cae el limpio 0.4250 → 0.4038 (−2.1; sólo mejora niebla +5.1 y
+      sobreexposición +11.0). El criterio de adopción (sin regresión en la
+      fuente) NO se cumple: el vuelo sigue con el tiny base y el UDA queda como
+      artefacto de investigación (`outputs/best_terrain_tiny_uda.pth`).
       Evidencia: docs/benchmarks/uda_terrain.json.
 
   - id: moe-dano-poc
