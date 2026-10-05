@@ -38,6 +38,11 @@ python web_server.py        # → http://localhost:8000
    `ssh pi@192.168.68.240` y dejar corriendo
    `bash ~/cansat_seg_poc/pi/demo_vivo.sh 12` — se ven los frames, las
    detecciones de personas del NPU y el UART con los sensores reales.
+1b. **Beat estrella — NUESTRO modelo en el NPU** (30 s):
+   `cd ~/cansat_seg_poc && venv/bin/python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk --clases love --seconds 10`
+   → imprime la cobertura por clase (vegetacion/edificio/agua/…) a ~7 fps,
+   con la CPU 100 % libre. Es el `.rpk` propio (convertido con MCT+Sony en
+   Docker; memoria 1.84/8 MB).
 2. **Estación** (vista Vuelo): corredor con los frames capturados, badge OOD,
    detecciones, y el detalle por frame.
 3. **Post-vuelo**: daño/flood/fuego/severidad calculados en la PC + Informe

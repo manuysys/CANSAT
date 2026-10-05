@@ -30,7 +30,7 @@ Vuelo → Detalle → Post-vuelo → Informe → Jurado, con la Pi en vivo como 
 | 5 | 3:30–4:30 | **Informe** | `Imprimir/PDF` (sale en tinta). "Todo lo que se ve sale de la telemetría medida." |
 | 6 | 4:30–5:30 | **Consulta Terrestre** (en Vuelo/Sampling) | Probar un chip: "¿cuántas personas hay a menos de 200 m de una vía?" → motor simbólico, sin inventar. |
 | 7 | 5:30–6:30 | **Jurado** | Portada + frames críticos. "Honestidad: LOEO 0.33, el tipo es pista contextual; la señal fuerte es daño/severidad." |
-| 8 | 6:30–8:30 | **Pi en vivo** (opcional) | Mostrar la Pi capturando (terminal o vista en vivo) y la telemetría con BME280 real; correr `demo_pi.ps1 -Frames 6` y mostrar el resultado en la estación. Alternativa **pull en vivo**: con `pi/servidor_vivo.py` corriendo en la Pi, `python tools/vivo_pi.py` sincroniza el vuelo cada 2 s y la web se actualiza sola. |
+| 8 | 6:30–8:30 | **Pi en vivo** (opcional) | Mostrar la Pi capturando (terminal o vista en vivo) y la telemetría con BME280 real; correr `demo_pi.ps1 -Frames 6` y mostrar el resultado en la estación. Alternativa **pull en vivo**: con `pi/servidor_vivo.py` corriendo en la Pi, `python tools/vivo_pi.py` sincroniza el vuelo cada 2 s y la web se actualiza sola. **Beat estrella (30 s)**: `python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk --clases love` → NUESTRO modelo segmentando en el NPU en vivo (imprime la cobertura por clase a ~7 fps, sin CPU). |
 | 9 | 8:30–9:30 | Cierre | "Métricas medidas, límites declarados: hardware validado en placa (tiny ~3 s/frame, NPU ~3 fps, UART 40/40)." |
 
 ## Teclas útiles (atajos de la estación)
@@ -53,7 +53,17 @@ CSV · `P` presentación automática · `Esc` cerrar. (Ver pie de la app.)
 - Terreno de vuelo: tiny@224, **~3 s/frame medido** (v2@224 tarda ~4 min: no vuela).
 - Detección NPU: **YOLO11n mAP 0.374** (~7 fps sin CPU) vs SSD 0.218; segmentación
   DeepLabV3+ a ~1 fps (no vuela, queda de herramienta); pose **descartada** con
-  evidencia (mAP 0.188, sin esqueleto confiable). `.rpk` propio pendiente (Edge-MDT).
+  evidencia (mAP 0.188, sin esqueleto confiable).
+- **`.rpk` PROPIO HECHO (2026-10-05)**: nuestro tiny de terreno corre en el NPU
+  (conversión MCT + Sony en Docker; **memoria 4.28→1.84 MB de 8**, variante
+  compacta **7-17 fps**, CPU 100 % libre). El NPU corre una red por vez: el
+  vuelo mantiene YOLO (detección) + terreno en CPU.
+- **LoRa implementado en el firmware** (TX vuelo / RX estación, 915 MHz) y
+  **GPS real** (ATGM336H, NMEA con fallback simulado declarado).
+- Modelo de daño **ep6**: 0.780 UAV / 0.414 xBD (antes 0.735 / 0.096);
+  **MoE** de daño integrado al post-vuelo (gate 0.513 vs 0.490 del mejor fijo).
+- **gray-world** en el preprocesamiento: **+2.05 pts** de mIoU del modelo de
+  vuelo (val completo) con costo nulo.
 - UART: **40/40 por GPIO15** y **soak 10 min: 597/597 paquetes, 0 pérdidas**;
   contrato v2 con checksum; eventos de vuelo por MPU6050 (despegue/aterrizaje)
   validados en hardware.
