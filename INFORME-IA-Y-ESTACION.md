@@ -497,6 +497,8 @@ npm run smoke
 | Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 64 asserts en verde | — |
 | Calibración por clase / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | — |
 | Augmentación UAV (daño) | 🟡 A/B correcto en curso (2026-10-04: mismo init/receta ± aug, escala suave 0.7-0.9, schedule largo) | resultado en `docs/benchmarks/aug_uav_dano_ab.json` |
+| MoE de daño (V11 4.2) | ✅ **PoC positiva** (2026-10-04): compuerta aprendida 0.4717 vs 0.4270 del mejor fijo (seed 42; +4.5 pts) y 0.4124 vs 0.3881 (seed 7); captura ~85-95% del oráculo. Integración al consenso post-vuelo pendiente | `docs/benchmarks/moe_damage.json` |
+| UDA LoveDA→RescueNet (V11 4.3) | ✅ **PoC positiva** (2026-10-04): self-training +7.3 pts en el proxy UAV con −0.35 pts de retención en la fuente; proxy débil declarado | `docs/benchmarks/uda_terrain.json` |
 | Confianza limitada por estrés | ✅ hecho: bloque en `summary.json` + sección en el Informe + espejo TS | — |
 
 **Estado del hardware (2026-10-04)**: la Pi Zero W v1 está operativa y

@@ -138,6 +138,22 @@ decisiones:
       (--det-backend imx500, SSD COCO on-sensor): misma limitación de personas
       chicas, PENDIENTE de medir en la placa.
 
+  - id: uda-terreno-poc
+    estado: vigente
+    texto: |
+      UDA LoveDA→RescueNet PARA EL TERRENO (V11 4.3): PoC POSITIVA. Baseline de
+      self-training (`tools/uda_terrain.py`): el teacher v2@224 pseudo-etiqueta
+      150 imágenes UAV de RescueNet train (confianza ≥ 0.7, resto ignore) y el
+      tiny de vuelo se fine-tunea 8 épocas (lr 1e-4) con replay de LoveDA 25 %.
+      Medición (CPU): target UAV con **PROXY débil** de terreno (labels
+      originales de RescueNet val remapeados; declarado) 0.2821 → 0.3549
+      (+7.3 pts); retención en la fuente (LoveDA val 300, mismo subconjunto)
+      0.3825 → 0.3790 (−0.35 pts). Por clase en el target: agua +34,
+      vegetación +20, edificio −4, "otro" −13. El student UDA queda como
+      artefacto de investigación (`outputs/best_terrain_tiny_uda.pth`); el
+      vuelo sigue con el tiny base. Integración al pipeline: pendiente.
+      Evidencia: docs/benchmarks/uda_terrain.json.
+
   - id: moe-dano-poc
     estado: vigente
     texto: |

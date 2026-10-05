@@ -1,0 +1,44 @@
+{
+  "protocolo": {
+    "teacher": "outputs/cansat_seg_terrain_v2_224.onnx",
+    "student": "outputs/best_terrain_tiny.pth",
+    "n_train_ucl": 150,
+    "n_val_proxy": 150,
+    "conf_pseudo": 0.7,
+    "epochs": 8,
+    "replay": 0.25,
+    "lr": 0.0001,
+    "proxy": "RescueNet original: 1=agua, 2-5=edificio, 9=arbol, 6/7/8/10=otro, 0=ignorar (proxy DEBIL declarado)"
+  },
+  "target_proxy_antes": {
+    "miou": 0.2821,
+    "por_clase": {
+      "0": 0.5124,
+      "1": 0.4652,
+      "2": 0.2725,
+      "3": 0.0,
+      "4": 0.1606
+    }
+  },
+ "target_proxy_despues": {
+  "miou": 0.3549,
+  "por_clase": {
+   "0": 0.7085,
+   "1": 0.4272,
+   "2": 0.613,
+   "3": 0.0,
+   "4": 0.0256
+  }
+ },
+ "fuente_loveda_val300_antes": 0.3825,
+ "fuente_loveda_val300_despues": 0.379,
+ "delta_fuente": -0.0035,
+ "delta_target": 0.0727,
+ "conclusion": "PoC POSITIVA: el self-training con pseudo-etiquetas del teacher v2 (+replay 25%) sube el target UAV proxy +7.3 pts (0.2821 -> 0.3549) con una pérdida de retención en la fuente de sólo -0.35 pts (0.3825 -> 0.3790). Por clase en el target: agua +34 pts, vegetación +20; edificio -4 y 'otro' -13 (trade-off declarado).",
+ "caveats": [
+  "El target se mide con un PROXY DEBIL de terreno (RescueNet original remapeado), no con GT de terreno real",
+  "n = 150 train / 150 val; 8 epocas; teacher = v2@224 (entrenado en satelital, el gap es justamente el desafio)",
+  "El student UDA es un artefacto de investigacion: el vuelo sigue con el tiny base (decision modelo-vuelo-tiny)",
+  "Integracion al pipeline: pendiente (el ONNX UDA queda en outputs/ para medir en el proximo vuelo/PC)"
+ ]
+}
