@@ -1,43 +1,57 @@
 {
   "generado": "2026-10-05",
+  "actualizado": "2026-10-05 (variante compacta a /8: 16.6 fps)",
   "prueba": "CONVERSION DE NUESTRO MODELO A .rpk (IMX500) — el pendiente F4",
   "cadena": {
     "entorno": "Docker Desktop (WSL2) + python:3.11-slim + edge-mdt[pt] 1.3.0 (PyPI, publico) + JRE 21",
     "pasos": [
       "MCT 2.5.1 PTQ (TPC IMX500 5.0) sobre el tiny (LR-ASPP MV3-S @224) desde best_terrain_tiny.pth, 128 imgs de calibracion de LoveDA Train",
       "torch 2.7.1 CPU + onnxscript (el export con torch 2.14 falla por el exporter dynamo)",
-      "imxconv-pt -i tiny_mct.onnx -o rpk_out --no-input-persistency (25.4 s)",
-      "imx500-package en la Pi (apt imx500-tools) -> network.rpk (1 530 808 B)"
+      "imxconv-pt -i tiny_mct*.onnx -o rpk_out* --no-input-persistency (21-25 s)",
+      "imx500-package en la Pi (apt imx500-tools) -> network_*.rpk"
     ]
   },
-  "memoria": {
-    "reporte": "tiny_mct_MemoryReport.json",
-    "runtime_mb": 3.06,
-    "modelo_mb": 1.21,
-    "uso_total_mb": 4.28,
-    "disponible_mb": 8.0,
-    "utilizacion_pct": 54,
-    "fit_in_chip": true,
-    "input_persistent": false
+  "variantes": {
+    "full_224": {
+      "rpk": "Pi: /home/pi/modelos/network_full.rpk (1 530 808 B)",
+      "salida": "(1, 5, 224, 224) float32 (logits LoveDA)",
+      "memoria": {"uso_mb": 4.28, "disponible_mb": 8.0, "utilizacion_pct": 54, "fit_in_chip": true},
+      "kpi_dnn_ms": 4.491,
+      "kpi_dsp_ms": 3.224,
+      "fps_crudo": 1.2,
+      "fps_con_salida": 0.7,
+      "nota": "la transferencia del tensor de 1 MB/frame es el cuello"
+    },
+    "compacto_8": {
+      "rpk": "Pi: /home/pi/modelos/network_compacto.rpk (1 503 876 B)",
+      "salida": "(1, 5, 28, 28) float32 (logits a /8, SIN upsample final)",
+      "memoria": {"uso_mb": 1.84, "disponible_mb": 8.0, "utilizacion_pct": 23, "fit_in_chip": true},
+      "kpi_dnn_ms": 2.684,
+      "kpi_dsp_ms": 1.924,
+      "fps_crudo": 16.6,
+      "fps_modulo_completo": 7.4,
+      "nota": "salida ~16 KB/frame: el end-to-end deja de estar limitado por la transferencia. El modulo (cansat/imx500_seg.py con resumen por frame) mide 7.4 fps; el lazo crudo 16.6 fps."
+    }
   },
-  "medicion_en_placa": {
-    "fecha": "2026-10-05",
-    "kpi_dnn_ms": 4.491,
-    "kpi_dsp_ms": 3.224,
-    "salida": "(1, 5, 224, 224) float32 (logits LoveDA: vege/buil/wate/bare/othe)",
-    "fps_frame": 1.2,
-    "fps_con_salida": 0.7,
-    "nota": "El NPU computa en ~4.5 ms (~200 fps teoricos) pero el end-to-end esta limitado por la TRANSFERENCIA del tensor de salida (~1 MB/frame). Aun asi es ~2-3x el tiny por CPU (0.33 fps) y con la CPU 100% libre.",
-    "argmax_dist_ejemplo": "escena interior OOD: buil 8.2%, wate 64.1%, othe 27.7% (el modelo corre y da logits coherentes)"
+  "comparacion": {
+    "cpu_tiny_onnx": "0.33 fps (3 s/frame) en la Zero v1",
+    "rpk_full": "0.4-1.2 fps",
+    "rpk_compacto": "7.4-16.6 fps",
+    "cpu_libre": "en todas las variantes rpk la CPU queda 100% libre"
   },
-  "optimizacion_pendiente": [
-    "Salida mas chica: argmax en el grafo (si el converter lo soporta) o menor resolucion de salida",
-    "Con salida ~200 KB el end-to-end subiria a ~5 fps (estimacion)",
-    "Integracion al pipeline como backend alternativo de segmentacion (cansat/imx500_seg.py ya acepta logits 5-clase via argmax)"
+  "tradeoff_npu": "El IMX500 corre UNA red por vez: hoy el vuelo usa el NPU para deteccion (YOLO11n ~6.8 fps) + el tiny de terreno en CPU (0.33 fps). Con el rpk compacto el terreno corre a 7.4-16.6 fps en el NPU, pero habria que elegir red (o alternar fases): la deteccion de personas sigue siendo la tarea critica del vuelo, asi que el setup actual se mantiene y el rpk de terreno queda como opcion/tooling (post-vuelo, demo, futura alternancia).",
+  "optimizacion": [
+    "HECHO: salida a /8 (28x28) en tools/convertir_rpk.py --compacta",
+    "Opcional: argmax en el grafo (si el converter lo soporta) para salir directo en clases",
+    "Opcional: alternar YOLO/terreno por fase de vuelo (requiere recargar red, ~5 s)"
   ],
   "artefactos": [
-    "outputs/rpk_out/packerOut.zip (Pi: /home/pi/packerOut.zip)",
-    "Pi: /home/pi/modelos/network.rpk (1.53 MB)",
-    "outputs/tiny_mct.onnx (intermedio cuantizado)"
+    "outputs/rpk_out*/packerOut.zip",
+    "Pi: /home/pi/modelos/network_full.rpk y network_compacto.rpk",
+    "outputs/tiny_mct.onnx / tiny_mct_compacto.onnx (intermedios)"
+  ],
+  "evidencia": [
+    "docs/evidencia/14_pi_rpk_propio.png (variante full)",
+    "docs/evidencia/14b_pi_rpk_compacto.png (variante compacta, 7.4 fps)"
   ]
 }

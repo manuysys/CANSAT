@@ -88,28 +88,37 @@ imx500-package -i packerOut.zip -o /home/pi/modelos/   # → network.rpk
 El contenedor queda creado con todo instalado: se reusa con
 `docker start cansat-mdt` (y se apaga con `docker stop cansat-mdt`).
 
-Notas medidas: `imxconv-pt` reporta el `MemoryReport` (entra con 54 %);
-MCT avisa de tensores con rango dinámico subóptimo en dos FullyConnected del
-backbone (warnings, no bloquean). El `.rpk` resultante tiene la salida en
-logits `(1, 5, 224, 224)`; `cansat/imx500_seg.py` la convierte a máscara con
-`mask_desde_salida()` y `--clases love` para el resumen por clase de terreno.
+**Variante compacta (recomendada)**: `tools/convertir_rpk.py --compacta`
+exporta el tiny truncado a /8 (sin el upsample final): la salida pasa de
+`(1, 5, 224, 224)` (1 MB/frame) a `(1, 5, 28, 28)` (~16 KB/frame) y el
+end-to-end deja de estar limitado por la transferencia:
+
+| Variante | Memoria | KPI dnn | fps (lazo crudo) | fps (módulo) |
+|---|---|---|---|---|
+| full (224×224) | 4.28/8 MB (54 %) | 4.5 ms | 1.2 | 0.7 |
+| **compacta (/8)** | **1.84/8 MB (23 %)** | **2.6 ms** | **16.6** | **7.4** |
+
+Notas medidas: `imxconv-pt` reporta el `MemoryReport`; MCT avisa de tensores con
+rango dinámico subóptimo en dos FullyConnected del backbone (warnings, no
+bloquean). `cansat/imx500_seg.py` convierte los logits a máscara con
+`mask_desde_salida()` y `--clases love` resume las 5 clases de terreno.
+TRADEOFF: el IMX500 corre UNA red por vez; el vuelo mantiene YOLO11n (NPU) +
+terreno CPU y el rpk compacto queda como opción (ver `MODELS.yaml`).
 
 ## 4. Probar en la Pi (verificado 2026-10-05)
 
 ```bash
-scp network.rpk pi@cansat.local:/home/pi/modelos/
+scp network_compacto.rpk pi@cansat.local:/home/pi/modelos/
 
 # segmentación con NUESTRO modelo (logits 5 clases → máscara LoveDA)
-python -m cansat.imx500_seg --model /home/pi/modelos/network.rpk \
+python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk \
     --clases love --seconds 12 --guardar salida.png
-# → warm-up ~4 s; imprime la cobertura por clase (vegetacion/edificio/agua/…)
+# → warm-up ~5 s; imprime la cobertura por clase (vegetacion/edificio/agua/…)
 ```
 
-Medido: KPI del NPU **4.5 ms**; end-to-end ~0.4-1.2 fps (la transferencia de la
-salida de 5×224×224 es el cuello, no el cómputo). Optimización pendiente:
-salida más chica (argmax en el grafo, si el converter lo soporta, o menor
-resolución de salida) para subir el end-to-end. La CPU queda 100 % libre (eso
-es lo que importa en la Zero).
+Medido con la variante **compacta**: KPI del NPU 2.6 ms; **7.4 fps con el
+módulo completo / 16.6 fps en el lazo crudo** (la CPU queda 100 % libre). La
+variante full (224×224) queda en 0.4-1.2 fps por la transferencia de 1 MB/frame.
 
 ## 5. Si un modelo no entra en 8 MB
 

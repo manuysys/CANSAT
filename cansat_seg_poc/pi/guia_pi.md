@@ -304,20 +304,25 @@ python mission_pipeline.py --camera --frames 5 --no-damage \
 
 ### Segmentación con NUESTRO modelo en el NPU (rpk propio, 2026-10-05)
 
-El tiny de terreno está convertido a `.rpk` y **corre en el NPU** (memoria
-4.28/8 MB, KPI 4.5 ms, CPU libre; end-to-end ~0.4-1.2 fps por la transferencia
-de la salida). Cadena de conversión y comandos exactos:
-`docs/CONVERSION-IMX500.md` §3b (Docker/WSL2 + `edge-mdt[pt]` de PyPI).
+El tiny de terreno está convertido a `.rpk` y **corre en el NPU**. Hay dos
+variantes en `/home/pi/modelos/`:
+
+| rpk | salida | memoria | fps (módulo) |
+|---|---|---|---|
+| `network_compacto.rpk` (recomendado) | (1,5,28,28) | 1.84/8 MB (23 %) | **7.4** (16.6 crudo) |
+| `network_full.rpk` | (1,5,224,224) | 4.28/8 MB (54 %) | 0.7 |
 
 ```bash
-# el rpk está en /home/pi/modelos/network.rpk
-python -m cansat.imx500_seg --model /home/pi/modelos/network.rpk \
+python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk \
     --clases love --seconds 12 --guardar salida.png
 # → imprime la cobertura por clase (vegetacion/edificio/agua/suelo/otro)
 ```
 
-Evidencia: `docs/benchmarks/rpk_propio_tiny.json` y
-`docs/evidencia/14_pi_rpk_propio.png`.
+⚠ El NPU corre UNA red por vez: el vuelo mantiene YOLO11n (detección) + el
+terreno en CPU; este rpk queda como opción/tooling. Cadena de conversión:
+`docs/CONVERSION-IMX500.md` §3b. Evidencia:
+`docs/benchmarks/rpk_propio_tiny.json`, `docs/evidencia/14_pi_rpk_propio.png`
+y `14b_pi_rpk_compacto.png`.
 
 ## 10. Problemas conocidos
 

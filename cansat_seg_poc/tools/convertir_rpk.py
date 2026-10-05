@@ -88,6 +88,31 @@ class LRASPPMobileNetV3Small(nn.Module):
                              align_corners=False)
 
 
+class TinyCompacto(nn.Module):
+    """
+    Tiny truncado a la resolución /8 (sin el upsample final a la entrada).
+
+    La salida pasa de ``(1, 5, 224, 224)`` (1 MB float32) a ``(1, 5, 28, 28)``
+    (~16 KB): la transferencia host es el cuello del rpk completo, así que la
+    versión compacta sube el end-to-end sin cambiar la información real (el
+    modelo ya segmenta a /8; el upsample final no agrega detalle).
+    """
+
+    def __init__(self, base: nn.Module):
+        super().__init__()
+        self.base = base
+
+    def forward(self, x):
+        low = self.base.low(x)
+        high = self.base.high(low)
+        h = self.base.cbr(high)
+        h = h * self.base.scale(high)
+        h = self.base.high_classifier(h)
+        h = F.interpolate(h, size=low.shape[-2:], mode="bilinear",
+                          align_corners=False)
+        return self.base.low_classifier(low) + h
+
+
 def _calib_files(root: Path, n: int) -> list[Path]:
     files = sorted(root.glob("*/images_png/*.png"))
     if not files:
@@ -104,6 +129,9 @@ def main() -> int:
     ap.add_argument("--calib-dir", default="dataset/loveda_remapped/Train")
     ap.add_argument("--calib-imgs", type=int, default=128)
     ap.add_argument("--tpc-version", default="5.0")
+    ap.add_argument("--compacta", action="store_true",
+                    help="salida a /8 (28x28) en vez de 224x224: ~60x menos "
+                         "transferencia host (el cuello del rpk completo)")
     ap.add_argument("--out", default="outputs/tiny_mct.onnx")
     args = ap.parse_args()
 
@@ -123,9 +151,12 @@ def main() -> int:
           if isinstance(state, dict) else state)
     model.load_state_dict(sd, strict=False)
     model.eval()
+    if args.compacta:
+        model = TinyCompacto(model).eval()
     with torch.no_grad():
         y = model(torch.zeros(1, 3, SIZE, SIZE))
-    print("modelo cargado, salida:", tuple(y.shape))
+    print("modelo cargado, salida:", tuple(y.shape),
+          "(compacta)" if args.compacta else "")
 
     tpc = get_target_platform_capabilities(args.tpc_version)
     print(f"TPC {args.tpc_version} cargado; PTQ...", flush=True)

@@ -194,9 +194,16 @@ decisiones:
       logits (C,H,W) y `--clases love` resume las 5 clases de terreno.
       Herramienta: `tools/convertir_rpk.py`. Evidencia:
       docs/benchmarks/rpk_propio_tiny.json +
-      docs/evidencia/14_pi_rpk_propio.png. PENDIENTE: salida más chica
-      (argmax/menor resolución) para subir el end-to-end e integrarlo al
-      pipeline de vuelo como opción.
+      docs/evidencia/14_pi_rpk_propio.png.
+      VARIANTE COMPACTA (misma fecha): con `tools/convertir_rpk.py --compacta`
+      la salida queda a /8 (28×28, ~16 KB/frame en vez de 1 MB) → memoria
+      1.84/8 MB (23 %), KPI 2.6 ms y **7.4-16.6 fps end-to-end** (módulo
+      completo / lazo crudo) contra 0.4-1.2 del full y 0.33 del CPU. Evidencia:
+      docs/evidencia/14b_pi_rpk_compacto.png. TRADEOFF: el IMX500 corre UNA red
+      por vez; hoy el NPU hace detección (YOLO ~6.8 fps) + terreno en CPU
+      (0.33 fps). El rpk compacto de terreno deja la opción de terreno en NPU
+      (o alternar fases), pero la detección de personas es la tarea crítica:
+      el setup de vuelo se mantiene y el rpk queda como opción/tooling.
 
   - id: capa-satelital-opcional
     estado: vigente

@@ -698,14 +698,27 @@ rpk_propios:
     herramienta: "tools/convertir_rpk.py"
     licencia: "propia (MIT del repo)"
     estado: "CORRE EN EL NPU (validado 2026-10-05; la CPU queda libre)"
+    variantes:
+      full_224:
+        archivo: "Pi: /home/pi/modelos/network_full.rpk (1 530 808 B)"
+        salida: "(1, 5, 224, 224) float32 (logits LoveDA)"
+        memoria: "4.28 MB / 8 MB (54 %); Runtime 3.06 MB + Modelo 1.21 MB"
+        kpi_npu_ms: "dnn 4.49 / dsp 3.22"
+        end_to_end_fps: "0.4-1.2 (limitado por la transferencia de la salida 5x224x224)"
+      compacto_8:
+        archivo: "Pi: /home/pi/modelos/network_compacto.rpk (1 503 876 B)"
+        como: "tools/convertir_rpk.py --compacta (sin upsample final)"
+        salida: "(1, 5, 28, 28) float32 (~16 KB/frame)"
+        memoria: "1.84 MB / 8 MB (23 %)"
+        kpi_npu_ms: "dnn 2.68 / dsp 1.92"
+        end_to_end_fps: "7.4 (modulo completo) / 16.6 (lazo crudo)"
     metricas:
-      memoria: "4.28 MB / 8 MB (54 %); Runtime 3.06 MB + Modelo 1.21 MB"
-      kpi_npu_ms: "dnn 4.49 / dsp 3.22"
-      end_to_end_fps: "0.4-1.2 (limitado por la transferencia de la salida 5x224x224)"
-      salida: "(1, 5, 224, 224) float32 (logits LoveDA)"
-      evidencia: "docs/benchmarks/rpk_propio_tiny.json + docs/evidencia/14_pi_rpk_propio.png"
+      evidencia: "docs/benchmarks/rpk_propio_tiny.json + docs/evidencia/14_pi_rpk_propio.png y 14b_pi_rpk_compacto.png"
     notas: |
       Decisión `rpk-propio-tiny`. Se usa con `cansat/imx500_seg.py --clases love`
-      (`mask_desde_salida()` convierte los logits a máscara). PENDIENTE: salida
-      más chica (argmax en el grafo o menor resolución) para subir el
-      end-to-end; integrarlo al pipeline de vuelo como opción.
+      (`mask_desde_salida()` convierte los logits a máscara).
+      TRADEOFF del NPU: el IMX500 corre UNA red por vez. El vuelo mantiene
+      YOLO11n en el NPU (detección, tarea crítica) + el tiny de terreno en CPU;
+      el rpk compacto de terreno queda como opción (terreno en NPU a 7-17 fps)
+      o para alternar por fase. Optimización restante (opcional): argmax en el
+      grafo para salir directo en clases.
