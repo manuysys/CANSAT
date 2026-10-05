@@ -360,13 +360,13 @@ V10-7 (augmentación UAV): **rechazada con evidencia** — fine-tune 0.374 →
 0.265 en limpio (decisión `aug-uav-dano`, `docs/benchmarks/aug_uav_dano.json`);
 `sombras`/`vibracion` quedan como corrupciones 7-8 de la suite.
 
-Diferido a después del 5-9 oct (nada de esto entra antes de presentar):
+## Estado de los diferidos (actualizado 2026-10-04)
 
-| # | Propuesta | Condición de entrada |
+| # | Propuesta | Estado |
 |---|---|---|
-| 1 | A/B correcto de aug UAV | Mismo init + misma receta ± aug, schedule largo, `escala` menos agresiva como augment (0.7-0.9 en vez de 0.45-0.60), lr de fine-tune separado |
-| 2 | Mixture of Experts (daño) | Solo si el perfil rápido no alcanza en la Pi medida |
-| 3 | UDA LoveDA→RescueNet (terreno) | Proyecto de investigación con GPU y tiempo |
-| 4 | Difusión/LoRA para clases raras | GPU + validación FID; volcán tiene 41 muestras en xBD Tier 3 |
-| 5 | Capas Sentinel Hub/WMS en la estación | Incompatible con el modo offline del jurado: solo como overlay opcional con red |
-| 6 | Continual learning con replay | Requiere 3-5 vuelos reales anotados (la cola de active learning ya está lista) |
+| 1 | A/B correcto de aug UAV | 🔄 **EN CURSO** (2026-10-04): `train_damage_v3.py --aug-uav` con escala suave 0.7-0.9 (`--aug-escala-min/max`), mismo init (`best_damage_v3_bal.pth`) y misma receta (xBD×4 + 4k RescueNet, loss rescue, lr 1e-4) en los DOS brazos; 6 épocas cada uno. Resultado en `docs/benchmarks/aug_uav_dano_ab.json` |
+| 2 | Mixture of Experts (daño) | ✅ **PoC POSITIVA** (2026-10-04): `tools/moe_damage.py`, compuerta logística; +4.5 pts (seed 42) y +2.4 pts (seed 7) sobre el mejor experto fijo; captura ~85-95% del oráculo. Decisión `moe-dano-poc`; integración al consenso post-vuelo pendiente |
+| 3 | UDA LoveDA→RescueNet (terreno) | ✅ **PoC POSITIVA** (2026-10-04): `tools/uda_terrain.py` (self-training con teacher v2 + replay); +7.3 pts en el proxy UAV con −0.35 pts de retención en la fuente. Decisión `uda-terreno-poc`; el vuelo sigue con el tiny base |
+| 4 | Difusión/LoRA para clases raras | ⏸️ **NO factible en la ventana** (2026-10-04): `diffusers`/`peft` no instalados, hace falta un modelo preentrenado (~2.5-4 GB), entrenar LoRA sobre 41 muestras del volcán (horas de GPU, ocupada por el A/B) y validar con FID + re-entrenar para medir beneficio. Plan concreto: instalar diffusers+peft, SD-Turbo como base, LoRA por clase rara (volcán xBD Tier 3), FID vs reales y A/B de daño con las sintéticas. Requiere GPU libre y ~1-2 días |
+| 5 | Capas Sentinel Hub/WMS en la estación | ✅ **HECHO** (2026-10-04): capa satelital opcional (ESRI World Imagery, sin API key) cacheada en `outputs/satellite/`, se pide sólo al click y sin red avisa sin romper. Decisión `capa-satelital-opcional`; smoke TODO VERDE |
+| 6 | Continual learning con replay | ⛔ **BLOQUEADO**: requiere 3-5 vuelos reales anotados; la cola de active learning ya está lista (`cansat/consultas.py` + JSONL con `uncert`), se activa con datos reales |
