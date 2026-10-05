@@ -37,6 +37,7 @@ import torch                                                        # noqa: E402
 from torch.utils.data import DataLoader                             # noqa: E402
 
 from cansat.checkpoints import load_into                            # noqa: E402
+from cansat.moe import FEATURES                                     # noqa: E402
 from cansat.xbd import split_por_desastre                            # noqa: E402
 from train import DeepLabV3PlusMobileNetV2                          # noqa: E402
 from train_damage_v3 import XBDv3                                    # noqa: E402
@@ -115,6 +116,9 @@ def main() -> int:
     ap.add_argument("--max-por-manifest", type=int, default=150)
     ap.add_argument("--cpu", action="store_true")
     ap.add_argument("--out", default="docs/benchmarks/moe_damage.json")
+    ap.add_argument("--guardar-gate", default="outputs/moe_gate.json",
+                    help="artefacto JSON del gate para el post-vuelo "
+                         "(lo consume cansat/moe.py)")
     args = ap.parse_args()
 
     from cansat.seed import set_seed
@@ -197,6 +201,25 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(res, ensure_ascii=False, indent=2),
                    encoding="utf-8")
+
+    # Artefacto del gate para la integración en post-vuelo (cansat/moe.py).
+    gate_out = Path(args.guardar_gate)
+    gate_out.parent.mkdir(parents=True, exist_ok=True)
+    gate_out.write_text(json.dumps({
+        "features": list(FEATURES),
+        "scaler": {"mean": [float(v) for v in scaler.mean_],
+                   "scale": [float(v) for v in scaler.scale_]},
+        "coef": [float(v) for v in gate.coef_[0]],
+        "intercept": float(gate.intercept_[0]),
+        "meta": {
+            "generado": time.strftime("%Y-%m-%d"),
+            "n_tiles": len(items), "n_train": len(train), "n_test": len(test),
+            "seed": args.seed, "acierto_eleccion": round(acc_gate, 4),
+            "experto_a": args.experto_a, "experto_b": args.experto_b,
+            "iou_compuerta": round(g, 4), "iou_mejor_fijo": round(mejor_fijo, 4),
+        },
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  → gate: {gate_out}")
     print("=" * 64)
     print(f"  A (xBD) solo      : IoU {a:.4f}")
     print(f"  B (two-stage UAV) : IoU {b:.4f}")

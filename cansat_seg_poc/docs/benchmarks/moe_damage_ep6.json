@@ -1,0 +1,24 @@
+{
+  "n_tiles": 300,
+  "n_train": 150,
+  "n_test": 150,
+  "experto_a": {
+    "ckpt": "outputs/best_damage3.pth",
+    "iou_medio_test": 0.4395046943457525
+  },
+  "experto_b": {
+    "ckpt": "outputs/best_damage_v3_bal_ep6.pth",
+    "iou_medio_test": 0.49042461374790625
+  },
+  "promedio": {
+    "iou_medio_test": 0.49111618864067585
+  },
+  "compuerta": {
+    "iou_medio_test": 0.5127808302921136,
+    "acierto_eleccion": 0.8267
+  },
+  "oraculo": {
+    "iou_medio_test": 0.5193806206286311
+  },
+  "veredicto": "La compuerta SUPERA al mejor fijo (0.5128 vs 0.4904)"
+}

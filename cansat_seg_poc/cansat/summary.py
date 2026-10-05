@@ -121,6 +121,7 @@ def build_summary(
     nota: str | None = None,
     mision: str = MISION,
     supuestos_perdidas: dict[str, float] | None = None,
+    moe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Arma el ``summary.json`` canónico a partir de las filas de telemetría.
@@ -215,6 +216,8 @@ def build_summary(
         # Confianza limitada por estrés ambiental medido (aditivo: los
         # lectores viejos lo ignoran; ver decisión `confianza-estres`).
         "confianza_limitada": confianza,
+        # MoE de daño (V11 4.2, aditivo): qué experto eligió el gate por frame.
+        **({"moe_dano": moe} if moe else {}),
         "archivos": {
             "rutas": dict(rutas or {}),
             "conteos": dict(conteos or {}),

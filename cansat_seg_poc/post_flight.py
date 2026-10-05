@@ -64,6 +64,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cv2
 from cansat import indices as IDX
 from cansat import masks as MK
+from cansat import moe as MOE
 from cansat import nodata as ND
 from cansat import onnxio
 from cansat import preprocess as PP
@@ -81,6 +82,13 @@ DAMAGE2 = "outputs/cansat_damage_v3_bal_ep6.onnx"
 # El siamés está DESACTIVADO por defecto: los pesos del repo están marcados
 # ROTO en MODELS.yaml (alucinaban daño sin cambio). Se activa con --siamese-onnx.
 SIAMESE = ""
+
+
+def _prob_danado(logits: np.ndarray) -> np.ndarray:
+    """Softmax por píxel del canal 'dañado' (2) de logits (1, C, H, W)."""
+    x = logits[0] - logits[0].max(0, keepdims=True)
+    e = np.exp(x)
+    return e[2] / np.maximum(e.sum(0), 1e-9)
 FLOOD_ONNX = "outputs/cansat_flood_specialist_224.onnx"   # F3: 224 px, IoU 0.489
 FIRE_ONNX = "outputs/cansat_fire_smoke.onnx"              # F3: fuego/humo
 SEVERITY_ONNX = "outputs/cansat_severity.onnx"            # F2b: colapso medido
@@ -282,6 +290,11 @@ def main(argv=None) -> int:
                          "(el --enhance estaba hardcodeado y no se podía apagar)")
     ap.add_argument("--no-pipeline", action="store_true",
                     help="no re-correr mission_pipeline.py (usar el CSV que ya existe)")
+    ap.add_argument("--moe-gate", default="outputs/moe_gate.json",
+                    help="gate del MoE de daño (V11 4.2); si no existe, se usa "
+                         "el max de los expertos como antes")
+    ap.add_argument("--no-moe", action="store_true",
+                    help="desactivar el MoE aunque exista el gate")
     ap.add_argument("--siamese-onnx", default=None,
                     help="siamés de cambio pre/post. Desactivado por defecto: los "
                          "pesos del repo están ROTO (ver MODELS.yaml).")
@@ -417,8 +430,17 @@ def main(argv=None) -> int:
     else:
         sess_siam = None
 
+    # MoE de daño (V11 4.2): gate aprendido que elige experto por frame.
+    gate = None if args.no_moe else MOE.cargar_gate(args.moe_gate)
+    if gate is not None:
+        print(f"      MoE activo: gate {args.moe_gate} "
+              f"(experto B {Path(DAMAGE2).name})")
+    elif not args.no_moe:
+        print(f"      MoE: sin gate en {args.moe_gate} → max de los expertos")
+
     dan: dict[str, float] = {}
     diag_por_frame: dict[str, str] = {}
+    moe_por_frame: dict[str, str] = {}
     fuego: dict[str, float] = {}
     humo: dict[str, float] = {}
     colapso: dict[str, float] = {}
@@ -442,14 +464,20 @@ def main(argv=None) -> int:
             bmask = np.zeros((320, 320), dtype=bool)
         n_valid = max(1, int(valid.sum()))
 
-        pd1 = np.argmax(sess_d.run({"input": tensor})[0], axis=0)
+        log1 = sess_d.run({"input": tensor})[0]
+        pd1 = np.argmax(log1, axis=0)
         pct_dan = float(((pd1 == 2) & valid).sum()) / n_valid * 100.0
 
         pd2 = pf = pfr = psv = pvias = None
         pct_dan2 = pct_siam = 0.0
+        prob1 = prob2 = None
         if sess_d2:
-            pd2 = np.argmax(sess_d2.run({"input": tensor})[0], axis=0)
+            log2 = sess_d2.run({"input": tensor})[0]
+            pd2 = np.argmax(log2, axis=0)
             pct_dan2 = float(((pd2 == 2) & bmask).sum()) / n_valid * 100.0
+            if gate is not None:
+                prob1 = _prob_danado(log1)
+                prob2 = _prob_danado(log2)
         if sess_siam and base_tensor is not None:
             ps = np.argmax(sess_siam.run({"pre": base_tensor, "post": tensor})[0], axis=0)
             pct_siam = float(((ps == 2) & valid).sum()) / n_valid * 100.0
@@ -504,7 +532,18 @@ def main(argv=None) -> int:
                 "vias": (pvias, valid),
             })
 
-        dan[src] = round(max(pct_dan, pct_dan2, pct_siam), 1)
+        # MoE: con gate, el % de daño es el del experto ELEGIDO; sin gate, el
+        # max de siempre (comportamiento intacto).
+        experto_moe = None
+        if gate is not None and prob2 is not None:
+            experto_moe, _pb, _feats = MOE.elegir(gate, prob1, prob2, tensor)
+            moe_por_frame[src] = experto_moe
+        if experto_moe == "a":
+            dan[src] = round(pct_dan, 1)
+        elif experto_moe == "b":
+            dan[src] = round(pct_dan2, 1)
+        else:
+            dan[src] = round(max(pct_dan, pct_dan2, pct_siam), 1)
         pcts = [float(r.get(k) or 0.0) for k in ("veg", "bui", "wat", "bare", "oth")]
         d, _a = IDX.diagnose(pcts, pct_dan, pct_dan2, pct_siam,
                              pct_flood=pct_flood, pct_flood_water=pct_fw,
@@ -513,6 +552,12 @@ def main(argv=None) -> int:
         diag_por_frame[src] = d
     print(f"      {len(dan)} frames · daño medio "
           f"{(sum(dan.values()) / len(dan)) if dan else 0.0:.1f}%")
+    n_moe_a = n_moe_b = 0
+    if moe_por_frame:
+        n_moe_a = sum(1 for v in moe_por_frame.values() if v == "a")
+        n_moe_b = len(moe_por_frame) - n_moe_a
+        print(f"      MoE: experto A (xBD) en {n_moe_a} · "
+              f"experto B (UAV) en {n_moe_b}")
     if fuego:
         print(f"      fuego medio {sum(fuego.values()) / len(fuego):.2f}% · "
               f"humo medio {sum(humo.values()) / len(humo):.2f}%")
@@ -670,6 +715,12 @@ def main(argv=None) -> int:
         conteos=conteos,
         nota=("Post-vuelo generado por post_flight.py"
               + (" · ensemble B5" if b5_pct else "")),
+        moe=({"gate": args.moe_gate,
+              "experto_por_frame": moe_por_frame,
+              "n_experto_a": n_moe_a, "n_experto_b": n_moe_b,
+              "nota": ("Gate aprendido V11 4.2: elige experto por frame; sin "
+                       "gate se usa el max de los expertos.")}
+             if moe_por_frame else None),
         supuestos_perdidas={
             "pop_density": args.pop_density,
             "occupancy": args.occupancy,

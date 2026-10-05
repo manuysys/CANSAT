@@ -211,6 +211,24 @@ decisiones:
       artefacto de investigación (`outputs/best_terrain_tiny_uda.pth`).
       Evidencia: docs/benchmarks/uda_terrain.json.
 
+  - id: moe-dano-integrado
+    estado: vigente
+    texto: |
+      MoE DE DAÑO INTEGRADO AL POST-VUELO (V11 4.2): la compuerta del PoC se
+      serializa a `outputs/moe_gate.json` (`tools/moe_damage.py
+      --guardar-gate`) y `cansat/moe.py` la aplica en `post_flight.py`: por
+      frame se calcula el softmax del canal "dañado" de ambos expertos
+      (principal xBD + two-stage ep6), se arman las 7 features y la compuerta
+      elige experto; el % de daño del frame es el del experto ELEGIDO (sin
+      gate: el max de los expertos, comportamiento intacto). El resumen agrega
+      el bloque aditivo `moe_dano` (experto_por_frame + conteos). Gate
+      re-entrenado con el ep6 de producción: **0.5128 vs 0.4904** del mejor
+      fijo (+2.2 pts; oráculo 0.5194; acierto de elección 82.7 %; 300 tiles) —
+      evidencia docs/benchmarks/moe_damage_ep6.json. Opciones `--moe-gate PATH`
+      y `--no-moe`. Validado en la regresión E2E (3 frames; el gate eligió A en
+      las 3 frames OOD) y 4 tests nuevos. El artefacto del gate NO se versiona
+      (outputs/): se regenera con el comando documentado.
+
   - id: moe-dano-poc
     estado: vigente
     texto: |
