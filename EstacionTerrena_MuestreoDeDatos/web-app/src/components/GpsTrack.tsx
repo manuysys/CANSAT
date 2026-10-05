@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Scramble } from '@/components/Scramble'
 import { useMission } from '@/store/mission'
 import { gpsDe } from '@/components/Sampling'
+import { SatelliteCard } from '@/components/SatelliteCard'
 import { num } from '@/lib/format'
 
 const M_POR_GRADO_LAT = 111320
@@ -165,6 +166,7 @@ export function GpsTrack() {
           Norte arriba · escala real · punto = altitud · naranja ≥ {DENS_ALTA} hab/km²
           (WorldPop) · rojo = alerta · click abre el frame · offline
         </p>
+        <SatelliteCard />
       </Card>
     </motion.div>
   )

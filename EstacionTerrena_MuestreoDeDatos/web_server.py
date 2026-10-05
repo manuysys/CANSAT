@@ -62,6 +62,8 @@ MISSION_DIR = ROOT / "outputs" / "mission"
 ENTREGA_DIR = ROOT / "entrega"
 # Grad-CAM: PNGs de explicabilidad generados por el repo de vuelo (cache local).
 GRADCAM_DIR = ROOT / "outputs" / "gradcam"
+# Capa satelital opcional (V11 4.5): caché de mosaicos ESRI (offline-safe).
+SAT_DIR = ROOT / "outputs" / "satellite"
 
 # Consulta Terrestre: el motor simbólico vive en el repo de vuelo (cansat/consultas.py)
 # y se invoca por subproceso para que esta estación siga siendo stdlib-only.
@@ -109,6 +111,7 @@ def _configure(root: Path) -> None:
     """
     global ROOT, WEB_DIR, DIST_DIR, TELEMETRY_CSV, CORRIDOR_MAP, SUMMARY_JSON
     global MISSION_DIR, ENTREGA_DIR, GRADCAM_DIR, BUCKETS, TELEMETRY_JSONL, FLIGHT_ROOT
+    global SAT_DIR
 
     # ¿El FLIGHT_ROOT era el default relativo a la ROOT vieja? Se mide ANTES de
     # reasignar ROOT; si no, la comparación se hace contra la ROOT nueva y el
@@ -121,6 +124,7 @@ def _configure(root: Path) -> None:
     MISSION_DIR = ROOT / "outputs" / "mission"
     ENTREGA_DIR = ROOT / "entrega"
     GRADCAM_DIR = ROOT / "outputs" / "gradcam"
+    SAT_DIR = ROOT / "outputs" / "satellite"
     TELEMETRY_CSV = MISSION_DIR / "telemetry.csv"
     TELEMETRY_JSONL = MISSION_DIR / "telemetry.jsonl"
     CORRIDOR_MAP = ROOT / "outputs" / "corridor_map.jpg"
@@ -188,6 +192,56 @@ FAVICON_SVG = (
 # --------------------------------------------------------------------------- #
 # Utilidades de lectura de artefactos
 # --------------------------------------------------------------------------- #
+
+# ── Capa satelital OPCIONAL (V11 4.5) ────────────────────────────────────
+# La estación es offline-first: esto se pide SOLO si el operador hace click.
+# Fuente pública sin API key (ESRI World Imagery). Si no hay red devuelve
+# ok=false sin romper; si ya hay caché, funciona offline.
+SAT_DIR = ROOT / "outputs" / "satellite"
+
+
+def fetch_satellite(lat: float, lon: float, span_m: float = 2500.0,
+                    size: int = 512) -> dict:
+    """Mosaico 2x2 de World Imagery centrado en (lat, lon), cacheado."""
+    import io
+    import math
+
+    key = f"sat_{lat:.4f}_{lon:.4f}_{int(span_m)}_{size}.jpg"
+    dest = SAT_DIR / key
+    if dest.is_file():
+        return {"ok": True, "img": _rel(dest), "fuente": "ESRI World Imagery",
+                "cache": True}
+    try:
+        from urllib.request import Request, urlopen
+
+        from PIL import Image
+
+        mpp = span_m / size
+        z = int(round(math.log2(156543.03 * math.cos(math.radians(lat)) / mpp)))
+        z = max(10, min(18, z))
+        n = 2
+        xt = int((lon + 180.0) / 360.0 * (2 ** z))
+        yt = int((1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi)
+                 / 2.0 * (2 ** z))
+        x0, y0 = xt - n // 2, yt - n // 2
+        canvas = Image.new("RGB", (256 * n, 256 * n))
+        for dy in range(n):
+            for dx in range(n):
+                url = ("https://server.arcgisonline.com/ArcGIS/rest/services/"
+                       f"World_Imagery/MapServer/tile/{z}/{y0 + dy}/{x0 + dx}")
+                req = Request(url, headers={"User-Agent": "CanSatLB135/1.0"})
+                with urlopen(req, timeout=6) as r:
+                    tile = Image.open(io.BytesIO(r.read())).convert("RGB")
+                canvas.paste(tile, (256 * dx, 256 * dy))
+        canvas = canvas.resize((size, size), Image.LANCZOS)
+        SAT_DIR.mkdir(parents=True, exist_ok=True)
+        canvas.save(dest, quality=88)
+        return {"ok": True, "img": _rel(dest), "fuente": "ESRI World Imagery",
+                "z": z, "cache": False}
+    except Exception as e:  # sin red / tiles caídos: no romper la estación
+        return {"ok": False,
+                "error": f"sin red o tiles no disponibles ({type(e).__name__})"}
+
 
 def _rel(p: Path) -> str:
     """Ruta relativa a ROOT en formato POSIX (la web la monta como /img/<rel>)."""
@@ -1046,6 +1100,19 @@ class GroundStationHandler(BaseHTTPRequestHandler):
             data = read_jsonl_extras()
             self._send_json({"ok": True, "samples": data["extras"],
                              "resumen": data["resumen"]})
+            return
+
+        if path == "/api/satellite":
+            # Capa satelital OPCIONAL (V11 4.5): se pide sólo al hacer click.
+            qs = parse_qs(parsed.query)
+            try:
+                lat = float((qs.get("lat") or ["0"])[0])
+                lon = float((qs.get("lon") or ["0"])[0])
+                span = float((qs.get("span_m") or ["2500"])[0])
+            except ValueError:
+                self._send_json({"ok": False, "error": "lat/lon inválidos"})
+                return
+            self._send_json(fetch_satellite(lat, lon, span))
             return
 
         if path == "/api/consulta":

@@ -138,6 +138,20 @@ decisiones:
       (--det-backend imx500, SSD COCO on-sensor): misma limitación de personas
       chicas, PENDIENTE de medir en la placa.
 
+  - id: capa-satelital-opcional
+    estado: vigente
+    texto: |
+      CAPA SATELITAL OPCIONAL (V11 4.5): la estación sigue siendo offline-first.
+      La capa se pide SOLO al hacer click ("Contexto satelital" dentro de la
+      traza GPS) y el server la resuelve con ESRI World Imagery (público, sin
+      API key), cacheando el mosaico 2×2 en `outputs/satellite/`: la primera vez
+      requiere red, después funciona offline. Sin red devuelve `ok=false` y la
+      UI avisa sin romper. Endpoint `GET /api/satellite?lat=&lon=&span_m=` +
+      componente `SatelliteCard`. Validado (2026-10-04): primera llamada ESRI
+      (cache=false), segunda cache=true; smoke 64 asserts TODO VERDE con el
+      build nuevo. Evidencia: EstacionTerrena_MuestreoDeDatos/README-web.md
+      §4/§5.
+
   - id: uda-terreno-poc
     estado: vigente
     texto: |

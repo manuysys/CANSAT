@@ -96,6 +96,7 @@ sin error; sin `telemetry.csv` la app queda en estados vacíos con el dot ámbar
 | `GET /api/consulta?q=…&poly=…` | **Consulta Terrestre**: consultas simbólicas sobre las máscaras de clase (área, conteo con buffer, fracción de longitud, distancia, existencia y personas con posición desde `telemetry.jsonl`). `poly` es un polígono `[[lon,lat],…]` opcional |
 | `GET /api/events` | **SSE**: push al instante cuando cambian `telemetry.csv` o `summary.json` (el polling de 3 s queda de red) |
 | `GET /api/summary` · `GET /api/health` | contrato crudo · estado del servidor |
+| `GET /api/satellite?lat=&lon=&span_m=` | **Capa satelital OPCIONAL** (ESRI World Imagery, sin API key): mosaico 2×2 cacheado en `outputs/satellite/`. Offline-safe: la primera vez requiere red, después sirve de caché; sin red devuelve `ok=false` |
 | `GET /img/<relpath>` | Proxy de imágenes sin caché (vuelos live) |
 | `GET /` | `web-app/dist/index.html` si existe, si no `web/index.html` |
 
@@ -146,6 +147,14 @@ python tools/vivo_pi.py --once         # una pasada (verificación)
   `summary.json` viejo) para que el panel no mezcle vuelos.
 - Sin `summary.json` (vuelo recién capturado, sin post-vuelo) la web muestra
   los frames igual; el resumen aparece cuando la PC corre `post_flight.py`.
+
+### Contexto satelital opcional (V11 4.5)
+
+La estación es offline-first: la capa satelital **se pide sólo al hacer click**
+en "Contexto satelital (opcional)" dentro de la traza GPS. El server resuelve un
+mosaico ESRI World Imagery (público, sin API key) centrado en la trayectoria y lo
+cachea en `outputs/satellite/`: la primera vez requiere red; después funciona
+offline. Sin red la UI avisa y el resto de la estación no se afecta.
 
 ---
 
