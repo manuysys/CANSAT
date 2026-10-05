@@ -238,4 +238,5 @@ baudios sea 115200.
 - Datasheet Heltec WiFi LoRa 32 V3 (pinout J2/J3): `resource.heltec.cn`
 - Protocolo LB135 (contrato de datos): `cansat/protocol.py`
 - Guía de la Pi (paso a paso en la placa): `pi/guia_pi.md`
+- Checklist de armado e integración (banco → pre-vuelo): `docs/CHECKLIST-ARMADO.md`
 - Alineación con el DPD (qué dato alimenta qué requisito): `docs/ALINEACION-DPD.md`

@@ -18,6 +18,10 @@
   mini de 22 pines a la Pi Zero, extremo estándar de 15 pines a la cámara
 - PC con [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
 
+> Para el armado FÍSICO con la Heltec, sensores y batería:
+> `docs/CHECKLIST-ARMADO.md` (inventario, conexionado, pruebas de banco y
+> pre-vuelo).
+
 ## 1. Flashear la microSD (en la PC)
 
 1. Imager → **Choose Device**: Raspberry Pi Zero W.
