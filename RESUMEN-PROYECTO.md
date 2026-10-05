@@ -425,8 +425,11 @@ deterministas sobre máscaras y telemetría.
    **Operación**: ✅ salud de la Pi (`pi_health.json`, 40-42 °C sin
    throttling), autostart systemd (`pi/cansat-vuelo.service`) y pull en vivo
    Pi→estación (`pi/servidor_vivo.py` + `tools/vivo_pi.py`) validados.
-3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: requiere converter
-   Sony en Linux (se intenta con Docker Desktop/WSL2).
+3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: ✅ **HECHA (2026-10-05)**
+   — cadena Docker/WSL2 con `edge-mdt[pt]` de PyPI (público, sin registro); el
+   tiny de terreno corre en el NPU (`network.rpk`: memoria 4.28/8 MB = 54 %,
+   KPI 4.5 ms, CPU libre). Pendiente: salida más chica para subir el end-to-end
+   (0.4-1.2 fps) e integrarlo como opción del pipeline.
 4. **INT8**: re-medición QDQ estático en la placa con `cv2.dnn` (2026-10-04)
    para decidir FP32 vs INT8 con número medido.
 5. Checklist de simulacro: ✅ **firmado** (Juan Manuel Iglesias, 2026-10-03,

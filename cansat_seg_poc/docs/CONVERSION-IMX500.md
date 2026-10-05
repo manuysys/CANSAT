@@ -1,15 +1,19 @@
-# Conversión a IMX500 (.rpk) — guía para la PC Linux (F4)
+# Conversión a IMX500 (.rpk) — guía de la cadena verificada (F4)
 
-> **Estado**: guía escrita y verificada en cuanto a *requisitos del conversor*
-> (los valida `audit_imx500.py`), pero **NO ejecutada** todavía: requiere la PC
-> Linux con el tooling de Sony (Edge-MDT). Los comandos exactos pueden variar
-> con la versión del converter — verificar con `imxconv-pt --help`.
+> **Estado: EJECUTADA el 2026-10-05.** Nuestro tiny de terreno corre en el NPU
+> del IMX500: `network.rpk` (1.53 MB) en `/home/pi/modelos/`, memoria **4.28 MB
+> de 8 MB (54 %)**, KPI del NPU **4.5 ms**, end-to-end ~0.4-1.2 fps (limitado
+> por la transferencia de la salida de 5×224×224; la CPU queda libre).
+> Evidencia: `docs/benchmarks/rpk_propio_tiny.json` +
+> `docs/evidencia/14_pi_rpk_propio.png`. La cadena corre en **Docker Desktop
+> (WSL2)**: el tooling de Sony es público en PyPI (`edge-mdt[pt]`,
+> `imx500-converter`) — no hace falta registro ni PC Linux nativa.
 
 ## 0. Qué se convierte y en qué orden
 
 | Prioridad | Modelo ONNX | Tamaño FP32 | Por qué |
 |---|---|---|---|
-| 1 | `cansat_seg_terrain_tiny_224.onnx` | 4.3 MB | El candidato NPU: entra holgado en el límite de <8 MB |
+| 1 | `cansat_seg_terrain_tiny_224.onnx` | 4.3 MB | ✅ **CONVERTIDO (2026-10-05) → `network.rpk`** (memoria 4.28/8 MB; KPI 4.5 ms) |
 | 2 | `cansat_flood_specialist_224.onnx` | 51 MB | FP32 no entra; **requiere cuantización INT8** (~12.8 MB de pesos → no entra igual; ver §5) |
 | 3 | `cansat_fire_smoke.onnx` | 51 MB | Ídem flood |
 | 4 | `cansat_damage_v3_bal_ep6.onnx` / `cansat_severity.onnx` | 51 MB | Ídem; el daño/seguimiento puede quedar en `cv2.dnn` |
@@ -53,38 +57,59 @@ out/  (grafo compilado + pesos)
 packerOut.zip  →  network.rpk
 ```
 
-Pasos típicos (ajustar a la versión):
+### 3b. Comandos EXACTOS que funcionaron (2026-10-05, Docker/WSL2)
 
 ```bash
-# 1) Cuantizar con MCT (target Sony IMX500)
-python -m model_compression_toolkit.ptq \
-    --model model.onnx --target imx500 --output model_mct.onnx
+# 0) contenedor con el repo montado
+docker run -d --name cansat-mdt -v "<repo>:/work" -w /work python:3.11-slim sleep infinity
 
-# 2) Compilar con el converter de Sony (imagen Docker Edge-MDT)
-imxconv-pt -i model_mct.onnx -o out/
-#    (o dentro del contenedor: docker run --rm -v $PWD:/work sony/imx500-converter ...)
+# 1) tooling: edge-mdt[pt] de PyPI + torch CPU 2.7 (con 2.14 el export de MCT
+#    falla por el exporter dynamo) + onnxscript (lo pide torch 2.7+) + java
+#    (el compilador DSP de Sony usa java; sin él: "sdspconv exited 127")
+docker exec cansat-mdt bash -c "pip install --no-cache-dir 'edge-mdt[pt]'"
+docker exec cansat-mdt bash -c "pip install --no-cache-dir 'torch==2.7.1' \
+    'torchvision==0.22.1' --index-url https://download.pytorch.org/whl/cpu"
+docker exec cansat-mdt bash -c "pip install --no-cache-dir onnxscript"
+docker exec cansat-mdt bash -c "apt-get update && apt-get install -y default-jre-headless"
 
-# 3) Empaquetar a .rpk
-imx500-package -i out/ -o packerOut.zip
-#    → el .rpk queda dentro del zip (network.rpk)
+# 2) PTQ con MCT (TPC IMX500 5.0) desde el checkpoint PyTorch + export ONNX
+docker exec cansat-mdt python tools/convertir_rpk.py \
+    --checkpoint outputs/best_terrain_tiny.pth \
+    --calib-dir dataset/loveda_remapped/Train --out outputs/tiny_mct.onnx
+
+# 3) compilar con el converter de Sony (~25 s)
+docker exec cansat-mdt imxconv-pt -i outputs/tiny_mct.onnx \
+    -o outputs/rpk_out --no-input-persistency --overwrite-output
+
+# 4) empaquetar EN LA PI (apt imx500-tools, ya instalado con imx500-all)
+imx500-package -i packerOut.zip -o /home/pi/modelos/   # → network.rpk
 ```
 
-## 4. Probar en la Pi
+El contenedor queda creado con todo instalado: se reusa con
+`docker start cansat-mdt` (y se apaga con `docker stop cansat-mdt`).
+
+Notas medidas: `imxconv-pt` reporta el `MemoryReport` (entra con 54 %);
+MCT avisa de tensores con rango dinámico subóptimo en dos FullyConnected del
+backbone (warnings, no bloquean). El `.rpk` resultante tiene la salida en
+logits `(1, 5, 224, 224)`; `cansat/imx500_seg.py` la convierte a máscara con
+`mask_desde_salida()` y `--clases love` para el resumen por clase de terreno.
+
+## 4. Probar en la Pi (verificado 2026-10-05)
 
 ```bash
-# copiar el .rpk a la Pi
 scp network.rpk pi@cansat.local:/home/pi/modelos/
 
-# validar que el NPU lo corre (sin CPU)
-python -m cansat.imx500 --model /home/pi/modelos/network.rpk --seconds 10
+# segmentación con NUESTRO modelo (logits 5 clases → máscara LoveDA)
+python -m cansat.imx500_seg --model /home/pi/modelos/network.rpk \
+    --clases love --seconds 12 --guardar salida.png
+# → warm-up ~4 s; imprime la cobertura por clase (vegetacion/edificio/agua/…)
 ```
 
-Si imprime detecciones/segmentaciones, el pipeline lo usa con:
-
-```bash
-python mission_pipeline.py --camera --det-backend imx500 --frames 5 \
-    --onnx /home/pi/modelos/network.rpk
-```
+Medido: KPI del NPU **4.5 ms**; end-to-end ~0.4-1.2 fps (la transferencia de la
+salida de 5×224×224 es el cuello, no el cómputo). Optimización pendiente:
+salida más chica (argmax en el grafo, si el converter lo soporta, o menor
+resolución de salida) para subir el end-to-end. La CPU queda 100 % libre (eso
+es lo que importa en la Zero).
 
 ## 5. Si un modelo no entra en 8 MB
 

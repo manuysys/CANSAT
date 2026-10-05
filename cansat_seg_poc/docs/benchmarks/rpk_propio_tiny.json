@@ -1,0 +1,43 @@
+{
+  "generado": "2026-10-05",
+  "prueba": "CONVERSION DE NUESTRO MODELO A .rpk (IMX500) — el pendiente F4",
+  "cadena": {
+    "entorno": "Docker Desktop (WSL2) + python:3.11-slim + edge-mdt[pt] 1.3.0 (PyPI, publico) + JRE 21",
+    "pasos": [
+      "MCT 2.5.1 PTQ (TPC IMX500 5.0) sobre el tiny (LR-ASPP MV3-S @224) desde best_terrain_tiny.pth, 128 imgs de calibracion de LoveDA Train",
+      "torch 2.7.1 CPU + onnxscript (el export con torch 2.14 falla por el exporter dynamo)",
+      "imxconv-pt -i tiny_mct.onnx -o rpk_out --no-input-persistency (25.4 s)",
+      "imx500-package en la Pi (apt imx500-tools) -> network.rpk (1 530 808 B)"
+    ]
+  },
+  "memoria": {
+    "reporte": "tiny_mct_MemoryReport.json",
+    "runtime_mb": 3.06,
+    "modelo_mb": 1.21,
+    "uso_total_mb": 4.28,
+    "disponible_mb": 8.0,
+    "utilizacion_pct": 54,
+    "fit_in_chip": true,
+    "input_persistent": false
+  },
+  "medicion_en_placa": {
+    "fecha": "2026-10-05",
+    "kpi_dnn_ms": 4.491,
+    "kpi_dsp_ms": 3.224,
+    "salida": "(1, 5, 224, 224) float32 (logits LoveDA: vege/buil/wate/bare/othe)",
+    "fps_frame": 1.2,
+    "fps_con_salida": 0.7,
+    "nota": "El NPU computa en ~4.5 ms (~200 fps teoricos) pero el end-to-end esta limitado por la TRANSFERENCIA del tensor de salida (~1 MB/frame). Aun asi es ~2-3x el tiny por CPU (0.33 fps) y con la CPU 100% libre.",
+    "argmax_dist_ejemplo": "escena interior OOD: buil 8.2%, wate 64.1%, othe 27.7% (el modelo corre y da logits coherentes)"
+  },
+  "optimizacion_pendiente": [
+    "Salida mas chica: argmax en el grafo (si el converter lo soporta) o menor resolucion de salida",
+    "Con salida ~200 KB el end-to-end subiria a ~5 fps (estimacion)",
+    "Integracion al pipeline como backend alternativo de segmentacion (cansat/imx500_seg.py ya acepta logits 5-clase via argmax)"
+  ],
+  "artefactos": [
+    "outputs/rpk_out/packerOut.zip (Pi: /home/pi/packerOut.zip)",
+    "Pi: /home/pi/modelos/network.rpk (1.53 MB)",
+    "outputs/tiny_mct.onnx (intermedio cuantizado)"
+  ]
+}

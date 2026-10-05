@@ -403,6 +403,7 @@ es copiar y pegar desde estas rutas (relativas a la raíz del repo):
 | `11b_pi_imx500_foto.png` | foto real de la AI Camera (IMX500) en la Pi Zero W v1 (4056x3040, reescalada) |
 | `12_pi_imx500_seg.png` | segmentación DeepLabV3+ en el NPU: overlay de la máscara VOC sobre el frame (persona en rojo) |
 | `13_pi_imx500_pose.png` | pose HigherHRNet en el NPU: esqueleto detectado (se engancha al brazo → por eso quedó descartada) |
+| `14_pi_rpk_propio.png` | **nuestro tiny de terreno corriendo en el NPU** (rpk propio): overlay con las 5 clases LoveDA (escena OOD de interior; el modelo corre con KPI 4.5 ms) |
 
 Otras evidencias ya existentes en `cansat_seg_poc/`:
 `outputs/corridor_map.jpg` (corredor), `outputs/baseline.png` (siames),
@@ -476,7 +477,7 @@ npm run smoke
 | Pendiente | Impacto | Bloqueo |
 |---|---|---|
 | Validar en la Pi: s/frame, IMX500, personas | ✅ s/frame medido (2026-09-25): tiny ~3.0 s, v2 243 s → `modelo-vuelo-tiny`; ✅ **IMX500 validado (2026-10-04)**: YOLO11n ~6.8 fps sin CPU (mAP 0.374 vs 0.218 del SSD), segmentación DeepLabV3+ a ~1.1 fps, pose descartada con evidencia | — |
-| Conversión Edge-MDT (.rpk) de NUESTROS modelos | Alto (NPU) | PC Linux con converter Sony (F4); se intenta vía Docker/WSL2 |
+| Conversión Edge-MDT (.rpk) de NUESTROS modelos | ✅ **HECHO (2026-10-05)**: cadena Docker/WSL2 con `edge-mdt[pt]` de PyPI (sin registro); el tiny corre en el NPU — memoria 4.28/8 MB (54 %), KPI 4.5 ms, CPU libre; `docs/benchmarks/rpk_propio_tiny.json` + evidencia `14_pi_rpk_propio.png` | PENDIENTE: salida más chica para subir el end-to-end (0.4-1.2 fps) |
 | INT8 del tiny en la placa | Medio | Re-medición QDQ estático con `cv2.dnn` (2026-10-04) |
 | SegFormer-B5 mIoU | ✅ medido: 0.5664 full Val (1669 imgs) vs 0.5219 del v2; JSON `outputs/metrics/val_20260920_211054.json` | — |
 | EDSR tiempo/frame | ✅ medido: ~288 s por frame 1024² en CPU (PC de desarrollo); queda solo post-vuelo | — |
@@ -508,7 +509,8 @@ npm run smoke
 **validada de punta a punta**: Raspbian 13 Trixie, OpenCV 4.10, `imx500-all`,
 escritorio apagado, IP fija, SSH por clave; s/frame medido (tiny ~3 s, v2 243 s);
 AI Camera con YOLO11n/segmentación/pose medidas; UART GPIO15 con soak de 10 min;
-salud, autostart y pull en vivo probados. Pendiente mayor: convertir NUESTROS
-modelos a `.rpk` (requiere converter Sony en Linux; se intenta con Docker/WSL2).
-Evidencia: `cansat_seg_poc/docs/benchmarks/pi_zero_w_sframe.json`,
-`pi_zero_w_imx500.json`, `soak_uart.json`, `eventos_vuelo_mpu.json`.
+salud, autostart y pull en vivo probados. **`.rpk` PROPIO: hecho (2026-10-05)** —
+nuestro tiny de terreno corre en el NPU (`network.rpk`; memoria 4.28/8 MB,
+KPI 4.5 ms; CPU libre). Evidencia: `cansat_seg_poc/docs/benchmarks/
+pi_zero_w_sframe.json`, `pi_zero_w_imx500.json`, `soak_uart.json`,
+`eventos_vuelo_mpu.json`, `rpk_propio_tiny.json`.

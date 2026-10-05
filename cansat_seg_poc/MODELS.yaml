@@ -687,3 +687,25 @@ basura_detectada:
     motivo: "Bytecode compilado."
   - path: "runs/"
     motivo: "Logs de ultralytics (37 MB)."
+
+# ── rpk PROPIOS (conversión IMX500, F4 — hecha 2026-10-05) ───────────────
+rpk_propios:
+  terreno_tiny:
+    archivo: "/home/pi/modelos/network.rpk (1 530 808 B; NO versionado: se regenera)"
+    origen: "cansat_seg_terrain_tiny_224.onnx (best_terrain_tiny.pth)"
+    cadena: "MCT 2.5.1 PTQ (TPC IMX500 5.0) -> imxconv-pt 3.18.2 -> imx500-package"
+    entorno: "Docker/WSL2 + edge-mdt[pt] (PyPI) + torch 2.7 CPU + onnxscript + JRE"
+    herramienta: "tools/convertir_rpk.py"
+    licencia: "propia (MIT del repo)"
+    estado: "CORRE EN EL NPU (validado 2026-10-05; la CPU queda libre)"
+    metricas:
+      memoria: "4.28 MB / 8 MB (54 %); Runtime 3.06 MB + Modelo 1.21 MB"
+      kpi_npu_ms: "dnn 4.49 / dsp 3.22"
+      end_to_end_fps: "0.4-1.2 (limitado por la transferencia de la salida 5x224x224)"
+      salida: "(1, 5, 224, 224) float32 (logits LoveDA)"
+      evidencia: "docs/benchmarks/rpk_propio_tiny.json + docs/evidencia/14_pi_rpk_propio.png"
+    notas: |
+      Decisión `rpk-propio-tiny`. Se usa con `cansat/imx500_seg.py --clases love`
+      (`mask_desde_salida()` convierte los logits a máscara). PENDIENTE: salida
+      más chica (argmax en el grafo o menor resolución) para subir el
+      end-to-end; integrarlo al pipeline de vuelo como opción.

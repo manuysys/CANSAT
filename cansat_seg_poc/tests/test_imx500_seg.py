@@ -47,3 +47,34 @@ def test_dibujar_reescala_al_frame():
     mask = np.full((10, 10), VOC_PERSON, np.uint8)
     out = dibujar(frame, mask)
     assert out.sum() > 0
+
+
+# ── rpk PROPIO del tiny (2026-10-05): logits 5 clases + modo love ──────── #
+
+
+def test_mask_desde_salida_acepta_argmax_y_logits():
+    from cansat.imx500_seg import mask_desde_salida
+
+    ya = np.zeros((1, 4, 4), np.float32)
+    ya[0, :2] = 2.0
+    m1 = mask_desde_salida([ya])
+    assert m1 is not None and m1.shape == (4, 4) and m1[0, 0] == 2
+
+    logits = np.zeros((1, 5, 4, 4), np.float32)
+    logits[0, 3, 1, 1] = 9.0
+    m2 = mask_desde_salida([logits])
+    assert m2 is not None and m2.shape == (4, 4) and m2[1, 1] == 3
+
+    assert mask_desde_salida(None) is None
+    assert mask_desde_salida([]) is None
+
+
+def test_resumen_modo_love():
+    from cansat.imx500_seg import resumen
+
+    mask = np.zeros((10, 10), np.uint8)
+    mask[:5] = 2.0
+    r = resumen(mask, clases="love")
+    assert r["clases"]["agua"] == 50.0
+    assert r["top"][0] == {"clase": "agua", "pct": 50.0}
+    assert "persona_pct" not in r

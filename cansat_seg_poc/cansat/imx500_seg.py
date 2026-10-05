@@ -50,6 +50,46 @@ VOC_COLORS: dict[int, tuple[int, int, int]] = {
 # La persona se resalta en rojo puro (se pisa la entrada 15 de arriba).
 VOC_COLORS[VOC_PERSON] = (0, 0, 255)
 
+#: 5 clases del terreno de vuelo (LoveDA remapeado) — las del rpk PROPIO.
+LOVE_CLASSES: tuple[str, ...] = ("vegetacion", "edificio", "agua", "suelo",
+                                 "otro")
+LOVE_COLORS: dict[int, tuple[int, int, int]] = {
+    0: (60, 180, 60),     # vegetacion
+    1: (0, 0, 255),       # edificio (rojo)
+    2: (255, 120, 0),     # agua (azul)
+    3: (160, 160, 160),   # suelo
+    4: (70, 70, 70),      # otro
+}
+
+PALETAS: dict[str, dict[int, tuple[int, int, int]]] = {
+    "voc": VOC_COLORS, "love": LOVE_COLORS,
+}
+
+
+def mask_desde_salida(outputs) -> np.ndarray | None:
+    """
+    Salida del rpk → máscara 2D de clases.
+
+    Acepta:
+      · ``(1, H, W)``/``(H, W)``: mapa de clases ya en argmax (DeepLabV3+ del
+        apt);
+      · ``(C, H, W)``/``(1, C, H, W)``: logits por clase (nuestro rpk del
+        tiny) → argmax sobre el eje de canales.
+    """
+    if not outputs:
+        return None
+    arr = np.asarray(outputs[0])
+    if arr.ndim == 4 and arr.shape[0] == 1:
+        arr = arr[0]
+    if arr.ndim == 3:
+        if arr.shape[0] == 1:
+            arr = arr[0]
+        else:
+            arr = arr.argmax(0)
+    if arr.ndim == 2:
+        return arr.astype(np.uint8)
+    return None
+
 
 def cobertura(mask: np.ndarray) -> dict[int, float]:
     """Porcentaje del frame por clase (sólo las clases presentes)."""
@@ -62,9 +102,21 @@ def cobertura(mask: np.ndarray) -> dict[int, float]:
             for v, c in zip(vals, counts, strict=True)}
 
 
-def resumen(mask: np.ndarray, top: int = 3) -> dict:
-    """Resumen del frame: % persona, % vehículos y top de clases presentes."""
+def resumen(mask: np.ndarray, top: int = 3, clases: str = "voc") -> dict:
+    """
+    Resumen del frame. Modo ``voc``: % persona/vehículos (clases VOC del
+    DeepLabV3+ del apt). Modo ``love``: cobertura de las 5 clases de terreno
+    (nuestro rpk del tiny).
+    """
     cob = cobertura(mask)
+    if clases == "love":
+        orden = sorted(((pct, c) for c, pct in cob.items()), reverse=True)
+        return {
+            "clases": {LOVE_CLASSES[c]: round(pct, 1)
+                       for c, pct in sorted(cob.items())},
+            "top": [{"clase": LOVE_CLASSES[c], "pct": round(pct, 1)}
+                    for pct, c in orden[:top]],
+        }
     persona = cob.get(VOC_PERSON, 0.0)
     vehiculos = sum(cob.get(c, 0.0) for c in VOC_VEHICLES)
     orden = sorted(((pct, c) for c, pct in cob.items() if c != 0), reverse=True)
@@ -77,8 +129,8 @@ def resumen(mask: np.ndarray, top: int = 3) -> dict:
     }
 
 
-def dibujar(frame: np.ndarray, mask: np.ndarray,
-            alpha: float = 0.5) -> np.ndarray:
+def dibujar(frame: np.ndarray, mask: np.ndarray, alpha: float = 0.5,
+            colores: dict[int, tuple[int, int, int]] | None = None) -> np.ndarray:
     """Overlay de la máscara (reescalada al frame) sobre el frame BGR."""
     import cv2
 
@@ -87,7 +139,7 @@ def dibujar(frame: np.ndarray, mask: np.ndarray,
     if m.shape[:2] != (h, w):
         m = cv2.resize(m, (w, h), interpolation=cv2.INTER_NEAREST)
     color = np.zeros_like(frame)
-    for cls, bgr in VOC_COLORS.items():
+    for cls, bgr in (colores or VOC_COLORS).items():
         color[m == cls] = bgr
     pintable = m != 0
     out = frame.copy()
@@ -102,10 +154,14 @@ class Imx500Segmenter:
 
     def __init__(self, model: str = MODELO_DEFAULT, width: int = 640,
                  height: int = 480, fps: int = 10,
-                 shutter_us: int | None = None, gain: float | None = None):
+                 shutter_us: int | None = None, gain: float | None = None,
+                 clases: str = "voc"):
         self.model = str(model)
         self.width, self.height, self.fps = width, height, fps
         self.shutter_us, self.gain = shutter_us, gain
+        # "voc": DeepLabV3+ del apt (máscara en argmax); "love": nuestro rpk
+        # del tiny (logits de 5 clases de terreno).
+        self.clases = clases if clases in PALETAS else "voc"
         self._picam = None
         self._imx500 = None
         self._intr = None
@@ -174,16 +230,12 @@ class Imx500Segmenter:
             mask = None
             try:
                 out = self._imx500.get_outputs(meta, add_batch=True)
-                if out:
-                    arr = np.asarray(out[0])
-                    if arr.ndim == 3 and arr.shape[0] == 1:
-                        arr = arr[0]
-                    if arr.ndim == 2:
-                        mask = arr.astype(np.uint8)
+                mask = mask_desde_salida(out)
             except Exception:
                 # Primer frame / firmware cargando: frame sin máscara.
                 mask = None
-            return bgr, mask, (resumen(mask) if mask is not None else {})
+            return bgr, mask, (resumen(mask, clases=self.clases)
+                               if mask is not None else {})
         finally:
             req.release()
 
@@ -196,6 +248,8 @@ def _demo() -> int:
     ap.add_argument("--shutter", type=int, default=None,
                     help="ExposureTime en µs (p. ej. 8000 con luz baja)")
     ap.add_argument("--gain", type=float, default=None)
+    ap.add_argument("--clases", choices=("voc", "love"), default="voc",
+                    help="voc = DeepLabV3+ del apt; love = nuestro rpk del tiny")
     ap.add_argument("--guardar", default=None,
                     help="PNG del primer frame con overlay (opcional)")
     args = ap.parse_args()
@@ -205,7 +259,8 @@ def _demo() -> int:
         # caer dentro de la ventana de medición de fps!).
         import cv2
 
-    seg = Imx500Segmenter(args.model, shutter_us=args.shutter, gain=args.gain)
+    seg = Imx500Segmenter(args.model, shutter_us=args.shutter, gain=args.gain,
+                          clases=args.clases)
     print(f"[IMX500-seg] modelo: {Path(seg.model).name}")
     seg.start()
     # Warm-up: el primer frame espera la carga de la red en el sensor (medido:
@@ -226,12 +281,17 @@ def _demo() -> int:
             if mask is not None:
                 con_mask += 1
                 if frames <= 2 or frames % 10 == 0:
-                    print(f"  frame {frames}: persona {res['persona_pct']}% · "
-                          f"vehículos {res['vehiculos_pct']}% · top {res['top']}")
+                    if args.clases == "love":
+                        print(f"  frame {frames}: {res['clases']}")
+                    else:
+                        print(f"  frame {frames}: persona {res['persona_pct']}% "
+                              f"· vehículos {res['vehiculos_pct']}% · "
+                              f"top {res['top']}")
                 if args.guardar and not guardado:
                     import cv2
 
-                    cv2.imwrite(args.guardar, dibujar(bgr, mask))
+                    cv2.imwrite(args.guardar,
+                                dibujar(bgr, mask, colores=PALETAS[args.clases]))
                     print(f"  [guardado] {args.guardar}")
                     guardado = True
     finally:

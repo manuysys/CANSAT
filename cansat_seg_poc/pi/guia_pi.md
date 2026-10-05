@@ -302,6 +302,23 @@ python mission_pipeline.py --camera --frames 5 --no-damage \
     --det-backend imx500 --imx500-model ~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk
 ```
 
+### Segmentación con NUESTRO modelo en el NPU (rpk propio, 2026-10-05)
+
+El tiny de terreno está convertido a `.rpk` y **corre en el NPU** (memoria
+4.28/8 MB, KPI 4.5 ms, CPU libre; end-to-end ~0.4-1.2 fps por la transferencia
+de la salida). Cadena de conversión y comandos exactos:
+`docs/CONVERSION-IMX500.md` §3b (Docker/WSL2 + `edge-mdt[pt]` de PyPI).
+
+```bash
+# el rpk está en /home/pi/modelos/network.rpk
+python -m cansat.imx500_seg --model /home/pi/modelos/network.rpk \
+    --clases love --seconds 12 --guardar salida.png
+# → imprime la cobertura por clase (vegetacion/edificio/agua/suelo/otro)
+```
+
+Evidencia: `docs/benchmarks/rpk_propio_tiny.json` y
+`docs/evidencia/14_pi_rpk_propio.png`.
+
 ## 10. Problemas conocidos
 
 | Síntoma | Causa / solución |

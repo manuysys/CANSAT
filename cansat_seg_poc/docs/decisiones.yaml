@@ -177,6 +177,27 @@ decisiones:
       alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
       MODELS.yaml §dano_two_stage.
 
+  - id: rpk-propio-tiny
+    estado: vigente
+    texto: |
+      CONVERSIÓN DE NUESTRO MODELO A .rpk (F4): **HECHA** (2026-10-05). El tiny
+      de terreno corre en el NPU del IMX500. Cadena verificada
+      (docs/CONVERSION-IMX500.md §3b): Docker/WSL2 + `edge-mdt[pt]` 1.3.0
+      (PyPI público, SIN registro) + MCT 2.5.1 PTQ (TPC IMX500 5.0) +
+      `imxconv-pt` 3.18.2 + `imx500-package` en la Pi. Requisitos destapados:
+      torch 2.7 (con 2.14 el export de MCT falla por el exporter dynamo),
+      onnxscript y un JRE (el compilador DSP usa java; sin él: "sdspconv exited
+      127"). Resultado: `network.rpk` de 1.53 MB; memoria **4.28/8 MB (54 %,
+      entra)**; KPI del NPU **4.5 ms** (dnn) / 3.2 ms (dsp); end-to-end
+      ~0.4-1.2 fps limitado por la transferencia de la salida de 5×224×224
+      (la CPU queda 100 % libre). Módulo adaptado: `mask_desde_salida()` acepta
+      logits (C,H,W) y `--clases love` resume las 5 clases de terreno.
+      Herramienta: `tools/convertir_rpk.py`. Evidencia:
+      docs/benchmarks/rpk_propio_tiny.json +
+      docs/evidencia/14_pi_rpk_propio.png. PENDIENTE: salida más chica
+      (argmax/menor resolución) para subir el end-to-end e integrarlo al
+      pipeline de vuelo como opción.
+
   - id: capa-satelital-opcional
     estado: vigente
     texto: |
