@@ -528,10 +528,12 @@ def build_parser():
     mod.add_argument("--onnx", default=None, help="segmentación de terreno (default: FP32 de vuelo)")
     mod.add_argument("--img-size", type=int, default=320)
     mod.add_argument("--damage-onnx", default="outputs/cansat_damage3_mobilenetv2.onnx")
-    mod.add_argument("--damage2-onnx", default="outputs/cansat_damage_v3_bal.onnx",
-                     help="two-stage de vuelo: adaptado a UAV con RescueNet "
-                          "(F2 2026-09-18). El xBD puro queda como alternativa: "
-                          "outputs/cansat_damage_v3.onnx")
+    mod.add_argument("--damage2-onnx", default="outputs/cansat_damage_v3_bal_ep6.onnx",
+                     help="two-stage de vuelo: adaptado a UAV con RescueNet. "
+                          "Desde 2026-10-05 el de vuelo es el ep6 (6 épocas de la "
+                          "misma receta; mejor en ambos dominios: xBD 0.414 vs "
+                          "0.096 y RescueNet 0.780 vs 0.735). El anterior queda "
+                          "como alternativa: outputs/cansat_damage_v3_bal.onnx")
     mod.add_argument("--flood-onnx", default="outputs/cansat_flood_specialist_224.onnx",
                      help="especialista de inundación a 224 px (F3 2026-09-18, "
                           "IoU 0.489 y la mitad de cómputo que el de 320). "

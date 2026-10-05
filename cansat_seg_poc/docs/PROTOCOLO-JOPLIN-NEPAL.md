@@ -25,7 +25,7 @@ Herramienta: `tools/eval_damage_manifests.py --splits all --cpu`.
 - Joplin (tornado, viento) transfiere mejor que Nepal, consistente con que el
   daño por viento comparte textura con huracanes ya vistos.
 - Estos números son de **daño en satélite 0.5 m**; el modelo de vuelo es otro
-  (`cansat_damage_v3_bal.onnx`, UAV/RescueNet) y no se reemplaza por esto.
+  (`cansat_damage_v3_bal_ep6.onnx`, UAV/RescueNet) y no se reemplaza por esto.
 
 ## Reproducir
 

@@ -197,31 +197,36 @@ vuelo:
       de RescueNet en el two-stage).
 
   dano_two_stage:
-    # F2 (2026-09-18): el two-stage de VUELO pasó a ser el adaptado a UAV con
-    # RescueNet (ver dano_f2_rescuenet). El xBD puro queda como alternativa.
-    onnx: "outputs/cansat_damage_v3_bal.onnx"
-    checkpoint: "outputs/best_damage_v3_bal.pth"
-    entrenado_por: "train_damage_v3.py --epochs 8 --loss rescue --xbd-repeat 4 --extra-manifest dataset/rescuenet_tiles/manifest_train_sub4000.csv (2026-09-18)"
-    exportado_por: "python export_onnx.py --arch damage --num-classes 3 --checkpoint outputs/best_damage_v3_bal.pth --output outputs/cansat_damage_v3_bal.onnx --img-size 320"
+    # 2026-10-05: el two-stage de VUELO es el ep6 (6 épocas de la misma receta
+    # xBD×4 + 4k RescueNet; ver decisiones `aug-uav-ab` y `damage-v3-bal-ep6`).
+    # Domina al anterior en AMBOS dominios canónicos (0.414 xBD / 0.780 RN).
+    onnx: "outputs/cansat_damage_v3_bal_ep6.onnx"
+    checkpoint: "outputs/best_damage_v3_bal_ep6.pth"
+    entrenado_por: "train_damage_v3.py --epochs 6 --batch 16 --lr 1e-4 --loss rescue --init outputs/best_damage_v3_bal.pth --xbd-repeat 4 --extra-manifest dataset/rescuenet_tiles/manifest_train_sub4000.csv (2026-10-05)"
+    exportado_por: "torch.onnx.export dynamo=False opset 17 (brazo base del A/B de aug UAV)"
     clases: 3
     entrada: "[1, 3, 320, 320]"
     dataset: "xBD (split por desastre) + RescueNet (UAV óptico)"
     licencia: "xBD CC BY-NC-SA 4.0 · RescueNet: investigación"
-    estado: "VUELA (F2 2026-09-18; pasa auditoría IMX500)"
+    estado: "VUELA (adoptado 2026-10-05; pasa auditoría IMX500)"
     metricas:
-      iou_dano_rescuenet_val_uav: 0.735    # dominio de vuelo (UAV, GSD 7.7 cm/px)
-      iou_dano_xbd_heldout: 0.096          # cross-event satelital (trade-off)
-      umbral_voto_uav: 10.2                # F1 0.828 · recall 0.887 (RescueNet val)
-      fuente: "val interno de train_damage_v3.py + tools/calibrate_thresholds.py --rescuenet --torch"
+      iou_dano_rescuenet_val_uav: 0.780    # canónico: eval_damage_manifests (2093 filas)
+      iou_dano_xbd_heldout: 0.414          # canónico: split por desastre (1750 filas)
+      umbral_voto_uav: 10.2                # F1 0.832 · prec 0.773 · rec 0.900 · FPR 42.8 % (600 tiles)
+      stress_dano2_limpio: 0.483           # suite dano2 n=120 (vs 0.445 del anterior)
+      fuente: "tools/eval_damage_manifests.py + tools/calibrate_thresholds.py --rescuenet --tiles 600 --min-dano-px 10"
     notas: |
-      ⚠ CAMBIO DE MODELO DE VUELO (2026-09-18): se reemplazó el two-stage xBD
-      (0.472 xBD / 0.497 RescueNet val) por el balanceado xBD×4 + 4k RescueNet
-      (0.096 xBD / 0.735 RescueNet val). Motivo: la GSD de vuelo (7.7 cm/px a
-      250 m) es del dominio UAV, no satelital; el usuario priorizó detectar
-      daño en el dominio de vuelo. Umbral de voto recalibrado en RescueNet val
-      (10.2 %, F1 0.828, recall 0.887). El xBD puro sigue en
-      `outputs/cansat_damage_v3.onnx` como referencia cross-event del informe.
-      El two-stage se enmascara con los edificios del terreno (recall 84 %).
+      ADOPTADO 2026-10-05 (decisión `damage-v3-bal-ep6`): el A/B de aug UAV
+      (V11 1) mostró que el brazo BASE (6 épocas de la misma receta, sin aug)
+      domina al modelo anterior en AMBOS dominios canónicos: xBD held-out
+      0.414 vs 0.096 y RescueNet val 0.780 vs 0.735; y en la suite dano2
+      (limpio 0.483 vs 0.445; niebla +7.6, sobreexp +5.7, escala +5.2). El
+      umbral de voto se MANTIENE en 10.2 %: la curva F1 es plana (0.832 a 10.2
+      vs 0.838 óptimo a 0.72) y a 10.2 el FPR es 42.8 % (vs 55.9 % en el
+      óptimo). El modelo anterior queda como alternativa en
+      `outputs/cansat_damage_v3_bal.onnx`. El two-stage se enmascara con los
+      edificios del terreno (recall 84 %). Evidencia:
+      docs/benchmarks/aug_uav_dano_ab.json.
 
   dano_f2_rescuenet:
     # F2 (2026-09-18): mezcla con RescueNet (UAV óptico, GSD ≈0.05-0.08 m/px,

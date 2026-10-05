@@ -15,7 +15,7 @@
 | Área | Estado |
 |---|---|
 | Segmentación de terreno (5 clases) | ✅ mIoU **0.522** (v2@320) · **0.500** (v2@224, el de vuelo) |
-| Detección de daño (two-stage) | ✅ **0.735** IoU de dañado en el dominio de vuelo (UAV) · 0.472 cross-event satelital |
+| Detección de daño (two-stage) | ✅ **0.780** IoU de dañado en el dominio de vuelo (UAV) · 0.414 cross-event satelital — modelo **ep6 adoptado 2026-10-05** (antes 0.735 / 0.096) |
 | Inundación (FloodNet) | ✅ IoU flood **0.489** a 224 px |
 | Fuego/humo (extensión) | ✅ media **0.782** en test (fuego 0.791 · humo 0.774) |
 | Severidad del daño (5 niveles) | ✅ **0.633** IoU de colapso sobre edificios (medido) — reemplaza el 0.3 fijo |
@@ -496,7 +496,8 @@ npm run smoke
 | Pull en vivo Pi→estación | ✅ hecho y validado: `pi/servidor_vivo.py` + `tools/vivo_pi.py` (la web auto-refresca) | — |
 | Grad-CAM en la estación | ✅ hecho: endpoint + overlay + caché + 64 asserts en verde | — |
 | Calibración por clase / tipo rebalanceado | ✅ cerrados como no adoptados (evidencia en `docs/benchmarks/`) | — |
-| Augmentación UAV (daño) | ✅ **A/B correcto cerrado: NO adoptada** (2026-10-05): cuesta el limpio −4.1 pts (0.4418 vs 0.4829 del base) y casi todos los estresores; sólo gana motion_blur +3.6. **Hallazgo extra**: el brazo base (6 épocas, sin aug) supera al modelo de vuelo actual (limpio +3.8; xBD two-stage 0.414 vs 0.096) → candidato previa recalibración del umbral | `docs/benchmarks/aug_uav_dano_ab.json` |
+| Augmentación UAV (daño) | ✅ **A/B correcto cerrado: NO adoptada** (2026-10-05): cuesta el limpio −4.1 pts (0.4418 vs 0.4829 del base) y casi todos los estresores; sólo gana motion_blur +3.6 | `docs/benchmarks/aug_uav_dano_ab.json` |
+| Modelo de daño ep6 (del brazo base del A/B) | ✅ **ADOPTADO** (2026-10-05, decisión `damage-v3-bal-ep6`): 0.780 UAV / 0.414 xBD (antes 0.735 / 0.096); umbral 10.2 % mantenido (curva F1 plana, FPR 42.8 % vs 55.9 % del óptimo); defaults actualizados | `docs/benchmarks/aug_uav_dano_ab.json` + `MODELS.yaml` §dano_two_stage |
 | MoE de daño (V11 4.2) | ✅ **PoC positiva** (2026-10-04): compuerta aprendida 0.4717 vs 0.4270 del mejor fijo (seed 42; +4.5 pts) y 0.4124 vs 0.3881 (seed 7); captura ~85-95% del oráculo. Integración al consenso post-vuelo pendiente | `docs/benchmarks/moe_damage.json` |
 | UDA LoveDA→RescueNet (V11 4.3) | ✅ **PoC positiva** (2026-10-04): self-training +7.3 pts en el proxy UAV con −0.35 pts de retención en la fuente; proxy débil declarado | `docs/benchmarks/uda_terrain.json` |
 | Difusión/LoRA clases raras (V11 4.4) | ⏸️ **No factible en la ventana** (2026-10-04): `diffusers`/`peft` sin instalar + modelo base (~2.5-4 GB) + LoRA/FID y A/B (1-2 días de GPU). Plan concreto en `PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md` §V11 | — |

@@ -74,8 +74,10 @@ from enhance_image import ensure_model
 # ── Artefactos de entrada ─────────────────────────────────────────────── #
 DAMAGE = "outputs/cansat_damage3_mobilenetv2.onnx"
 # F2 (2026-09-18): el two-stage de vuelo es el adaptado a UAV con RescueNet.
-# El xBD puro (cansat_damage_v3.onnx) queda como alternativa cross-event.
-DAMAGE2 = "outputs/cansat_damage_v3_bal.onnx"
+# 2026-10-05: se adopta el ep6 (6 épocas de la misma receta; xBD 0.414 y
+# RescueNet 0.780, mejor en ambos dominios). El anterior queda como
+# alternativa: outputs/cansat_damage_v3_bal.onnx (xBD 0.096 / RN 0.735).
+DAMAGE2 = "outputs/cansat_damage_v3_bal_ep6.onnx"
 # El siamés está DESACTIVADO por defecto: los pesos del repo están marcados
 # ROTO en MODELS.yaml (alucinaban daño sin cambio). Se activa con --siamese-onnx.
 SIAMESE = ""

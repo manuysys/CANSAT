@@ -170,7 +170,8 @@ Mismo protocolo two-stage (IoU de dañado sobre edificios) en los dos val:
 |---|---|---|
 | xBD-only (`best_damage_v3.pth`) | **0.472** | 0.497 |
 | Mezcla 82 % RescueNet (`best_damage_v3_uav.pth`) | 0.004 | 0.686 |
-| Balanceado xBD×4 + 4k RN (`best_damage_v3_bal.pth`, ONNX auditado) | 0.096 | **0.735** |
+| Balanceado xBD×4 + 4k RN (`best_damage_v3_bal.pth`, ONNX auditado) | 0.096 | 0.735 |
+| Balanceado ep6 (adoptado 2026-10-05) | 0.414 | **0.780** |
 
 Los dominios compiten: agregar RescueNet sube el daño UAV de 0.497 → 0.735
 pero hunde xBD de 0.472 → 0.096 (olvido catastrófico con 82 % de RescueNet;

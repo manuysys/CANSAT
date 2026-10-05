@@ -157,6 +157,26 @@ decisiones:
       del umbral two-stage y re-evaluación canónica. Evidencia:
       docs/benchmarks/aug_uav_dano_ab.json.
 
+  - id: damage-v3-bal-ep6
+    estado: vigente
+    texto: |
+      MODELO DE DAÑO DE VUELO: se ADOPTA el `best_damage_v3_bal_ep6` (6 épocas
+      de la MISMA receta del anterior: train_damage_v3.py, xBD×4 + 4k
+      RescueNet, loss rescue, lr 1e-4, init el bal de 1 época). Motivo medido
+      (brazo base del A/B de aug UAV): domina al anterior en AMBOS dominios
+      canónicos — xBD held-out two-stage 0.414 vs 0.096
+      (eval_damage_manifests, 1750 filas) y RescueNet val two-stage 0.780 vs
+      0.735 (2093 filas) — y en la suite dano2 n=120 (limpio 0.483 vs 0.445;
+      niebla +7.6, sobreexp +5.7, escala +5.2, sombras +3.1, vibración +3.7;
+      sólo lluvia −2.3). UMBRAL: se mantiene 10.2 % (curva F1 plana: 0.832 a
+      10.2 vs 0.838 óptimo a 0.72; a 10.2 el FPR es 42.8 % vs 55.9 %).
+      Artefactos: `outputs/best_damage_v3_bal_ep6.pth` +
+      `outputs/cansat_damage_v3_bal_ep6.onnx`; defaults actualizados en
+      mission_pipeline.py, post_flight.py, stress_suite.py, bench_models.py,
+      calibrate_thresholds.py y generate_evidence.py. El anterior queda como
+      alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
+      MODELS.yaml §dano_two_stage.
+
   - id: capa-satelital-opcional
     estado: vigente
     texto: |

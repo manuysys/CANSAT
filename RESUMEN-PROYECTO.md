@@ -64,7 +64,7 @@ la misión secundaria; lo de a bordo es optimización.
 | Terreno v2 @224 | `cansat_seg_terrain_v2_224.onnx` | mIoU 0.4996, **2.04× menos cómputo** | candidato Pi |
 | Terreno tiny @224 (MV3-S+LR-ASPP) | `cansat_seg_terrain_tiny_224.onnx` | mIoU 0.4397 | candidato NPU (no cumple en CPU) |
 | Daño principal (xBD) | `cansat_damage3_mobilenetv2.onnx` | IoU edificios 0.107–0.215 según protocolo | VUELA |
-| Daño two-stage de vuelo (xBD×4+RescueNet) | `cansat_damage_v3_bal.onnx` | **RescueNet val 0.735** · xBD held-out 0.096 · umbral voto 10.2 % (F1 0.828, recall 0.887) | **VUELA** |
+| Daño two-stage de vuelo ep6 (xBD×4+RescueNet) | `cansat_damage_v3_bal_ep6.onnx` | **RescueNet val 0.780** · xBD held-out 0.414 · umbral voto 10.2 % (F1 0.832, recall 0.900) | **VUELA** |
 | Siamés (cambio pre/post) | `cansat_siamese_damage.onnx` | IoU 0.601; alucinación pre==post 1.23 % | opcional, OFF por defecto |
 | Flood specialist @224 | `cansat_flood_specialist_224.onnx` | IoU flood **0.489**, agua 0.502 | VUELA (opcional) |
 | Fuego/humo | `cansat_fire_smoke.onnx` | IoU fuego 0.791–0.806, humo 0.718–0.774 | VUELA (opcional) |
@@ -230,7 +230,7 @@ deterministas sobre máscaras y telemetría.
 |---|---|
 | Terreno de vuelo | mIoU 0.5219 (Val 1669) · @224 0.4996 |
 | Terreno post-vuelo (B5) | mIoU 0.5664 |
-| Daño two-stage de vuelo | IoU UAV 0.735 · xBD held-out 0.096 |
+| Daño two-stage de vuelo (ep6) | IoU UAV 0.780 · xBD held-out 0.414 |
 | Daño xBD cross-evento | Joplin 0.233 (0.495 sobre edificios) · Nepal 0.127 (0.278) |
 | Flood | IoU 0.489 |
 | Fuego/humo | IoU fuego 0.791–0.806 · humo 0.718–0.774 |

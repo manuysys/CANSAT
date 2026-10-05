@@ -58,7 +58,8 @@ RESCUENET_MANIFEST = Path("dataset/rescuenet_tiles/manifest_val.csv")
 TERRAIN = "outputs/cansat_seg_terrain_v2.onnx"
 DAMAGE = "outputs/cansat_damage3_mobilenetv2.onnx"
 # Two-stage de vuelo: adaptado a UAV con RescueNet (F2 2026-09-18).
-DAMAGE2 = "outputs/cansat_damage_v3_bal.onnx"
+# 2026-10-05: el de vuelo es el ep6 (6 épocas de la misma receta).
+DAMAGE2 = "outputs/cansat_damage_v3_bal_ep6.onnx"
 
 
 def metricas(pcts_dano: np.ndarray, etiquetas: np.ndarray) -> dict:
@@ -113,7 +114,7 @@ def main(argv=None) -> int:
                          "los ONNX, ~1e-6 de diferencia); cv2.dnn/ORT acá son CPU")
     ap.add_argument("--terrain-ckpt", default="outputs/best_terrain_v2.pth")
     ap.add_argument("--damage-ckpt", default="outputs/best_damage3.pth")
-    ap.add_argument("--damage2-ckpt", default="outputs/best_damage_v3_bal.pth")
+    ap.add_argument("--damage2-ckpt", default="outputs/best_damage_v3_bal_ep6.pth")
     ap.add_argument("--img-size", type=int, default=320)
     ap.add_argument("--nodata-thresh", type=int, default=0,
                     help="0 = sin máscara de nodata (frames de cámara)")

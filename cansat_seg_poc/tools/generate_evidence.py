@@ -87,7 +87,7 @@ def ev_dano():
     row = next(csv.DictReader(man.open(encoding="utf-8")))
     img = cv2.imread(str(ROOT / row["image"]))
     gt = cv2.imread(str(ROOT / row["mask"]), cv2.IMREAD_GRAYSCALE)
-    pred = predecir("outputs/cansat_damage_v3_bal.onnx", img)
+    pred = predecir("outputs/cansat_damage_v3_bal_ep6.onnx", img)
     fila([("imagen (UAV RescueNet)", img), ("GT daño", colorizar(gt, PAL_DANO)),
           ("predicción (two-stage UAV)", colorizar(pred, PAL_DANO))],
          OUT / "02_dano_gt_vs_pred.png", escala=0.8)

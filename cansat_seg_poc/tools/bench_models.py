@@ -48,7 +48,7 @@ SIZE_POR_MODELO: dict[str, int] = {
 #: que más importa.
 MODELOS_DEFAULT: tuple[str, ...] = (
     "cansat_seg_terrain_v2_224.onnx",
-    "cansat_damage_v3_bal.onnx",
+    "cansat_damage_v3_bal_ep6.onnx",
     "cansat_flood_specialist_224.onnx",
     "cansat_fire_smoke.onnx",
     "cansat_seg_terrain_v2.onnx",

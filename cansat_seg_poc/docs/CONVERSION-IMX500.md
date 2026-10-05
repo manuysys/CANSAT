@@ -12,7 +12,7 @@
 | 1 | `cansat_seg_terrain_tiny_224.onnx` | 4.3 MB | El candidato NPU: entra holgado en el límite de <8 MB |
 | 2 | `cansat_flood_specialist_224.onnx` | 51 MB | FP32 no entra; **requiere cuantización INT8** (~12.8 MB de pesos → no entra igual; ver §5) |
 | 3 | `cansat_fire_smoke.onnx` | 51 MB | Ídem flood |
-| 4 | `cansat_damage_v3_bal.onnx` / `cansat_severity.onnx` | 51 MB | Ídem; el daño/seguimiento puede quedar en `cv2.dnn` |
+| 4 | `cansat_damage_v3_bal_ep6.onnx` / `cansat_severity.onnx` | 51 MB | Ídem; el daño/seguimiento puede quedar en `cv2.dnn` |
 
 > ⚠ El límite del IMX500 es **<8 MB de memoria total** (pesos + tensores).
 > Solo el `tiny` (1.08 M params) lo cumple con margen. Los modelos
