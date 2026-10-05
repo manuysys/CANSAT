@@ -327,8 +327,10 @@ def main() -> int:
                       class_names=CLASSES,
                       iou_per_class=[round(x, 4) for x in ious],
                       iou_colapso_edificios=round(iou_col, 4),
-                      dataset=("RescueNet + CRASAR (multi-desastre)"
-                               if extras else "RescueNet (severidad original)"),
+                      dataset=" + ".join(sorted({
+                          "CRASAR" if "crasar" in str(p).lower()
+                          else "RescueNet"
+                          for p in [args.manifest, *args.extra_manifest]})),
                       script="train_severity.py",
                       epochs=ep + 1, seed=args.seed, **meta_extra)
             print(f"  → guardado {args.out}")

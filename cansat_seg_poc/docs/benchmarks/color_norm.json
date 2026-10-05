@@ -34,7 +34,17 @@
       "veredicto": "RECHAZADA: mejora el proxy (+2.6) pero destruye la fuente (-12 pts) -> artefacto de dominio, mismo patron que la UDA"
     }
   },
-  "conclusion": "gray-world mejora AMBOS dominios (fuente +2.05 en el modelo de vuelo, +0.54 en el v2; proxy UAV +1.2) con costo nulo: ADOPTADO. La variante z-score queda rechazada con evidencia.",
+  "tta_4_vistas": {
+    "que": "promedio de logits sobre 4 vistas (h/v/hv) — mission_pipeline --tta (ya existia para incertidumbre)",
+    "dataset": "LoveDA val 300 (mismo protocolo)",
+    "baseline": 0.3829,
+    "gray_world": 0.4098,
+    "tta_solo": 0.3884,
+    "gray_world_mas_tta": 0.4173,
+    "delta_tta_sobre_gray_world": 0.0075,
+    "nota": "el TTA suma +0.75 pts sobre gray-world a 4x de inferencia: opcion del POST-VUELO (la PC tiene tiempo); el vuelo no lo usa. El post-vuelo canonico usa el ensemble B5 (0.5664), no el tiny: integrarlo alli requeriria medirlo con el B5."
+  },
+  "conclusion": "gray-world mejora AMBOS dominios (fuente +2.05 en el modelo de vuelo, +0.54 en el v2; proxy UAV +1.2) con costo nulo: ADOPTADO. La variante z-score queda rechazada con evidencia. TTA suma +0.75 sobre gray-world (opcion post-vuelo, ya expuesta como --tta).",
   "integracion": [
     "cansat/preprocess.py::gray_world + preprocess_bgr(..., color_norm=True)",
     "mission_pipeline.py --color-norm",
