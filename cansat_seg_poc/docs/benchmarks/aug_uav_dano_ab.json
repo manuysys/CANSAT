@@ -1,0 +1,51 @@
+{
+  "generado": "2026-10-05",
+  "prueba": "A/B CORRECTO de augmentacion UAV para el dano de vuelo (V11 1)",
+  "protocolo": {
+    "tarea": "dano2 (RescueNet val, UAV) con la suite de estres",
+    "n_imagenes": 120,
+    "img_size": 320,
+    "seed": 42,
+    "metricas": "mIoU limpio + mIoU por corrupcion + IoU dano binario",
+    "receta_comun": "train_damage_v3.py --epochs 6 --batch 16 --lr 1e-4 --loss rescue --init outputs/best_damage_v3_bal.pth --extra-manifest dataset/rescuenet_tiles/manifest_train_sub4000.csv --xbd-repeat 4 (xBD train 15644 + 4000 RescueNet = 19644 filas)",
+    "unica_diferencia": "brazo AUG: --aug-uav --aug-uav-p 0.35 --aug-escala-min 0.7 --aug-escala-max 0.9 (jitter de escala SUAVE; la suite usa 0.45-0.60)"
+  },
+  "resultados": {
+    "original_vuelo": {
+      "checkpoint": "outputs/best_damage_v3_bal.pth",
+      "onnx": "outputs/cansat_damage_v3_bal.onnx",
+      "sha256_16": "519631d1508b239a",
+      "limpio": 0.4447,
+      "lluvia": 0.2663, "niebla": 0.1808, "motion_blur": 0.3446,
+      "subexposicion": 0.3344, "sobreexposicion": 0.2570, "escala": 0.3993,
+      "sombras": 0.4455, "vibracion": 0.4355
+    },
+    "brazo_base": {
+      "checkpoint": "outputs/ab_aug_base.pth",
+      "onnx": "outputs/ab_aug_base.onnx",
+      "sha256_16": "84ebb34c6f8a2444",
+      "xbd_heldout_two_stage": 0.414,
+      "limpio": 0.4829,
+      "lluvia": 0.2434, "niebla": 0.2566, "motion_blur": 0.3624,
+      "subexposicion": 0.3411, "sobreexposicion": 0.3137, "escala": 0.4509,
+      "sombras": 0.4761, "vibracion": 0.4727
+    },
+    "brazo_aug": {
+      "checkpoint": "outputs/ab_aug_uav.pth",
+      "onnx": "outputs/ab_aug_uav.onnx",
+      "sha256_16": "0d3babf299b8c115",
+      "xbd_heldout_two_stage": 0.394,
+      "limpio": 0.4418,
+      "lluvia": 0.2502, "niebla": 0.2323, "motion_blur": 0.3978,
+      "subexposicion": 0.3251, "sobreexposicion": 0.3141, "escala": 0.4429,
+      "sombras": 0.4390, "vibracion": 0.4435
+    }
+  },
+  "veredicto_aug": "NO ADOPTADO. El aug suave cuesta el limpio (-4.1 pts vs el brazo base) y la mayoria de los estresores (niebla -2.4, sombras -3.7, vibracion -2.9, escala -0.8, subexp -1.6); solo gana motion_blur (+3.6) y empata sobreexposicion. Con la receta corregida (mismo init/receta, escala suave, schedule largo) el resultado REPITE el rechazo anterior, ahora con un protocolo justo.",
+  "hallazgo_extra": "El brazo BASE (misma receta, 6 epocas, sin aug) es MEJOR que el modelo de vuelo actual en el mismo protocolo: limpio 0.4829 vs 0.4447 (+3.8 pts), niebla +7.6, sobreexposicion +5.7, escala +5.2, sombras +3.1, vibracion +3.7, motion +1.8, subexp +0.7; solo lluvia cae (-2.3). Ademas su xBD held-out two-stage es 0.414 vs 0.096 del actual. CANDIDATO a reemplazar el modelo de dano de vuelo, con dos pasos previos: (1) recalibrar el umbral two-stage (tools/calibrate_thresholds.py --rescuenet --torch) y (2) re-correr el stress completo + xBD con el protocolo canonico.",
+  "archivos": [
+    "outputs/ab_aug_base_stress.json (suite dano2 base)",
+    "outputs/ab_aug_uav_stress.json (suite dano2 aug)",
+    "outputs/ab_aug_orig_stress.json (suite dano2 original)"
+  ]
+}

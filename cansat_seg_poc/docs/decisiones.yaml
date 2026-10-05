@@ -138,6 +138,25 @@ decisiones:
       (--det-backend imx500, SSD COCO on-sensor): misma limitación de personas
       chicas, PENDIENTE de medir en la placa.
 
+  - id: aug-uav-ab
+    estado: descartada
+    texto: |
+      A/B CORRECTO DE AUGMENTACIÓN UAV (V11 1): NO se adopta, con protocolo
+      justo. Mismo init (`best_damage_v3_bal.pth`), misma receta
+      (`train_damage_v3.py` xBD×4 + 4k RescueNet, loss rescue, lr 1e-4, 6
+      épocas) en ambos brazos; única diferencia: `--aug-uav --aug-uav-p 0.35`
+      con jitter de escala SUAVE 0.7-0.9 (la suite usa 0.45-0.60). Evaluación:
+      suite dano2 (RescueNet val, n=120) + xBD held-out two-stage. Resultado: el
+      aug cuesta el limpio (−4.1 pts: 0.4418 vs 0.4829) y casi todos los
+      estresores (niebla −2.4, sombras −3.7, vibración −2.9, subexp −1.6);
+      sólo gana motion_blur (+3.6) y empata sobreexposición. El rechazo
+      anterior queda CONFIRMADO con un protocolo válido. HALLAZGO EXTRA: el
+      brazo base (6 épocas de la misma receta) supera al modelo de vuelo actual
+      en el mismo protocolo (limpio 0.4829 vs 0.4447, +3.8; niebla +7.6;
+      xBD two-stage 0.414 vs 0.096) → candidato a adoptar previa recalibración
+      del umbral two-stage y re-evaluación canónica. Evidencia:
+      docs/benchmarks/aug_uav_dano_ab.json.
+
   - id: capa-satelital-opcional
     estado: vigente
     texto: |
