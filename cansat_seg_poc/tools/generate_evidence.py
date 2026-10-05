@@ -77,7 +77,7 @@ def ev_terreno():
     gt = cv2.imread(str(msk_p), cv2.IMREAD_GRAYSCALE)
     pred = predecir("outputs/cansat_seg_terrain_v2.onnx", img)
     fila([("imagen", img), ("ground truth", colorizar(gt, PAL_TERRENO)),
-          ("predicción (v2@320)", colorizar(pred, PAL_TERRENO))],
+          ("prediccion (v2@320)", colorizar(pred, PAL_TERRENO))],
          OUT / "01_terreno_gt_vs_pred.png")
 
 
@@ -88,8 +88,8 @@ def ev_dano():
     img = cv2.imread(str(ROOT / row["image"]))
     gt = cv2.imread(str(ROOT / row["mask"]), cv2.IMREAD_GRAYSCALE)
     pred = predecir("outputs/cansat_damage_v3_bal_ep6.onnx", img)
-    fila([("imagen (UAV RescueNet)", img), ("GT daño", colorizar(gt, PAL_DANO)),
-          ("predicción (two-stage UAV)", colorizar(pred, PAL_DANO))],
+    fila([("imagen (UAV RescueNet)", img), ("GT dano", colorizar(gt, PAL_DANO)),
+          ("prediccion (two-stage UAV)", colorizar(pred, PAL_DANO))],
          OUT / "02_dano_gt_vs_pred.png", escala=0.8)
 
 
@@ -105,7 +105,7 @@ def ev_flood():
                         interpolation=cv2.INTER_NEAREST)
     pred = predecir("outputs/cansat_flood_specialist_224.onnx", img)
     fila([("imagen (FloodNet UAV)", img), ("GT", colorizar(gt, PAL_FLOOD)),
-          ("predicción (flood 224)", colorizar(pred, PAL_FLOOD))],
+          ("prediccion (flood 224)", colorizar(pred, PAL_FLOOD))],
          OUT / "03_flood_gt_vs_pred.png")
 
 
@@ -117,7 +117,7 @@ def ev_fuego():
     gt = cv2.imread(str(ROOT / row["mask"]), cv2.IMREAD_GRAYSCALE)
     pred = predecir("outputs/cansat_fire_smoke.onnx", img)
     fila([("imagen (FLAME UAV)", img), ("GT fuego/humo", colorizar(gt, PAL_FUEGO)),
-          ("predicción", colorizar(pred, PAL_FUEGO))],
+          ("prediccion", colorizar(pred, PAL_FUEGO))],
          OUT / "04_fuego_humo_gt_vs_pred.png")
 
 
@@ -154,7 +154,7 @@ def ev_severidad():
     fila([("imagen (UAV RescueNet)", img),
           ("GT severidad (menor/amarillo · mayor/naranja · destruido/rojo)",
            colorizar(gt, PAL_SEV)),
-          ("predicción (cansat_severity)", colorizar(pred, PAL_SEV))],
+          ("prediccion (cansat_severity)", colorizar(pred, PAL_SEV))],
          OUT / "06_severidad_gt_vs_pred.png", escala=0.8)
 
 
