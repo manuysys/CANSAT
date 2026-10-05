@@ -182,6 +182,25 @@ protocolo LB135.
   puerto serie.
 - Si se quiere portátil, un power bank USB alcanza; no hace falta placa.
 
+### 3.6 Enlace LoRa (implementado 2026-10-05)
+
+El radio del CanSat: la Heltec #1 (vuelo) emite la MISMA línea LB135 v2 por
+LoRa a 1 Hz (además del UART a la Pi) y la Heltec #2 (estación) la recibe y la
+re-emite por USB al PC — el listener y la estación leen el mismo protocolo sin
+cambios. Firmware con `LORA_MODO` por env de PlatformIO:
+
+| Env | Modo | Uso |
+|---|---|---|
+| `heltec_wifi_lora_32_V3` | TX (1) | vuelo: UART + LoRa |
+| `heltec_lora_rx` | RX (2) | estación: LoRa → USB |
+| `esp8266_ch340` | 0 (sin radio) | banco/pruebas |
+
+SX1262 (RadioLib): NSS=8, DIO1=14, RST=12, BUSY=13; **915 MHz (AU915), SF9,
+BW125, sync 0x12, 14 dBm**. El RX imprime `# LORA rx=… rssi=… snr=…` y el
+listener lo guarda en `uart_state.json` (`lora_rssi`/`lora_snr`). Estado:
+compila en los 3 envs y el TX arranca OK en la placa; el enlace RF end-to-end
+queda pendiente de flashear la segunda Heltec con `-e heltec_lora_rx`.
+
 ## 4. Checklist de diseño de la PCB
 
 **Ruteo**

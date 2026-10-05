@@ -177,6 +177,36 @@ decisiones:
       alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
       MODELS.yaml §dano_two_stage.
 
+  - id: lora-enlace
+    estado: vigente
+    texto: |
+      ENLACE LoRa DEL CANSAT (2026-10-05): implementado en el firmware. El DPD
+      exige el radio (la Heltec es computadora de vuelo + radio) y hasta ahora
+      el contrato sólo viajaba por UART cableado. `LORA_MODO` por env de
+      PlatformIO: **1 = TX de VUELO** (`heltec_wifi_lora_32_V3`: emite la MISMA
+      línea LB135 a 1 Hz por LoRa además del UART), **2 = RX de ESTACIÓN**
+      (`heltec_lora_rx`: recibe y re-emite por USB al PC; el listener y la
+      estación leen el mismo protocolo, sin cambios). SX1262: NSS=8, DIO1=14,
+      RST=12, BUSY=13; 915 MHz (AU915), SF9, BW125, sync 0x12, 14 dBm;
+      RadioLib 7.1.2. VALIDADO: los 3 envs compilan y el TX flasheado arranca
+      OK (`# LoRa: TX @ 915.0 MHz ... OK`) transmitiendo sin error (contador
+      tx); el enlace RF end-to-end queda PENDIENTE de la segunda Heltec (el RX
+      se flashea con `-e heltec_lora_rx`). El listener parsea la calidad de
+      enlace del RX (`# LORA rx=… rssi=… snr=…`) y la guarda en `uart_state`
+      (`lora_rssi`/`lora_snr`/`lora_n`; test nuevo en test_protocol).
+
+  - id: gps-real-firmware
+    estado: vigente
+    texto: |
+      GPS REAL EN EL FIRMWARE (2026-10-05): soporte del ATGM336H por UART2
+      (RX=GPIO6, TX=GPIO5 @9600) con parser NMEA RMC propio. Con fix fresco
+      (<5 s) el contrato v2 lleva lat/lon **REALES** (georreferenciación del
+      DPD); sin fix cae al perfil simulado DECLARADO (comportamiento anterior).
+      Se imprime `# GPS fix=0/1 n=…` cada 30 paquetes. VALIDADO: compila en los
+      3 envs y el boot de la Heltec muestra el UART2 listo con fix=0 (el módulo
+      no está conectado todavía) → sigue declarando simulado. Prueba con
+      hardware pendiente de conectar el GPS.
+
   - id: rpk-propio-tiny
     estado: vigente
     texto: |

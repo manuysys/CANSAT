@@ -15,11 +15,24 @@
  *  · MPU6050 en el mismo bus: se chequea (scan + acelerómetro) y se imprime
  *    por serial, pero NO viaja en el contrato v2 (el IMU es dominio del
  *    firmware de vuelo del equipo; ver decisiones `mpu-fuera-contrato`).
- *  · GPS: este emisor NO tiene GPS; lat/lon son simulados y se declaran.
+ *  · GPS (2026-10-05): soporta el ATGM336H real por UART2 (RX=GPIO6,
+ *    TX=GPIO5 @9600, NMEA RMC). Con fix fresco (<5 s) el contrato lleva
+ *    lat/lon REALES; sin fix cae al perfil simulado DECLARADO (como antes).
  *
- * Flasheo (PlatformIO):  pio run -e heltec_wifi_lora_32_V3 -t upload
- * Prueba en PC:          python uart_listener.py --port COMx --out outputs/uart_log.jsonl
- * Prueba en la Pi:       python uart_listener.py --port /dev/serial0   (GPIO15)
+ * ENLACE LoRa (2026-10-05): el radio del CanSat. `LORA_MODO`:
+ *   0 = solo UART por cable (default; ESP8266 sin radio),
+ *   1 = TX de VUELO: emite la misma línea LB135 por LoRa a 1 Hz (además del
+ *       UART para la Pi),
+ *   2 = RX de ESTACIÓN: recibe por LoRa y la re-emite por USB al PC (el
+ *       listener y la estación leen el mismo protocolo, sin cambios).
+ * Pines SX1262 de la Heltec V3: NSS=8, SCK=9, MOSI=10, MISO=11, RST=12,
+ * BUSY=13, DIO1=14. Frecuencia 915 MHz (AU915), SF9, BW125, sync 0x12.
+ *
+ * Flasheo (PlatformIO):
+ *   vuelo : pio run -e heltec_wifi_lora_32_V3 -t upload
+ *   estación: pio run -e heltec_lora_rx -t upload
+ * Prueba en PC:  python uart_listener.py --port COMx --out outputs/uart_log.jsonl
+ * Prueba en la Pi: python uart_listener.py --port /dev/serial0   (GPIO15)
  */
 #include <Arduino.h>
 #include <Wire.h>
@@ -27,6 +40,43 @@
 #include <Adafruit_BME280.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+
+// ── Enlace LoRa: modo por env de PlatformIO (ver platformio.ini) ────────
+#ifndef LORA_MODO
+#define LORA_MODO 0
+#endif
+#ifndef LORA_FREC_MHZ
+#define LORA_FREC_MHZ 915.0f
+#endif
+#ifndef LORA_POT_DBM
+#define LORA_POT_DBM 14
+#endif
+
+#if LORA_MODO != 0 && defined(ARDUINO_ARCH_ESP32)
+#include <RadioLib.h>
+static const int LORA_NSS = 8, LORA_DIO1 = 14, LORA_RST = 12, LORA_BUSY = 13;
+static SX1262 lora = new Module(LORA_NSS, LORA_DIO1, LORA_RST, LORA_BUSY);
+static bool lora_ok = false;
+static uint32_t lora_tx_n = 0, lora_rx_n = 0;
+
+static void lora_iniciar() {
+  Serial.print("# LoRa: ");
+  Serial.print(LORA_MODO == 1 ? "TX" : "RX");
+  Serial.print(" @ ");
+  Serial.print(LORA_FREC_MHZ, 1);
+  Serial.print(" MHz ... ");
+  int st = lora.begin(LORA_FREC_MHZ, 125.0f, 9, 5, 0x12, LORA_POT_DBM, 8);
+  if (st == RADIOLIB_ERR_NONE) {
+    lora_ok = true;
+    Serial.print("OK SF9 BW125 ");
+    Serial.print(LORA_POT_DBM);
+    Serial.println(" dBm");
+  } else {
+    Serial.print("init FALLO, codigo ");
+    Serial.println(st);
+  }
+}
+#endif
 
 #if defined(ARDUINO_ARCH_ESP32)
 // Heltec WiFi LoRa 32 V3: pines rotulados SDA/SCL del header (GPIO41/42).
@@ -46,6 +96,68 @@ static const float LAT_BASE = -34.60372f;   // simulado (se declara)
 static const float LON_BASE = -58.38159f;
 static const float DERIVA_LAT_M_S = 0.6f;
 static const float DERIVA_LON_M_S = 0.4f;
+
+// ── GPS ATGM336H real (2026-10-05) ──────────────────────────────────────
+// UART2 de la Heltec: RX=GPIO6 (desde el TX del GPS), TX=GPIO5, 9600 8N1.
+// Si hay fix (RMC con status A y <5 s de antigüedad) el contrato lleva
+// lat/lon REALES; si no, cae al perfil simulado DECLARADO (como antes).
+#if defined(ARDUINO_ARCH_ESP32)
+#define GPS_MODO 1
+#else
+#define GPS_MODO 0
+#endif
+#if GPS_MODO
+static const int GPS_RX_PIN = 6, GPS_TX_PIN = 5;
+static float gps_lat = 0.0f, gps_lon = 0.0f;
+static bool gps_ok = false;
+static uint32_t gps_ms = 0, gps_fix_n = 0;
+
+static void gps_iniciar() {
+  Serial2.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  Serial.println("# GPS: UART2 9600 listo (ATGM336H; fix real si llega)");
+}
+
+// ddmm.mmmm + hemisferio → grados decimales.
+static float nmea_grados(const char *campo, char hemi) {
+  float v = atof(campo);
+  int grados = (int)(v / 100.0f);
+  float minutos = v - (float)grados * 100.0f;
+  float dec = (float)grados + minutos / 60.0f;
+  if (hemi == 'S' || hemi == 'W') dec = -dec;
+  return dec;
+}
+
+static void gps_leer() {
+  static String buf;
+  while (Serial2.available()) {
+    char c = (char)Serial2.read();
+    if (c == '\n') {
+      buf.trim();
+      if (buf.startsWith("$GPRMC") || buf.startsWith("$GNRMC")) {
+        String tok[13];
+        int idx = 0, start = 0;
+        for (int i = 0; i <= (int)buf.length() && idx < 13; i++) {
+          if (i == (int)buf.length() || buf[i] == ',') {
+            tok[idx++] = buf.substring(start, i);
+            start = i + 1;
+          }
+        }
+        if (idx >= 7 && tok[2] == "A" && tok[3].length() && tok[5].length()) {
+          gps_lat = nmea_grados(tok[3].c_str(), tok[4].length() ? tok[4][0] : 'N');
+          gps_lon = nmea_grados(tok[5].c_str(), tok[6].length() ? tok[6][0] : 'E');
+          gps_ok = true;
+          gps_ms = millis();
+          gps_fix_n++;
+        }
+      }
+      buf = "";
+    } else if (c != '\r') {
+      buf += c;
+      if (buf.length() > 120) buf = "";
+    }
+  }
+}
+#endif
 
 static Adafruit_BME280 bme;
 static Adafruit_MPU6050 mpu;
@@ -102,6 +214,10 @@ void setup() {
     mpu_addr = 0x69;
   }
 
+#if LORA_MODO != 0 && defined(ARDUINO_ARCH_ESP32)
+  lora_iniciar();
+#endif
+
   Serial.println("# heltec_lb135_uart: emisor v2 listo");
   Serial.print("# BME280: ");
   if (bme_ok) {
@@ -119,7 +235,11 @@ void setup() {
   } else {
     Serial.println("no detectado");
   }
+#if GPS_MODO
+  gps_iniciar();
+#else
   Serial.println("# GPS: no hay -> lat/lon SIMULADOS (declarado)");
+#endif
 }
 
 // ── U3: eventos de vuelo con el MPU6050 ──────────────────────────────────
@@ -164,8 +284,36 @@ void chequear_evento_vuelo() {
 }
 
 void loop() {
+#if LORA_MODO == 2
+  // RX de ESTACIÓN: recibe por LoRa y re-emite por USB el mismo protocolo.
+  if (!lora_ok) {
+    delay(1000);
+    return;
+  }
+  String str;
+  int st = lora.receive(str, 500);
+  if (st == RADIOLIB_ERR_NONE) {
+    lora_rx_n++;
+    Serial.println(str);                 // el PC lo lee como al emisor cableado
+    if (lora_rx_n % 10 == 1) {
+      Serial.print("# LORA rx=");
+      Serial.print(lora_rx_n);
+      Serial.print(" rssi=");
+      Serial.print(lora.getRSSI());
+      Serial.print(" snr=");
+      Serial.println(lora.getSNR());
+    }
+  } else if (st != RADIOLIB_ERR_RX_TIMEOUT) {
+    Serial.print("# LORA rx error: ");
+    Serial.println(st);
+  }
+#else
   float t_s = (float)pkt;  // 1 Hz
   float alt, p, temp, hum;
+
+#if GPS_MODO
+  gps_leer();
+#endif
 
   if (bme_ok) {
     p = bme.readPressure() / 100.0f;          // Pa -> hPa
@@ -208,8 +356,34 @@ void loop() {
   float usi = bui / (veg > 0.1f ? veg : 0.1f);
   float gvi = (veg - bare) / (veg + bare > 1.0f ? veg + bare : 1.0f);
 
-  float lat = LAT_BASE - (DERIVA_LAT_M_S * t_s) / 111320.0f;
-  float lon = LON_BASE + (DERIVA_LON_M_S * t_s) / (111320.0f * 0.82f);
+  float lat, lon;
+#if GPS_MODO
+  // Fix real si es fresco (<5 s); si no, perfil simulado declarado.
+  bool gps_fresco = gps_ok && (millis() - gps_ms) < 5000;
+  if (gps_fresco) {
+    lat = gps_lat;
+    lon = gps_lon;
+  } else {
+    lat = LAT_BASE - (DERIVA_LAT_M_S * t_s) / 111320.0f;
+    lon = LON_BASE + (DERIVA_LON_M_S * t_s) / (111320.0f * 0.82f);
+  }
+  if (pkt % 30 == 0) {
+    Serial.print("# GPS fix=");
+    Serial.print(gps_fresco ? 1 : 0);
+    Serial.print(" n=");
+    Serial.print(gps_fix_n);
+    if (gps_fresco) {
+      Serial.print(" lat=");
+      Serial.print(lat, 5);
+      Serial.print(" lon=");
+      Serial.print(lon, 5);
+    }
+    Serial.println();
+  }
+#else
+  lat = LAT_BASE - (DERIVA_LAT_M_S * t_s) / 111320.0f;
+  lon = LON_BASE + (DERIVA_LON_M_S * t_s) / (111320.0f * 0.82f);
+#endif
 
   char body[192];
   snprintf(body, sizeof(body),
@@ -225,6 +399,27 @@ void loop() {
   Serial.print(body);
   Serial.print('*');
   Serial.println(cs);
+
+#if LORA_MODO == 1
+  // TX de vuelo: la MISMA línea LB135 viaja por LoRa (el contrato no cambia).
+  if (lora_ok) {
+    char linea[200];
+    snprintf(linea, sizeof(linea), "$%s*%s", body, cs);
+    int st = lora.transmit(linea);
+    if (st == RADIOLIB_ERR_NONE) {
+      lora_tx_n++;
+      if (pkt % 10 == 0) {
+        Serial.print("# LORA tx=");
+        Serial.print(lora_tx_n);
+        Serial.print(" rssi=");
+        Serial.println(lora.getRSSI());
+      }
+    } else {
+      Serial.print("# LORA tx error: ");
+      Serial.println(st);
+    }
+  }
+#endif
 
   // MPU6050: eventos de vuelo (U3) cada segundo + debug cada 5 paquetes.
   // Todo por serial, fuera del contrato de radio.
@@ -244,4 +439,5 @@ void loop() {
 
   pkt++;
   delay(1000);
+#endif  // LORA_MODO != 2
 }

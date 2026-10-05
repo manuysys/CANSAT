@@ -102,6 +102,8 @@ def main(argv=None) -> int:
     # ("# EVENTO DESPEGUE t_ms=..."). Se propaga por uart_state.json.
     evento_actual: dict | None = None
     ultimo_pkt_obj: PROTO.Packet | None = None
+    # Calidad del enlace LoRa (el RX de la estación emite "# LORA rx=… rssi=…").
+    lora_dbg: dict | None = None
 
     def escribir_estado(pkt: PROTO.Packet) -> None:
         """Vuelca el estado que lee el pipeline (con el evento vigente)."""
@@ -119,6 +121,10 @@ def main(argv=None) -> int:
                 "evento": (evento_actual or {}).get("evento"),
                 "evento_ms": (evento_actual or {}).get("t_ms"),
                 "evento_rx_wall": (evento_actual or {}).get("rx_wall"),
+                # Calidad del enlace LoRa (RX de la estación; None si no hay).
+                "lora_n": (lora_dbg or {}).get("n"),
+                "lora_rssi": (lora_dbg or {}).get("rssi"),
+                "lora_snr": (lora_dbg or {}).get("snr"),
             }, ensure_ascii=False), encoding="utf-8")
         except OSError:
             pass
@@ -159,6 +165,12 @@ def main(argv=None) -> int:
                 if not text:
                     continue
                 if text.startswith("#"):
+                    lora = PROTO.parse_lora_dbg(text)
+                    if lora is not None:
+                        lora_dbg = lora
+                        print(f"[LORA] paquetes={lora.get('n')} "
+                              f"rssi={lora.get('rssi')} snr={lora.get('snr')}")
+                        continue
                     ev = PROTO.parse_event(text)
                     if ev is not None:
                         ev["rx_wall"] = datetime.now(

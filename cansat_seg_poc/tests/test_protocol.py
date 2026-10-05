@@ -388,6 +388,15 @@ def test_parse_event_ignora_otras_lineas():
     assert P.parse_event("# EVENTO") is None                 # sin tipo
 
 
+def test_parse_lora_dbg():
+    d = P.parse_lora_dbg("# LORA rx=12 rssi=-61.00 snr=7.25")
+    assert d == {"n": 12, "rssi": -61.0, "snr": 7.25}
+    assert P.parse_lora_dbg("# LORA tx=1 rssi=-61.00") == {"n": 1, "rssi": -61.0}
+    assert P.parse_lora_dbg("# MPU6050 accel (m/s2): 0.1, 0.2, 9.8") is None
+    assert P.parse_lora_dbg("$LB135,2,1") is None
+    assert P.parse_lora_dbg("# LORA") is None      # sin campos
+
+
 def test_read_uart_state_incluye_evento(tmp_path):
     f = tmp_path / "uart_state.json"
     f.write_text('{"p_hPa": 990.0, "temp_C": 18.5, "evento": "despegue",'

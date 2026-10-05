@@ -425,6 +425,11 @@ deterministas sobre máscaras y telemetría.
    **Operación**: ✅ salud de la Pi (`pi_health.json`, 40-42 °C sin
    throttling), autostart systemd (`pi/cansat-vuelo.service`) y pull en vivo
    Pi→estación (`pi/servidor_vivo.py` + `tools/vivo_pi.py`) validados.
+   **LoRa (2026-10-05)**: enlace implementado en el firmware — TX de vuelo y RX
+   de estación (SX1262 915 MHz, RadioLib); TX flasheado y OK, el enlace RF
+   end-to-end queda pendiente de la segunda Heltec (`-e heltec_lora_rx`).
+   **GPS (2026-10-05)**: soporte del ATGM336H en el firmware (UART2/NMEA);
+   con fix usa lat/lon reales y sin fix declara el perfil simulado.
 3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: ✅ **HECHA (2026-10-05)**
    — cadena Docker/WSL2 con `edge-mdt[pt]` de PyPI (público, sin registro); el
    tiny de terreno corre en el NPU (`network.rpk`: memoria 4.28/8 MB = 54 %,

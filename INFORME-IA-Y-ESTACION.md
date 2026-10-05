@@ -29,7 +29,7 @@
 | Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
-| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; ✅ **GPIO15 en la Pi: 40/40** y **soak 10 min: 597/597, 0 pérdidas**; ✅ eventos de vuelo por MPU6050 (despegue/aterrizaje) validados en hardware |
+| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; ✅ **GPIO15 en la Pi: 40/40** y **soak 10 min: 597/597, 0 pérdidas**; ✅ eventos de vuelo por MPU6050 validados. ✅ **LoRa TX/RX implementado** (2026-10-05, SX1262 915 MHz; TX flasheado y OK; RX listo para la 2ª Heltec) y ✅ **GPS real en firmware** (ATGM336H UART2/NMEA con fallback simulado declarado) |
 | **Pi Zero W v1 (medido 2026-09-25)** | ✅ tiny@224 **~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → el vuelo por CPU usa tiny; daño/flood/fuego/severidad post-vuelo en la PC |
 | Operación de la Pi | ✅ **salud** (`pi_health.json`: 40-42 °C, sin throttling) · ✅ **autostart systemd** validado · ✅ **pull en vivo** Pi→estación por HTTP (sin tocar el frontend) |
 | Verificación | ✅ **386 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |

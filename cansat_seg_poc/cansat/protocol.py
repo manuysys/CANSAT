@@ -334,6 +334,34 @@ def parse(line: str) -> Packet | None:
 EVENTOS: tuple[str, ...] = ("despegue", "aterrizaje")
 
 
+def parse_lora_dbg(line: str) -> dict[str, Any] | None:
+    """
+    Parsea la línea debug del RX LoRa de la estación::
+
+        # LORA rx=12 rssi=-61.00 snr=7.25
+
+    Devuelve ``{"n": 12, "rssi": -61.0, "snr": 7.25}`` (los que estén) o
+    ``None`` si no es una línea LORA.
+    """
+    s = line.strip()
+    if not s.startswith("#") or "LORA" not in s.upper():
+        return None
+    out: dict[str, Any] = {}
+    for parte in s.replace("#", " ").split():
+        if "=" not in parte:
+            continue
+        k, _, v = parte.partition("=")
+        k = k.lower()
+        try:
+            if k in ("rx", "tx"):
+                out["n"] = int(v)
+            elif k in ("rssi", "snr"):
+                out[k] = float(v)
+        except ValueError:
+            continue
+    return out or None
+
+
 def parse_event(line: str) -> dict[str, Any] | None:
     """
     Parsea una línea debug de evento de vuelo (U3, MPU6050 en la Heltec)::
