@@ -195,6 +195,23 @@ def evaluar(model, loader, device):
     return cm, (inter_c / union_c if union_c else 0.0)
 
 
+def dataset_para(manifest: Path, size: int, aug: bool = False):
+    """
+    Elige el dataset por el NOMBRE del manifest:
+
+      · CRASAR (`*crasar*`): `Mask5Manifest` — las máscaras YA son de 5 clases.
+      · RescueNet: `RescueNetSeverity` — deriva la severidad del label original
+        de 10 clases (los tiles remapeados a daño NO sirven para severidad).
+
+    Antes el manifest primario se cargaba SIEMPRE como RescueNetSeverity: pasar
+    un manifest de CRASAR crasheaba con `NoneType is not subscriptable` y la
+    corrida imprimía frecuencias 0.00 % (bug encontrado 2026-10-05).
+    """
+    cls = (Mask5Manifest if "crasar" in str(manifest).lower()
+           else RescueNetSeverity)
+    return cls(manifest, size, aug)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Entrena severidad del daño (5 clases)")
     ap.add_argument("--epochs", type=int, default=10)
@@ -218,11 +235,11 @@ def main() -> int:
     args = ap.parse_args()
     set_seed(args.seed)
 
-    train_ds = RescueNetSeverity(Path(args.manifest), args.size, aug=True)
-    val_ds = RescueNetSeverity(Path(args.val_manifest), args.size)
-    extras = [Mask5Manifest(Path(m), args.size, aug=True)
+    train_ds = dataset_para(Path(args.manifest), args.size, aug=True)
+    val_ds = dataset_para(Path(args.val_manifest), args.size)
+    extras = [dataset_para(Path(m), args.size, aug=True)
               for m in args.extra_manifest]
-    extra_val = [Mask5Manifest(Path(m), args.size)
+    extra_val = [dataset_para(Path(m), args.size)
                  for m in args.extra_val_manifest]
     if extras:
         from torch.utils.data import ConcatDataset
@@ -253,7 +270,10 @@ def main() -> int:
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
+    # drop_last: un último batch de 1 muestra rompe BatchNorm en train
+    # ("Expected more than 1 value per channel", visto con CRASAR 865 % 16 = 1).
     train_dl = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
+                          drop_last=len(train_ds) % args.batch == 1,
                           num_workers=args.workers,
                           persistent_workers=args.workers > 0)
     val_dl = DataLoader(val_ds, batch_size=args.batch,

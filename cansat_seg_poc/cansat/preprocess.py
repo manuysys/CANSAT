@@ -43,6 +43,25 @@ def _require_cv2():
     return cv2
 
 
+def gray_world(rgb: np.ndarray) -> np.ndarray:
+    """
+    Balance de blancos gray-world (2026-10-05): iguala la media de los canales.
+
+    Medido con el modelo de VUELO (tiny@224, LoveDA val COMPLETO 1669 imgs):
+    mIoU **0.4400 → 0.4605 (+2.05 pts)** — agua 0.488→0.552, otras 0.421→0.452;
+    en el proxy UAV de RescueNet (150 tiles) 0.2456 → 0.2575. La variante
+    por-imagen "estandar" (z-score) se RECHAZÓ: mejora el proxy (+2.6) pero
+    destruye la fuente (−12 pts) — artefacto de dominio, no aprendizaje.
+
+    Acepta RGB uint8 [0,255] o float [0,1] y devuelve el mismo dtype.
+    """
+    x = rgb.astype(np.float32)
+    medias = x.mean(axis=(0, 1), keepdims=True)
+    out = x * (medias.mean() / np.maximum(medias, 1e-6))
+    return np.clip(out, 0, 255 if rgb.dtype == np.uint8 else 1.0).astype(
+        rgb.dtype)
+
+
 def normalize(rgb: np.ndarray) -> np.ndarray:
     """uint8 RGB [0,255] → float32 normalizado, mismo layout HWC."""
     return (rgb.astype(np.float32) / 255.0 - MEAN) / STD
@@ -55,17 +74,21 @@ def to_chw(arr: np.ndarray, batch: bool = True) -> np.ndarray:
 
 
 def preprocess_bgr(
-    bgr: np.ndarray, img_size: int = DEFAULT_IMG_SIZE, batch: bool = True
+    bgr: np.ndarray, img_size: int = DEFAULT_IMG_SIZE, batch: bool = True,
+    color_norm: bool = False,
 ) -> np.ndarray:
     """
     BGR uint8 → tensor NCHW float32 listo para ``sess.run``.
 
-    Equivalente exacto al ``preprocess_bgr``/``prep``/``prep_tile`` que estaba
-    duplicado en 24 archivos.
+    ``color_norm=True`` aplica el balance de blancos gray-world ANTES de
+    normalizar (mejora medida del modelo de vuelo: +2.05 pts de mIoU; ver
+    ``gray_world``).
     """
     cv2 = _require_cv2()
     resized = cv2.resize(bgr, (img_size, img_size))
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    if color_norm:
+        rgb = gray_world(rgb)
     return to_chw(normalize(rgb), batch=batch)
 
 

@@ -177,6 +177,21 @@ decisiones:
       alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
       MODELS.yaml §dano_two_stage.
 
+  - id: color-norm-gray-world
+    estado: vigente
+    texto: |
+      BALANCE DE BLANCOS GRAY-WORLD EN EL PREPROCESAMIENTO (2026-10-05):
+      ADOPTADO con medición. `cansat/preprocess.py::gray_world` iguala la media
+      de los canales RGB (costo nulo, sin entrenamiento). Medido en el val
+      COMPLETO de LoveDA: **tiny@224 0.4400 → 0.4605 (+2.05 pts; agua
+      0.488→0.552, otras 0.421→0.452)** y **v2@320 0.5219 → 0.5273 (+0.54)**;
+      además en el proxy UAV de RescueNet 0.2456 → 0.2575 (+1.2). La variante
+      por-imagen "estándar" (z-score) se RECHAZÓ: +2.6 en el proxy pero −12 pts
+      en la fuente (artefacto de dominio, mismo patrón que la UDA). Integrado
+      como `--color-norm` en mission_pipeline y ACTIVADO en run_flight.sh y
+      demo_vivo.sh (vuelo); 3 tests nuevos. Evidencia:
+      docs/benchmarks/color_norm.json.
+
   - id: lora-enlace
     estado: vigente
     texto: |

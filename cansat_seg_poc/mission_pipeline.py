@@ -527,6 +527,10 @@ def build_parser():
     mod = ap.add_argument_group("modelos")
     mod.add_argument("--onnx", default=None, help="segmentación de terreno (default: FP32 de vuelo)")
     mod.add_argument("--img-size", type=int, default=320)
+    mod.add_argument("--color-norm", action="store_true",
+                     help="balance de blancos gray-world antes de normalizar "
+                          "(medido en el tiny@224: +2.05 pts de mIoU en el val "
+                          "completo; ver cansat/preprocess.py::gray_world)")
     mod.add_argument("--damage-onnx", default="outputs/cansat_damage3_mobilenetv2.onnx")
     mod.add_argument("--damage2-onnx", default="outputs/cansat_damage_v3_bal_ep6.onnx",
                      help="two-stage de vuelo: adaptado a UAV con RescueNet. "
@@ -1048,7 +1052,8 @@ def main(argv=None):
             n_valid = max(1, int(valid.sum()))
 
             t_seg = time.perf_counter()
-            tensor = PP.preprocess_bgr(bgr, args.img_size)
+            tensor = PP.preprocess_bgr(bgr, args.img_size,
+                                       color_norm=args.color_norm)
             if args.tta:
                 logits, uncert = tta_logits(sess, bgr, args.img_size)
             else:

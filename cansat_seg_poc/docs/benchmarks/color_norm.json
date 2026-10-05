@@ -1,0 +1,44 @@
+{
+  "generado": "2026-10-05",
+  "prueba": "Balance de blancos gray-world en el preprocesamiento (domain gap satelital->UAV)",
+  "que_es": "Igualar la media de los canales RGB antes de normalizar (cero costo, sin entrenamiento). Implementado en cansat/preprocess.py::gray_world y expuesto como --color-norm en mission_pipeline.",
+  "mediciones": {
+    "tiny_224_val_completo": {
+      "dataset": "LoveDA val COMPLETO (1669 imgs)",
+      "sin": 0.4400,
+      "gray_world": 0.4605,
+      "delta": 0.0205,
+      "por_clase_sin": [0.516, 0.414, 0.488, 0.361, 0.421],
+      "por_clase_con": [0.523, 0.414, 0.552, 0.362, 0.452],
+      "fuente": "sonda onnxruntime CPU (script temporal, mismo protocolo que evaluate.py)"
+    },
+    "v2_320_val_completo": {
+      "dataset": "LoveDA val COMPLETO (1669 imgs)",
+      "sin_canonico": 0.5219,
+      "gray_world": 0.5273,
+      "delta": 0.0054,
+      "fuente": "sonda onnxruntime CPU; el 0.5219 es el canonico de MODELS.yaml"
+    },
+    "proxy_uav_rescuenet": {
+      "dataset": "RescueNet val (150 tiles) con el PROXY de terreno (debil, declarado)",
+      "sin": 0.2456,
+      "gray_world": 0.2575,
+      "delta": 0.0119
+    },
+    "variante_rechazada_estandar": {
+      "que": "z-score por imagen (media/std propios) antes de normalizar",
+      "proxy_uav": 0.2713,
+      "love300": 0.2602,
+      "baseline_love300": 0.3825,
+      "delta_fuente": -0.1223,
+      "veredicto": "RECHAZADA: mejora el proxy (+2.6) pero destruye la fuente (-12 pts) -> artefacto de dominio, mismo patron que la UDA"
+    }
+  },
+  "conclusion": "gray-world mejora AMBOS dominios (fuente +2.05 en el modelo de vuelo, +0.54 en el v2; proxy UAV +1.2) con costo nulo: ADOPTADO. La variante z-score queda rechazada con evidencia.",
+  "integracion": [
+    "cansat/preprocess.py::gray_world + preprocess_bgr(..., color_norm=True)",
+    "mission_pipeline.py --color-norm",
+    "pi/run_flight.sh y pi/demo_vivo.sh lo activan (vuelo)",
+    "3 tests nuevos en tests/test_preprocess.py"
+  ]
+}

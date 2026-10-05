@@ -45,6 +45,7 @@ fi
 python mission_pipeline.py --camera --frames "$FRAMES" --interval 0 \
     --no-damage --overwrite \
     --onnx outputs/cansat_seg_terrain_tiny_224.onnx --img-size 224 \
+    --color-norm \
     --det-backend imx500 --imx500-model "$DET_MODEL" --shutter 8000 --gain 16 \
     --uart-state "$STATE" \
     --pop-density 1500 \
