@@ -138,6 +138,21 @@ decisiones:
       (--det-backend imx500, SSD COCO on-sensor): misma limitación de personas
       chicas, PENDIENTE de medir en la placa.
 
+  - id: moe-dano-poc
+    estado: vigente
+    texto: |
+      MoE DE DAÑO (V11 4.2): PoC POSITIVA. `tools/moe_damage.py` entrena una
+      compuerta logística sobre features baratas (probabilidades de cada
+      experto, desacuerdo, brillo/contraste) para elegir por tile entre el
+      principal xBD y el two-stage UAV. Protocolo: xBD held-out por desastre +
+      RescueNet val, split 50/50 por tile, métrica IoU de dañado two-stage.
+      Resultados estables en dos semillas: seed 42 (200 tiles) compuerta 0.4717
+      vs mejor fijo 0.4270 (+4.5 pts; oráculo 0.4792); seed 7 (300 tiles)
+      0.4124 vs 0.3881 (+2.4 pts; oráculo 0.4171). Captura ~85-95% de la
+      brecha contra el oráculo. INTEGRACIÓN al consenso post-vuelo pendiente
+      (hoy es por reglas, `cansat/indices.py::diagnose`); en la Pi no aplica
+      (el daño corre post-vuelo). Evidencia: docs/benchmarks/moe_damage.json.
+
   - id: int8
     estado: descartada
     texto: |

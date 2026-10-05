@@ -1,0 +1,53 @@
+{
+  "generado": "2026-10-04",
+  "prueba": "MoE de dano (V11 4.2): compuerta aprendida sobre los especialistas",
+  "script": "tools/moe_damage.py",
+  "protocolo": {
+    "expertos": {
+      "A": "outputs/best_damage3.pth (principal xBD)",
+      "B": "outputs/best_damage_v3_bal.pth (two-stage UAV)"
+    },
+    "datos": "xBD held-out por desastre (Joplin/Michael/Moore/Portugal/Santa Rosa) + RescueNet val (UAV)",
+    "metricas": "IoU de danado two-stage (solo sobre edificios)",
+    "split": "50/50 por tile con semilla fija (la compuerta se entrena en train y se evalua en test)",
+    "features_compuerta": [
+      "media/max de p_danado de cada experto",
+      "desacuerdo medio |pA - pB|",
+      "brillo y contraste de la imagen"
+    ],
+    "compuerta": "LogisticRegression (sklearn) con StandardScaler"
+  },
+  "runs": [
+    {
+      "seed": 42,
+      "max_por_manifest": 100,
+      "n_tiles": 200,
+      "experto_a_iou": 0.4270,
+      "experto_b_iou": 0.4201,
+      "promedio_iou": 0.4513,
+      "compuerta_iou": 0.4717,
+      "compuerta_acierto": 0.78,
+      "oraculo_iou": 0.4792,
+      "delta_vs_mejor_fijo": 0.0447
+    },
+    {
+      "seed": 7,
+      "max_por_manifest": 150,
+      "n_tiles": 300,
+      "experto_a_iou": 0.3881,
+      "experto_b_iou": 0.3876,
+      "promedio_iou": 0.4021,
+      "compuerta_iou": 0.4124,
+      "compuerta_acierto": 0.867,
+      "oraculo_iou": 0.4171,
+      "delta_vs_mejor_fijo": 0.0243
+    }
+  ],
+  "conclusion": "PoC POSITIVA y estable en dos semillas: la compuerta aprendida supera al mejor experto fijo (+4.5 y +2.4 pts) y al promedio simple, y captura ~85-95% de la brecha contra el oraculo. Con estos dos expertos (dominios complementarios satelital/UAV), el MoE aporta.",
+  "caveats": [
+    "n = 200-300 tiles (100-150 por dominio): indicativo, no definitivo",
+    "La etiqueta de la compuerta es 'que experto tiene mejor IoU en este tile' (supervisada con GT)",
+    "Integracion al consenso post-vuelo del pipeline: pendiente (hoy el consenso es por reglas; ver cansat/indices.py::diagnose)",
+    "En la Pi no aplica: el dano corre post-vuelo en la PC (el vuelo usa solo terreno tiny)"
+  ]
+}
