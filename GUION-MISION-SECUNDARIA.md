@@ -1,40 +1,84 @@
 # Guión — Misión secundaria (2–3 min) · CanSat LB135
 
-> Objetivo: contar QUÉ ES, LO MÁS IMPORTANTE (hecho) y EN QUÉ SE ESTÁ TRABAJANDO,
-> con algo en pantalla en todo momento. Todos los números son medidos
-> (`docs/benchmarks/`, `INFORME-IA-Y-ESTACION.md`).
+> Hablado, sin tecnicismos: **qué es, qué hicimos y en qué estamos**. La idea es
+> que lo entienda cualquiera, aunque no sepa nada de inteligencia artificial.
+> El detalle técnico está en el Informe, para quien lo pida.
 
 ## Antes de empezar (2 min)
 
 1. `cd EstacionTerrena_MuestreoDeDatos && python web_server.py` → abrir
-   **http://localhost:8000** (F11, zoom 100 %).
-2. Tener abierto el **esquema** `EstacionTerrena_MuestreoDeDatos/docs/
-   esquema_mision_secundaria.png` (para el arranque y el cierre).
-3. Plan B a mano: `docs/demo_respaldo.webm` (video) y `docs/poster_LB135.png`.
-4. Si se muestra el rpk en vivo: Pi encendida y
-   `ssh pi@192.168.68.240` con el comando listo (ver tramo 4).
+   **http://localhost:8000** (pantalla completa).
+2. Tener a mano la imagen del **esquema**
+   (`EstacionTerrena_MuestreoDeDatos/docs/esquema_mision_secundaria.png`) y,
+   por si falla algo, el **video de respaldo** y el **póster**.
 
-## Guión
+## Guión (hablado)
 
-| T | Qué decir (idea) | Qué mostrar (pantalla) |
-|---|---|---|
-| 0:00 | "La misión secundaria son **dos sistemas**: IA a bordo en la Raspberry Pi con la AI Camera, y la estación terrena que reconstruye el vuelo. En vuelo se segmenta el terreno y se detectan personas sin gastar CPU; en tierra se calcula daño, inundación, fuego y severidad." | **Esquema** (`esquema_mision_secundaria.png`) |
-| 0:25 | "Lo que se ve acá es una misión completa: el corredor de frames del descenso, la cobertura de terreno por frame y las alertas. Todo sale de la telemetría del contrato de 34 columnas, con posición GPS por imagen." | **Estación → Vuelo**: corredor + barra de terreno + KPIs. `Enter` abre el frame crítico. |
-| 0:50 | "Estos son los números que sostienen la misión, todos medidos: terreno **0.44 mIoU** en el modelo que vuela a ~3 s/frame; daño **0.780** en dominio UAV; fuego **0.79**; inundación **0.489**; severidad de colapso **0.633**; y el detector de personas **0.374 mAP** corriendo en el NPU a ~7 fps." | **Detalle del frame**: HUD (personas, daño) + pestañas de imagen + botón **Grad-CAM** (explicabilidad). |
-| 1:20 | "La estación es 100 % offline para el jurado: 5 vistas, auto-refresh, Consulta Terrestre **simbólica** (no inventa: responde con las máscaras), e Informe imprimible en tinta. El post-vuelo completo corre en la PC sobre los frames crudos." | **Post-vuelo** (tecla `2`) → **Informe** (`3`) → probar un chip de la **Consulta** ("¿personas a menos de 200 m de una vía?"). |
-| 1:50 | "Y esto no es simulación de escritorio: la Pi Zero + AI Camera está **validada en hardware** — detección 6.8 fps sin CPU, UART con soak de 10 minutos **597/597 sin pérdidas**, LoRa y GPS implementados en el firmware. Y **nuestro modelo de terreno convertido a `.rpk` corre en el NPU** a 16.6 fps." | Foto de la Pi (`docs/evidencia/11b_pi_imx500_foto.png`) o **demo en vivo**: `python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk --clases love --seconds 10` (imprime cobertura por clase). |
-| 2:20 | "Ahora mismo seguimos mejorando con evidencia: adoptamos el modelo de daño **ep6** (0.780 vs 0.735) y la corrección de color **gray-world** (+2 pts de mIoU); integramos un **MoE** de daño en el post-vuelo. Y lo que no funcionó también se declara: UDA, augmentación y severidad multi-desastre se probaron y se rechazaron con números. Lo próximo: más modelos al NPU y el vuelo de campo." | Volver al **esquema** (franja **AHORA**) o a la vista **Jurado** para el cierre. |
-| 2:45 | Cierre: "Cada número que mostramos sale de una medición, y los límites también se declaran." | Póster o portada. |
+### 0:00 — Qué es *(mostrar el esquema)*
 
-## Claves y atajos
+"Nuestra misión secundaria, en una frase, es **una cámara que piensa**.
+Mientras el CanSat baja, una cámara especial mira el suelo y va entendiendo lo
+que ve: qué parte es vegetación, qué parte son edificios, dónde hay agua.
+Y una computadora muy chiquita guarda cada foto junto con la posición y la
+altura del CanSat en ese momento. Después, en tierra, la estación terrena arma
+**la película completa de la misión**."
 
-`1/2/3` Vuelo/Post/Informe · `G` Grad-CAM en el detalle · `A` solo alertas ·
-`P` presentación automática · `Esc` cerrar.
+### 0:25 — La estación *(mostrar la vista Vuelo)*
 
-## Qué tener listo (checklist rápido)
+"Esto es la estación terrena. Acá se ve el recorrido del CanSat, las fotos que
+fue sacando y un resumen de lo que vio. La pensamos para que **cualquiera mire
+la pantalla y entienda qué pasó**, sin ser experto. Y todo funciona **sin
+internet**, porque en el aula no vamos a tener."
 
-- [ ] Servidor de la estación corriendo y navegador en pantalla completa.
-- [ ] Esquema PNG abierto en el visor de imágenes (Alt+Tab listo).
-- [ ] Un frame con **Grad-CAM** ya cacheado (abrir una vez antes).
-- [ ] Pi encendida; si se muestra el rpk, terminal con el comando escrito.
-- [ ] Video de respaldo y póster a mano (plan B sin red/luz).
+### 0:50 — Qué hicimos *(mostrar el detalle de un frame y el Grad-CAM)*
+
+"¿Y qué hicimos todo este tiempo? Primero, la inteligencia: la cámara no solo
+saca fotos, las **clasifica**; **cuenta personas**; y en tierra estimamos
+**daños, inundaciones e incendios**. Después vino la parte más difícil y la más
+linda: hacerlo funcionar en el **hardware real**. Nos llegó la placa con la
+cámara y las pusimos a prueba de verdad. Ahí descubrimos algo clave: el cerebro
+de la cámara puede **detectar personas por su cuenta**, sin cargar el
+procesador — y eso importa muchísimo, porque la computadora es diminuta.
+Y lo más nuevo: **nuestro propio modelo**, el que entrenamos nosotros, ahora
+**corre adentro de la cámara**."
+
+### 1:30 — Cómo lo probamos *(foto de la Pi o demo del modelo en vivo)*
+
+"No nos quedamos en la simulación. Conectamos la placa con los **sensores
+reales**, la hicimos **hablar con la computadora de vuelo**, medimos cuánto
+tarda cada foto, dejamos el sistema corriendo **diez minutos seguidos** para ver
+si perdía datos, y probamos la **radio y el GPS**. Todo quedó documentado, con
+las cosas que salieron bien y también con las que no."
+
+### 2:00 — En qué estamos *(mostrar el post-vuelo o volver al esquema)*
+
+"Ahora estamos **mejorando los modelos** y preparando el **vuelo de verdad**:
+el armado del CanSat, la prueba en el predio y los últimos detalles. Y algo
+que nos parece importante: cada idea nueva la **medimos**. Si mejora, la
+adoptamos; y si no mejora, **también lo contamos**. Varias ideas nuestras
+quedaron en el camino, y eso también es parte del trabajo."
+
+### 2:35 — Cierre
+
+"En resumen: construimos un sistema que **ve, entiende y cuenta** lo que pasa
+abajo, que funciona en **hardware real** y que se puede mostrar **en vivo**.
+Y todo lo que les contamos acá lo probamos nosotros."
+
+## Qué mostrar en cada momento (resumen)
+
+| Momento | Pantalla |
+|---|---|
+| Arranque | Esquema de la misión (`esquema_mision_secundaria.png`) |
+| La estación | Vista **Vuelo**: recorrido + fotos + resumen |
+| Qué hicimos | **Detalle** de un frame + botón **Grad-CAM** |
+| Cómo lo probamos | Foto real de la Pi, o el modelo en vivo en la cámara (si hay tiempo) |
+| En qué estamos | **Post-vuelo**/Informe, o volver al esquema |
+| Cierre | Póster o portada |
+
+## Checklist rápido
+
+- [ ] Servidor de la estación corriendo, navegador en pantalla completa.
+- [ ] Esquema abierto en el visor de imágenes.
+- [ ] Un frame con Grad-CAM ya abierto una vez (queda en caché).
+- [ ] Pi encendida (si se muestra en vivo).
+- [ ] Video de respaldo y póster a mano (plan B).
