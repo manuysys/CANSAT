@@ -79,6 +79,7 @@ import json
 import math
 import os
 import random
+import shutil
 import sys
 import time
 from collections import Counter
@@ -948,6 +949,18 @@ def main(argv=None):
     salud_uptime0 = SALUD.leer_uptime_s()
     salud_throttled: dict | None = None
 
+    # ── Guarda de espacio en SD (vuelo real) ────────────────────────────
+    # La telemetría es lo ÚLTIMO que se pierde: si el disco se llena, primero
+    # se dejan de guardar los frames crudos y después la evidencia visual.
+    def _libre_mb(p: Path) -> float:
+        try:
+            return shutil.disk_usage(p).free / 1e6
+        except OSError:
+            return float("inf")
+
+    guardar_frames = True
+    guardar_vis = True
+
     # ── Sensores ────────────────────────────────────────────────────────
     bmp = None
     p0 = 1013.25
@@ -1311,6 +1324,18 @@ def main(argv=None):
                                       if colapso_pct is not None else None),
                 ocupacion_fuente=occ_fuente)
 
+            # Espacio en disco cada 20 frames (barato): avisa y degrada.
+            if i % 20 == 0:
+                libre = _libre_mb(out)
+                if libre < 150 and guardar_frames:
+                    guardar_frames = False
+                    print(f"  [WARN] SD con {libre:.0f} MB libres: se dejan de "
+                          f"guardar frames crudos (la telemetría sigue)")
+                if libre < 50 and guardar_vis:
+                    guardar_vis = False
+                    print(f"  [WARN] SD con {libre:.0f} MB libres: sin "
+                          f"evidencia visual")
+
             # ── Muestreo adaptativo ─────────────────────────────────────
             if sampler is not None:
                 score = sampler.interest_score(
@@ -1327,22 +1352,23 @@ def main(argv=None):
                            "review": False, "score": dec["score"]}
                 dst = {"high_res": hi_dir, "full_res": full_dir,
                        "thumb": th_dir}[dec["action"]]
-                if dec["action"] == "thumb":
-                    cv2.imwrite(str(dst / f"{name}.jpg"),
-                                cv2.resize(bgr, (256, 256)),
-                                [cv2.IMWRITE_JPEG_QUALITY, 70])
-                else:
-                    cv2.imwrite(str(dst / f"{name}.png"), bgr)
+                if guardar_frames:
+                    if dec["action"] == "thumb":
+                        cv2.imwrite(str(dst / f"{name}.jpg"),
+                                    cv2.resize(bgr, (256, 256)),
+                                    [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    else:
+                        cv2.imwrite(str(dst / f"{name}.png"), bgr)
             else:
                 dec = {"priority": "FULL", "score": 0.0, "review": False}
-                if args.camera:
+                if args.camera and guardar_frames:
                     # En vuelo (cámara) los frames crudos se guardan SIEMPRE en
                     # full_res: el post-vuelo de la PC los necesita (en modo
                     # carpeta ya están en disco y no se re-escriben).
                     cv2.imwrite(str(full_dir / f"{name}.png"), bgr)
 
             # ── Evidencia visual ────────────────────────────────────────
-            if not args.no_vis:
+            if not args.no_vis and guardar_vis:
                 vis = build_evidence(
                     bgr, seg, boxes, env, people, veh, alt, p, temp, t,
                     nodata_pct, nodata_thresh, person_ids=frozenset(pids),
@@ -1451,7 +1477,10 @@ def main(argv=None):
                 "sample_pri": dec["priority"], "sample_score": dec["score"],
                 "src": name,
             }
+            # Flush por frame: si el vuelo termina con un corte de energía (lo
+            # normal), el JSONL no debe perder las últimas líneas buffereadas.
             jsonl.write(json.dumps(pkt, ensure_ascii=False) + "\n")
+            jsonl.flush()
             # La columna danado_pct del CSV lleva el MÁXIMO del consenso
             # (dan_max), no sólo el modelo principal: aff_m2, diag y alert ya se
             # calculan con el máximo, y antes la estación terrena mostraba un
