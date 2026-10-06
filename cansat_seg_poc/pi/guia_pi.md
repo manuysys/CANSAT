@@ -162,6 +162,10 @@ validado en hardware todavía**: es lo primero a probar en la Pi.
 
 ## 7. Vuelo
 
+Chequeo previo (en el predio, antes de volar): `bash pi/preflight.sh` —
+verifica modelos, cámara+NPU, UART con la Heltec, **batería**, espacio en la
+SD, temperatura/throttling, reloj y systemd; resume PASS/WARN/FAIL.
+
 ```bash
 # --frames 1000 = grabar hasta que se corte la energía
 python mission_pipeline.py --camera --frames 1000 --interval 0 \

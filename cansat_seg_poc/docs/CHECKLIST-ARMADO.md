@@ -96,6 +96,8 @@ Prueba rápida (con el firmware ya flasheado):
 
 ## 6. Pre-vuelo (el día de la campaña)
 
+- [ ] **`bash pi/preflight.sh`** en verde (modelos, cámara+NPU, UART,
+      **batería** >3.6 V, SD, temperatura, reloj, systemd).
 - [ ] `--p0-alt <altitud del predio>` calibrado (QNH local) en `run_flight.sh`.
 - [ ] Foco re-ajustado con la luz del predio (la vista en vivo es la forma).
 - [ ] Batería al 100 % y **medida** antes de subir (no confiar en el LED).

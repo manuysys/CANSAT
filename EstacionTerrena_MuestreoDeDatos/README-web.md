@@ -233,7 +233,7 @@ TODO VERDE). Se adaptó mínimamente al upgrade:
 - Waits un poco mayores en dos pasos sensibles a CPU headless.
 
 Capturas de verificación del upgrade: `tools/shots/up/`
-(`node tools/shots-up.mjs` y `node tools/print-check.mjs` las regeneran).
+(`node tools/dev/shots-up.mjs` y `node tools/print-check.mjs` las regeneran).
 
 ### 8.1 Ronda 2 (feedback del operador)
 
@@ -246,7 +246,7 @@ Capturas de verificación del upgrade: `tools/shots/up/`
 | Panel Detail con scroll interno minúsculo | Detail crece con la página: sin `overflow-y-auto` anidado, imagen hasta 64 vh y métricas completas a scroll de página. |
 | "Que el 3D sea **en vivo** con GPS/IMU" | Botón **Live** en la escena: el CanSat sigue el **último frame que arriva del pipeline** (el server polea `telemetry.csv` cada 3 s; durante un vuelo real el pipeline escribe filas nuevas y el descenso se anima solo), con chip "● EN VIVO" y flash del HUD en cada frame nuevo. |
 
-Capturas de la ronda 2: `tools/shots/up2/` (`node tools/shots-up2.mjs`).
+Capturas de la ronda 2: `tools/shots/up2/` (`node tools/dev/shots-up2.mjs`).
 
 ### 8.2 Ronda 3 (sobre el rediseño editorial de la otra IA)
 
