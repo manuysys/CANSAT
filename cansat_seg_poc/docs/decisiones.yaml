@@ -177,6 +177,21 @@ decisiones:
       alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
       MODELS.yaml §dano_two_stage.
 
+  - id: severidad-crasar-solo
+    estado: descartada
+    texto: |
+      SEVERIDAD SÓLO CON CRASAR: NO ADOPTADA. Entrenado con el split por evento
+      (865 train / 221 val cross-tipo: colapso Champlain + lava Kahukai; test
+      CRASAR como reporte). A/B contra el modelo actual (RescueNet) en los
+      mismos manifests: CRASAR val cross-tipo colapso 0.163→0.221 y CRASAR test
+      0.367→0.472 (mejora esperada en sus eventos), PERO RescueNet val se hunde
+      0.633→0.323 (mIoU 0.551→0.205): olvido catastrófico del dominio de vuelo.
+      El modelo de producción sigue siendo el de RescueNet. De paso se
+      corrigieron 4 bugs de `train_severity.py` (dataset por manifest, label,
+      BatchNorm con batch 1, --eval-every). Evidencia:
+      docs/benchmarks/severity_crasar.json. SIGUIENTE: mezcla RescueNet+CRASAR
+      (selección por media de ambos val).
+
   - id: color-norm-gray-world
     estado: vigente
     texto: |

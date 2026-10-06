@@ -1,0 +1,32 @@
+{
+  "generado": "2026-10-05",
+  "prueba": "Severidad multi-desastre: CRASAR vs el modelo actual (RescueNet)",
+  "protocolo": {
+    "modelo_actual": "outputs/best_severity.pth (RescueNet, 12 epocas, 4000 tiles)",
+    "modelo_crasar": "outputs/best_severity_crasar.pth (12 epocas, 865 tiles del split por evento; best sel=0.347 en la epoca 6)",
+    "split_crasar": "val cross-tipo = colapso Champlain Towers + lava Kahukai (221 tiles); test CRASAR = eventos held-out (fuego/tornado/huracan, 2011 tiles)",
+    "metricas": "mIoU 5 clases + IoU de COLAPSO sobre edificios (la metrica que usa casualties)"
+  },
+  "resultados": {
+    "crasar_val_cross_tipo": {
+      "actual": {"miou": 0.1530, "colapso": 0.1634},
+      "crasar": {"miou": 0.2262, "colapso": 0.2214}
+    },
+    "crasar_test_heldout": {
+      "actual": {"miou": 0.2850, "colapso": 0.3670},
+      "crasar": {"miou": 0.2642, "colapso": 0.4717}
+    },
+    "rescuenet_val_retencion": {
+      "actual": {"miou": 0.5510, "colapso": 0.6332},
+      "crasar": {"miou": 0.2048, "colapso": 0.3232}
+    }
+  },
+  "veredicto": "NO ADOPTADO (solo CRASAR): mejora los eventos CRASAR (colapso test 0.367 -> 0.472; val cross-tipo 0.163 -> 0.221) pero OLVIDA catastróficamente RescueNet (colapso 0.633 -> 0.323, mIoU 0.551 -> 0.205), que es el dominio de vuelo. El modelo de produccion sigue siendo el de RescueNet.",
+  "bugs_corregidos_de_paso": [
+    "train_severity.py: el manifest primario se cargaba SIEMPRE como RescueNetSeverity (pasar CRASAR crasheaba con NoneType; frecuencias 0.00%) -> dataset_para() por manifest",
+    "label del dataset hardcodeado 'RescueNet' -> ahora se deriva de los manifests",
+    "BatchNorm con ultimo batch de 1 muestra (865 % 16 = 1) -> drop_last condicional",
+    "eval completa cada epoca con extra-val grande dominaba el tiempo -> --eval-every N"
+  ],
+  "siguiente": "Entrenamiento MEZCLADO RescueNet (primary) + CRASAR (extra) con seleccion por la media de ambos val: en curso; el A/B se repite con 3 modelos."
+}

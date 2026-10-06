@@ -231,6 +231,9 @@ def main() -> int:
     ap.add_argument("--resume", action="store_true",
                     help="continuar desde --out si ya existe (más épocas)")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--eval-every", type=int, default=1,
+                    help="evaluar (y guardar si mejora) cada N épocas; con un "
+                         "extra-val grande acelera mucho (default 1)")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     set_seed(args.seed)
@@ -298,6 +301,13 @@ def main() -> int:
             if bi % 50 == 0:
                 print(f"    batch {bi}/{len(train_dl)} loss {loss.item():.4f}")
         sched.step()
+
+        # --eval-every: la eval completa (val + extra-val) domina el tiempo de
+        # época cuando el extra es grande; se puede correr cada N épocas.
+        if (ep + 1) % max(1, args.eval_every) != 0 and ep + 1 != args.epochs:
+            print(f"  epoch {ep + 1}: loss {run / len(train_dl):.4f} "
+                  f"(sin eval)")
+            continue
 
         model.eval()
         cm, iou_col = evaluar(model, val_dl, device)
