@@ -149,7 +149,7 @@ def _handler_clase(base: Path):
             self.end_headers()
             self.wfile.write(body)
 
-        def do_GET(self):   # noqa: N802 (API de http.server)
+        def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path in ("/status", "/"):
                 body = json.dumps(status(base), ensure_ascii=False).encode()

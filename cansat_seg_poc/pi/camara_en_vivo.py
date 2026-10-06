@@ -51,7 +51,7 @@ def main() -> int:
     time.sleep(1.5)                       # primer frame
 
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:         # noqa: N802
+        def do_GET(self) -> None:
             if self.path.startswith("/stream.mjpg"):
                 self.send_response(200)
                 self.send_header("Content-Type",
@@ -86,7 +86,7 @@ def main() -> int:
                     "<p style='color:#8b9aab'>rojo &lt;15 · amarillo 15-50 · "
                     "verde &gt;50 · obturación 8 ms (anti blur)</p>"
                     "</body></html>"
-                ).encode("utf-8")
+                ).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(html)))
