@@ -48,6 +48,9 @@ los detalles del sistema. Se puede **recorrer la misión como una película**
 —vuelo, post-vuelo, informe y una vista pensada para el jurado—, se **actualiza
 sola** y también puede mostrar el vuelo **en vivo, mientras la Pi captura**.
 
+Y al final genera un **informe listo para imprimir**, con los resultados de la
+misión, para que quede en papel.
+
 Todo funciona **sin internet**, y permite hacer consultas sobre los datos: por
 ejemplo, **cuántas personas detectó cerca de un camino**, con la respuesta
 construida a partir de las mediciones reales."
