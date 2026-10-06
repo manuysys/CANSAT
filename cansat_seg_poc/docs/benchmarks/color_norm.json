@@ -25,6 +25,13 @@
       "gray_world": 0.2575,
       "delta": 0.0119
     },
+    "b5_512_val_300": {
+      "dataset": "LoveDA val 300 @512 (mismo subconjunto)",
+      "sin": 0.5086,
+      "gray_world": 0.5104,
+      "delta": 0.0018,
+      "nota": "marginal: NO se aplica al B5 (el post-vuelo lo deja como estaba). El v2 (mascaras) si lo usa (+0.54 medido en el val completo)."
+    },
     "variante_rechazada_estandar": {
       "que": "z-score por imagen (media/std propios) antes de normalizar",
       "proxy_uav": 0.2713,

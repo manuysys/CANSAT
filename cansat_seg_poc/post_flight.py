@@ -455,8 +455,11 @@ def main(argv=None) -> int:
         tensor = PP.preprocess_bgr(img, 320)
 
         # Máscaras coherentes con el vuelo: válidos (borde negro) y edificios.
+        # El terreno usa gray-world (+0.54 pts medidos en el v2@320); los demás
+        # modelos siguen con el tensor normal (su respuesta no está medida).
         if sess_terr:
-            seg_t = np.argmax(sess_terr.run({"input": tensor})[0], axis=0)
+            tensor_terr = PP.preprocess_bgr(img, 320, color_norm=True)
+            seg_t = np.argmax(sess_terr.run({"input": tensor_terr})[0], axis=0)
             valid = ND.valid_at_size(ND.border_mask(img, 15), 320)
             bmask = (seg_t == 1) & valid
         else:

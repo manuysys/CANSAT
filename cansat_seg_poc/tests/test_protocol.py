@@ -388,6 +388,16 @@ def test_parse_event_ignora_otras_lineas():
     assert P.parse_event("# EVENTO") is None                 # sin tipo
 
 
+def test_parse_vbat():
+    assert P.parse_vbat("# VBAT 3.87 V") == {"v": 3.87}
+    # Línea de arranque con las dos polaridades: toma el primer valor sano.
+    assert P.parse_vbat("# VBAT: ctrl=0 -> 3.90 V | ctrl=1 -> 0.02 V") == {
+        "v": 3.9}
+    assert P.parse_vbat("# VBAT: sin bateria (USB)") is None
+    assert P.parse_vbat("# MPU6050 accel") is None
+    assert P.parse_vbat("$LB135,2,1") is None
+
+
 def test_parse_lora_dbg():
     d = P.parse_lora_dbg("# LORA rx=12 rssi=-61.00 snr=7.25")
     assert d == {"n": 12, "rssi": -61.0, "snr": 7.25}

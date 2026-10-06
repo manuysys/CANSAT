@@ -159,6 +159,50 @@ static void gps_leer() {
 }
 #endif
 
+// ── Batería (2026-10-05): GPIO1 (VBAT_READ) vía divisor 390K/100K, habilitado
+// por GPIO37. ⚠ La polaridad del control se invirtió en la V3.2 (HIGH) vs
+// V3/V3.1 (LOW): se prueban AMBAS al arrancar y se elige la que da un valor
+// sano (2.5-4.5 V) con batería. Fuera del contrato de radio (como el MPU):
+// viaja por líneas debug "# VBAT ..." que el listener propaga al estado.
+#if defined(ARDUINO_ARCH_ESP32)
+#define VBAT_MODO 1
+#else
+#define VBAT_MODO 0
+#endif
+#if VBAT_MODO
+static const int VBAT_PIN = 1, VBAT_CTRL = 37;
+static bool vbat_ok = false;
+static bool vbat_ctrl_high = false;
+static float vbat_v = 0.0f;
+
+static float vbat_leer(bool ctrl_high) {
+  digitalWrite(VBAT_CTRL, ctrl_high ? HIGH : LOW);
+  delay(10);
+  uint32_t mv = 0;
+  for (int i = 0; i < 16; i++) mv += analogReadMilliVolts(VBAT_PIN);
+  return (mv / 16.0f) * 4.9f / 1000.0f;   // divisor 390K/100K = x4.9
+}
+
+static void vbat_iniciar() {
+  pinMode(VBAT_CTRL, OUTPUT);
+  analogReadResolution(12);
+  float v_low = vbat_leer(false);
+  float v_high = vbat_leer(true);
+  Serial.print("# VBAT: ctrl=0 -> ");
+  Serial.print(v_low, 2);
+  Serial.print(" V | ctrl=1 -> ");
+  Serial.print(v_high, 2);
+  Serial.println(" V");
+  if (v_high >= 2.5f && v_high <= 4.5f) {
+    vbat_ok = true; vbat_ctrl_high = true; vbat_v = v_high;
+  } else if (v_low >= 2.5f && v_low <= 4.5f) {
+    vbat_ok = true; vbat_ctrl_high = false; vbat_v = v_low;
+  }
+  Serial.print("# VBAT: ");
+  Serial.println(vbat_ok ? "bateria detectada" : "sin bateria (USB)");
+}
+#endif
+
 static Adafruit_BME280 bme;
 static Adafruit_MPU6050 mpu;
 static bool bme_ok = false;
@@ -239,6 +283,10 @@ void setup() {
   gps_iniciar();
 #else
   Serial.println("# GPS: no hay -> lat/lon SIMULADOS (declarado)");
+#endif
+
+#if VBAT_MODO
+  vbat_iniciar();
 #endif
 }
 
@@ -383,6 +431,14 @@ void loop() {
 #else
   lat = LAT_BASE - (DERIVA_LAT_M_S * t_s) / 111320.0f;
   lon = LON_BASE + (DERIVA_LON_M_S * t_s) / (111320.0f * 0.82f);
+#endif
+#if VBAT_MODO
+  if (pkt % 30 == 0) {
+    vbat_v = vbat_leer(vbat_ctrl_high);
+    Serial.print("# VBAT ");
+    Serial.print(vbat_v, 2);
+    Serial.println(" V");
+  }
 #endif
 
   char body[192];

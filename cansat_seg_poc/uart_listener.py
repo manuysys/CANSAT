@@ -104,6 +104,8 @@ def main(argv=None) -> int:
     ultimo_pkt_obj: PROTO.Packet | None = None
     # Calidad del enlace LoRa (el RX de la estación emite "# LORA rx=… rssi=…").
     lora_dbg: dict | None = None
+    # Batería de vuelo (la Heltec emite "# VBAT 3.87 V"; fuera del contrato).
+    vbat_dbg: dict | None = None
 
     def escribir_estado(pkt: PROTO.Packet) -> None:
         """Vuelca el estado que lee el pipeline (con el evento vigente)."""
@@ -125,6 +127,8 @@ def main(argv=None) -> int:
                 "lora_n": (lora_dbg or {}).get("n"),
                 "lora_rssi": (lora_dbg or {}).get("rssi"),
                 "lora_snr": (lora_dbg or {}).get("snr"),
+                # Batería de vuelo de la Heltec (None si no la reporta).
+                "vbat_v": (vbat_dbg or {}).get("v"),
             }, ensure_ascii=False), encoding="utf-8")
         except OSError:
             pass
@@ -165,6 +169,11 @@ def main(argv=None) -> int:
                 if not text:
                     continue
                 if text.startswith("#"):
+                    vbat = PROTO.parse_vbat(text)
+                    if vbat is not None:
+                        vbat_dbg = vbat
+                        print(f"[VBAT] {vbat['v']} V")
+                        continue
                     lora = PROTO.parse_lora_dbg(text)
                     if lora is not None:
                         lora_dbg = lora

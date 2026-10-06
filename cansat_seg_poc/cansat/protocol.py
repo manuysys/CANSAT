@@ -334,6 +334,28 @@ def parse(line: str) -> Packet | None:
 EVENTOS: tuple[str, ...] = ("despegue", "aterrizaje")
 
 
+def parse_vbat(line: str) -> dict[str, float] | None:
+    """
+    Parsea la línea debug de la batería de la Heltec::
+
+        # VBAT 3.87 V
+
+    (también acepta la línea de arranque ``# VBAT: ctrl=0 -> 3.90 V | ...``).
+    Devuelve ``{"v": 3.87}`` o ``None`` si no hay un voltaje plausible.
+    """
+    s = line.strip()
+    if not s.upper().startswith("# VBAT"):
+        return None
+    for parte in s.split():
+        try:
+            v = float(parte)
+        except ValueError:
+            continue
+        if 0.0 <= v <= 6.0:
+            return {"v": round(v, 2)}
+    return None
+
+
 def parse_lora_dbg(line: str) -> dict[str, Any] | None:
     """
     Parsea la línea debug del RX LoRa de la estación::
