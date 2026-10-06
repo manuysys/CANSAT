@@ -79,6 +79,12 @@ margen**. Un 18650 de 3.4 Ah da varias horas de operación.
   redundante (ahorra 4 g).
 - **Verificar el step-up en banco**: que sostenga ≥4.8 V con la Pi arrancando
   (pico ~0.5 A) y la Heltec transmitiendo. Los módulos baratos de 1 A se caen.
+- **Lectura de batería (implementada 2026-10-05)**: la Heltec V3 mide su
+  batería por **GPIO1** (divisor 390K/100K → ×4.9) habilitado por **GPIO37**
+  (HIGH en V3.2, LOW en V3/V3.1; el firmware auto-detecta). El valor va por
+  línea debug `# VBAT 3.87 V` y el listener lo guarda en `uart_state`
+  (`vbat_v`). Con la 18650 conectada por el JST, el pre-vuelo puede avisar si
+  el voltaje está bajo.
 
 ## 3. UART: el detalle que importa
 

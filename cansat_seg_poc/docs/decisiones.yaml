@@ -177,6 +177,20 @@ decisiones:
       alternativa. Evidencia: docs/benchmarks/aug_uav_dano_ab.json y
       MODELS.yaml §dano_two_stage.
 
+  - id: bateria-firmware
+    estado: vigente
+    texto: |
+      BATERÍA DE VUELO EN EL FIRMWARE (2026-10-05): la Heltec V3 lee su batería
+      por GPIO1 (divisor 390K/100K → ×4.9) habilitado por GPIO37; la polaridad
+      del control está INVERTIDA entre V3/V3.1 (LOW) y V3.2 (HIGH), así que el
+      firmware prueba AMBAS al arrancar y elige la que da un valor sano
+      (2.5-4.5 V). Viaja por línea debug `# VBAT 3.87 V` (FUERA del contrato de
+      radio, como el MPU) y el listener la guarda en `uart_state` (`vbat_v`,
+      con test). Compila en los 3 envs; el boot imprime las dos polaridades
+      (sin la 18650 conectada da ~0.0x V, declarado). Prueba con batería
+      conectada pendiente. Nota de la comunidad: durante el TX LoRa la lectura
+      se deprime → se lee fuera de la ventana de transmisión.
+
   - id: severidad-crasar-solo
     estado: descartada
     texto: |
@@ -188,9 +202,12 @@ decisiones:
       0.633→0.323 (mIoU 0.551→0.205): olvido catastrófico del dominio de vuelo.
       El modelo de producción sigue siendo el de RescueNet. De paso se
       corrigieron 4 bugs de `train_severity.py` (dataset por manifest, label,
-      BatchNorm con batch 1, --eval-every). Evidencia:
-      docs/benchmarks/severity_crasar.json. SIGUIENTE: mezcla RescueNet+CRASAR
-      (selección por media de ambos val).
+      BatchNorm con batch 1, --eval-every).       Evidencia:
+      docs/benchmarks/severity_crasar.json.
+      MEZCLA RescueNet(1500)+CRASAR TAMBIÉN RECHAZADA (2026-10-06): retiene
+      mejor RescueNet (colapso 0.591 vs 0.323 del solo-CRASAR) pero NO supera al
+      modelo actual en ningún dominio (CRASAR test 0.272 vs 0.367; cross-tipo
+      0.136 vs 0.163). El modelo de producción sigue siendo el de RescueNet.
 
   - id: color-norm-gray-world
     estado: vigente

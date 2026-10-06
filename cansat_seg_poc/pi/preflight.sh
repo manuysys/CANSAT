@@ -44,9 +44,10 @@ fi
 # ── 3. UART con la Heltec (8 s) ────────────────────────────────────────
 if [ -c /dev/serial0 ]; then
     # 12 s de ventana: el listener tarda ~3 s en arrancar (imports + puerto).
-    rm -f /tmp/preflight_uart.jsonl
+    rm -f /tmp/preflight_uart.jsonl /tmp/preflight_state.json
     timeout 12 venv/bin/python uart_listener.py --port /dev/serial0 \
-        --out /tmp/preflight_uart.jsonl --overwrite --quiet >/dev/null 2>&1 || true
+        --out /tmp/preflight_uart.jsonl --state /tmp/preflight_state.json \
+        --overwrite --quiet >/dev/null 2>&1 || true
     NPKT=$(wc -l < /tmp/preflight_uart.jsonl 2>/dev/null || echo 0)
     if [ "$NPKT" -ge 6 ]; then
         ok "UART: $NPKT paquetes en 8 s"
@@ -54,6 +55,19 @@ if [ -c /dev/serial0 ]; then
         warn "UART: sólo $NPKT paquetes (¿Heltec con poca señal?)"
     else
         fail "UART: 0 paquetes (¿Heltec encendida? TX→GPIO15, GND común)"
+    fi
+    # Batería que reporta la Heltec (línea debug "# VBAT …", fuera del contrato).
+    VBAT=$(python3 -c "import json; print(json.load(open('/tmp/preflight_state.json')).get('vbat_v') or '')" 2>/dev/null || true)
+    if [ -n "$VBAT" ]; then
+        if awk -v v="$VBAT" 'BEGIN{exit !(v < 3.3)}'; then
+            fail "batería: $VBAT V (¡cargar antes de volar!)"
+        elif awk -v v="$VBAT" 'BEGIN{exit !(v < 3.6)}'; then
+            warn "batería: $VBAT V (media carga)"
+        else
+            ok "batería: $VBAT V"
+        fi
+    else
+        warn "batería: la Heltec no reporta (¿18650 sin conectar?)"
     fi
 else
     fail "no existe /dev/serial0 (revisar raspi-config)"

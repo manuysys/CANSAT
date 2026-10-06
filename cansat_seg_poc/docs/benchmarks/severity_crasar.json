@@ -10,18 +10,21 @@
   "resultados": {
     "crasar_val_cross_tipo": {
       "actual": {"miou": 0.1530, "colapso": 0.1634},
-      "crasar": {"miou": 0.2262, "colapso": 0.2214}
+      "crasar": {"miou": 0.2262, "colapso": 0.2214},
+      "mezcla": {"miou": 0.2246, "colapso": 0.1355}
     },
     "crasar_test_heldout": {
       "actual": {"miou": 0.2850, "colapso": 0.3670},
-      "crasar": {"miou": 0.2642, "colapso": 0.4717}
+      "crasar": {"miou": 0.2642, "colapso": 0.4717},
+      "mezcla": {"miou": 0.3137, "colapso": 0.2716}
     },
     "rescuenet_val_retencion": {
       "actual": {"miou": 0.5510, "colapso": 0.6332},
-      "crasar": {"miou": 0.2048, "colapso": 0.3232}
+      "crasar": {"miou": 0.2048, "colapso": 0.3232},
+      "mezcla": {"miou": 0.5086, "colapso": 0.5914}
     }
   },
-  "veredicto": "NO ADOPTADO (solo CRASAR): mejora los eventos CRASAR (colapso test 0.367 -> 0.472; val cross-tipo 0.163 -> 0.221) pero OLVIDA catastróficamente RescueNet (colapso 0.633 -> 0.323, mIoU 0.551 -> 0.205), que es el dominio de vuelo. El modelo de produccion sigue siendo el de RescueNet.",
+  "veredicto": "NO ADOPTADO (ni solo-CRASAR ni MEZCLA): CRASAR solo mejora sus eventos (test 0.367->0.472) pero olvida RescueNet (0.633->0.323); la MEZCLA RescueNet(1500)+CRASAR retiene mejor (0.591) pero NO supera al actual en NINGUN dominio (CRASAR test 0.272 vs 0.367; cross-tipo 0.136 vs 0.163). El modelo de produccion sigue siendo el de RescueNet. La 'seleccion' 0.423 del entrenamiento mezclado (media de vals) no se traduce en la metrica de mision del A/B.",
   "bugs_corregidos_de_paso": [
     "train_severity.py: el manifest primario se cargaba SIEMPRE como RescueNetSeverity (pasar CRASAR crasheaba con NoneType; frecuencias 0.00%) -> dataset_para() por manifest",
     "label del dataset hardcodeado 'RescueNet' -> ahora se deriva de los manifests",

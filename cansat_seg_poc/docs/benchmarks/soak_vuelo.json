@@ -1,0 +1,22 @@
+{
+  "generado": "2026-10-06",
+  "prueba": "SOAK del vuelo completo en la placa (estabilidad de 22 min continuos)",
+  "comando": "FRAMES=250 bash pi/run_flight.sh (tiny@224 + YOLO11n NPU + UART Heltec)",
+  "resultado": {
+    "frames": 250,
+    "csv_lineas": 251,
+    "duracion_min": 22.0,
+    "s_por_frame": 5.2,
+    "tamano_mb": 104,
+    "salud_pi": {"temp_c_min": 37.9, "temp_c_max": 44.4, "throttled": false},
+    "cierre": "vuelo terminado OK (250 frames)",
+    "incidencias": "ninguna: sin crashes, telemetria completa, sin throttling"
+  },
+  "nota": "Valida la estabilidad del lazo de vuelo completo (captura + NPU + UART + escritura por frame) antes del vuelo real. El s/frame (5.2) es algo mayor que el de la demo (~3.5): incluye la deteccion NPU y la escritura de PNG.",
+  "extras_validados_en_la_misma_sesion": {
+    "preflight": "pi/preflight.sh: 10/10 PASS (modelos, camara+NPU, UART 6 paq, SD, temp, reloj, systemd)",
+    "bateria_firmware": "GPIO1 x4.9 auto-polaridad: ctrl=0 -> 0.01 V | ctrl=1 -> 4.09 V -> 'bateria detectada' + '# VBAT 4.19 V'",
+    "flush_jsonl": "flush por frame (un corte de energia ya no pierde las ultimas lineas)",
+    "guarda_sd": "a <150 MB deja de guardar frames crudos; a <50 MB tambien la evidencia"
+  }
+}
