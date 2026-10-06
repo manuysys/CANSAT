@@ -1,95 +1,155 @@
-# Guión — Misión secundaria (3:30) · CanSat LB135
+# Guion — Misión secundaria CanSat LB135
 
-> Explicativo, con lo técnico justo: los datasets, los tipos de modelos y los
-> números que más importan. No es un listado de métricas: es lo que hace falta
-> para que se entienda. El detalle completo está en el Informe.
+### Duración objetivo: 3 minutos 30 segundos
+
+> Explicativo y ameno, con lo técnico justo (datasets, tipos de modelos y un
+> número por modelo). El detalle completo está en el Informe.
 
 ## Antes de empezar (2 min)
 
 1. `cd EstacionTerrena_MuestreoDeDatos && python web_server.py` → abrir
    **http://localhost:8000** (pantalla completa).
-2. Tener a mano la imagen del **esquema**
-   (`EstacionTerrena_MuestreoDeDatos/docs/esquema_mision_secundaria.png`) y,
-   por si falla algo, el **video de respaldo** y el **póster**.
+2. Tener a mano el **esquema** (`EstacionTerrena_MuestreoDeDatos/docs/
+   esquema_mision_secundaria.png`) y, por si falla algo, el **video de respaldo**
+   y el **póster**.
 
-## Guión (hablado)
+---
 
-### 0:00 — Qué es *(mostrar el esquema)*
+**0:00 — Qué hace nuestra misión**
+*(Mostrar el esquema de la misión)*
 
-"Nuestra misión secundaria tiene dos mitades: **una cámara que piensa** a
-bordo, y una **estación terrena** que reconstruye la misión. Mientras el CanSat
-baja, la cámara mira el suelo y va entendiendo lo que ve: vegetación, edificios,
-agua; cuenta personas; y guarda cada foto con la posición y la altura. Después,
-en tierra, la estación arma **la película completa de la misión**."
+"En nuestra misión secundaria hay dos partes que trabajan juntas: **una cámara
+que analiza lo que ve durante el vuelo y una estación terrena que reconstruye
+toda la misión**.
 
-### 0:30 — La estación *(mostrar la vista Vuelo)*
+Mientras el CanSat desciende, la cámara observa el terreno y busca identificar
+**vegetación, edificios, agua y suelo**. También puede detectar **personas** y
+analizar situaciones de **daño, inundación o fuego**.
 
-"Esto es la estación: el recorrido del CanSat, las fotos que sacó y un resumen
-pensado para que **cualquiera entienda qué pasó**, sin ser experto. Funciona
-**sin internet** y además permite **preguntarle cosas** — por ejemplo, cuántas
-personas hay cerca de un camino — y responde con lo que midió, **sin inventar**."
+Además, cada imagen queda asociada a información del vuelo, como **posición y
+altura**. Y después, cuando termina el descenso, toda esa información se lleva a
+tierra para reconstruir lo que pasó durante la misión."
 
-### 1:00 — Qué construimos *(mostrar el detalle de un frame y el Grad-CAM)*
+---
 
-"Para lograrlo entrenamos **una familia de modelos**, cada uno con un dataset
-público distinto. El de **terreno** aprendió con imágenes satelitales y
-distingue cinco clases —vegetación, edificios, agua, suelo y otros— con una
-precisión por clase de alrededor del **40 %** (entre 36 y 52 % según la clase). El de **daño** aprendió con
-catástrofes reales, y sobre todo con **tomas de dron**, porque el CanSat mira
-como un dron, no como un satélite: ahí llega al **78 %**. Sumamos
-**inundaciones**, **fuego y humo**, y un modelo de **severidad** que estima
-cuánto se destruyó. Y para las **personas**, un detector entrenado con imágenes
-aéreas, que corre dentro de la cámara."
+**0:30 — La estación terrena**
+*(Mostrar la vista "Vuelo": escena 3D + recorrido)*
 
-### 1:50 — El hardware real *(foto de la Pi o demo del modelo en vivo)*
+"Esta es nuestra estación terrena.
 
-"Y no quedó en la computadora: lo hicimos andar en el **hardware real**. La
-placa es una Raspberry Pi diminuta con una cámara que tiene **cerebro propio**:
-descubrimos que puede detectar personas **sola, sin cargar el procesador** — y
-eso importa muchísimo, porque la computadora es humilde. Lo más nuevo es que
-**nuestro propio modelo, el que entrenamos nosotros, ahora corre adentro de esa
-cámara**. La conectamos con los sensores reales —presión, temperatura,
-movimiento, GPS— y con la radio; la dejamos corriendo **diez minutos seguidos**
-para ver si perdía datos, y **no perdió ninguno**."
+Lo primero que aparece es una **escena en 3D del descenso**: el CanSat, el
+paracaídas, la altura y la velocidad en cada momento — una forma muy visual de
+seguir el vuelo.
 
-### 2:30 — En qué estamos *(mostrar el post-vuelo o volver al esquema)*
+Alrededor está **el recorrido sobre el mapa, las imágenes que fue capturando y
+un resumen de lo que encontró**. La idea es que no sea solamente una herramienta
+técnica, sino que permita **entender rápidamente qué pasó**, incluso sin conocer
+los detalles del sistema. Se puede **recorrer la misión como una película**
+—vuelo, post-vuelo, informe y una vista pensada para el jurado—, se **actualiza
+sola** y también puede mostrar el vuelo **en vivo, mientras la Pi captura**.
 
-"Ahora estamos mejorando los modelos y preparando el **vuelo de verdad**: el
-armado del CanSat, la prueba en el predio y los últimos detalles. Y algo que
-nos importa: cada idea nueva la **medimos**. En este tiempo adoptamos un modelo
-de daño mejor y una corrección de imagen que sube la precisión; integramos un
-sistema que **combina dos modelos** según lo que ve cada foto. Y lo que no
-funcionó —varias ideas nuestras— **también lo contamos**: probamos, medimos y
-descartamos. Eso también es parte del trabajo."
+Todo funciona **sin internet**, y permite hacer consultas sobre los datos: por
+ejemplo, **cuántas personas detectó cerca de un camino**, con la respuesta
+construida a partir de las mediciones reales."
 
-### 3:10 — Cierre
+---
 
-"En resumen: construimos un sistema que **ve, entiende y cuenta** lo que pasa
-abajo, que funciona en **hardware real** y que se puede mostrar **en vivo**.
-Y todo lo que les contamos acá lo probamos nosotros."
+**1:00 — Los modelos de inteligencia artificial**
+*(Mostrar el detalle de un frame y después Grad-CAM)*
+
+"Para conseguir esto desarrollamos **una familia de modelos**, porque cada
+problema necesita datos y herramientas distintas.
+
+Para el **terreno** usamos imágenes satelitales: distingue **cinco clases
+—vegetación, edificios, agua, suelo y otros—** con un desempeño de alrededor del
+**40 % por clase**. Elegimos una arquitectura liviana porque tiene que funcionar
+en una computadora limitada.
+
+Para **daño** combinamos datasets como **xBD y RescueNet**. Y esto fue
+importante: para nuestro caso las imágenes de dron son mucho más parecidas a lo
+que realmente va a ver el CanSat que una imagen satelital. En ese dominio
+llegamos a **0,78 de desempeño**.
+
+También sumamos modelos de **inundación y fuego** (FloodNet y FLAME) y uno de
+**severidad**, que clasifica el nivel de destrucción en cinco categorías. Y para
+las personas, un detector entrenado con **imágenes aéreas de VisDrone**."
+
+---
+
+**1:50 — El hardware real**
+*(Mostrar la Raspberry Pi / cámara / demo en vivo)*
+
+"Lo más importante es que esto no quedó en una computadora de escritorio:
+**lo llevamos al hardware que realmente vamos a utilizar**.
+
+Usamos una **Raspberry Pi Zero junto con una AI Camera basada en el IMX500**.
+La cámara tiene procesamiento propio, así que **la detección de personas corre
+en su NPU sin cargar el procesador de la Raspberry**.
+
+Y hay un avance que para nosotros es especialmente importante: **nuestro propio
+modelo, el que entrenamos nosotros, también conseguimos ejecutarlo dentro de la
+cámara**.
+
+Además, conectamos el sistema con los sensores reales —**presión, temperatura,
+movimiento y GPS**— y con la radio LoRa. Hicimos una prueba continua de **diez
+minutos**, y durante esa prueba **no perdimos ningún dato**."
+
+---
+
+**2:30 — Qué estamos haciendo ahora**
+*(Mostrar Post-vuelo / Informe o volver al esquema)*
+
+"Ahora estamos en la etapa de **optimización y preparación del vuelo real**:
+seguimos mejorando los modelos, terminando el armado del CanSat y preparando las
+pruebas en el predio.
+
+Y hay algo que para nosotros es fundamental: **cada decisión la tomamos a partir
+de pruebas**. Incorporamos un modelo de daño que mostró mejores resultados, una
+corrección de imagen que mejora la precisión y un sistema que puede **combinar
+dos modelos según lo que encuentra en cada imagen**.
+
+Pero también documentamos las cosas que no funcionaron: probamos distintas
+ideas, las medimos y, cuando no alcanzaron, **las descartamos**. Eso también
+forma parte del desarrollo."
+
+---
+
+**3:10 — Cierre**
+*(Mostrar póster o portada)*
+
+"En resumen, construimos un sistema que **ve, analiza y cuenta lo que ocurre
+debajo del CanSat**, integrado con **hardware real, sensores, GPS y
+comunicaciones**, y una estación terrena capaz de reconstruir y mostrar toda la
+misión.
+
+Y algo que queremos destacar: **cada resultado que presentamos fue probado,
+medido y documentado por nosotros**. Por eso no es solamente una idea: es un
+sistema que ya estamos llevando a una implementación real."
+
+---
+
+## Qué mostrar en cada momento
+
+| Momento | Pantalla |
+|---|---|
+| Arranque | Esquema de la misión (`esquema_mision_secundaria.png`) |
+| La estación | Vista **Vuelo**: escena 3D + recorrido + fotos + resumen |
+| Modelos | **Detalle** de un frame + botón **Grad-CAM** |
+| Hardware | Foto real de la Pi, o el modelo en vivo en la cámara |
+| Ahora | **Post-vuelo**/Informe, o volver al esquema |
+| Cierre | Póster o portada |
 
 ## Los datos técnicos que sí conviene decir (y no más)
 
 | Tema | Qué decir |
 |---|---|
-| Terreno | 5 clases (vegetación, edificios, agua, suelo, otros); ~40–50 % por clase; el modelo que vuela es **liviano** a propósito (la placa es humilde) |
-| Daño | Entrenado con **xBD** (satélite) y **RescueNet** (dron): **0.78** en dominio dron |
+| Terreno | 5 clases; ~40 % por clase; modelo **liviano** a propósito (la placa es humilde) |
+| Daño | **xBD** (satélite) + **RescueNet** (dron): **0.78** en dominio dron |
 | Inundación / Fuego | **FloodNet** (~0.49) y **FLAME** (~0.79) |
 | Severidad | 5 niveles de destrucción; alimenta la estimación de pérdidas |
-| Personas | Detector con imágenes aéreas (**VisDrone**); corre en el **NPU** de la cámara |
-| Hardware | Pi Zero + AI Camera IMX500; sensores reales; radio LoRa; GPS |
+| Personas | Detector con imágenes aéreas (**VisDrone**); corre en el **NPU** |
+| Estación | 3D del descenso · mapa + corredor · consultas · informe imprimible · sin internet |
 | Honestidad | Todo medido; lo que no funcionó se descartó y se documentó |
-
-## Qué mostrar en cada momento (resumen)
-
-| Momento | Pantalla |
-|---|---|
-| Arranque | Esquema de la misión |
-| La estación | Vista **Vuelo**: recorrido + fotos + resumen |
-| Qué construimos | **Detalle** de un frame + botón **Grad-CAM** |
-| El hardware | Foto real de la Pi, o el modelo en vivo en la cámara |
-| En qué estamos | **Post-vuelo**/Informe, o volver al esquema |
-| Cierre | Póster o portada |
 
 ## Checklist rápido
 
