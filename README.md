@@ -20,7 +20,7 @@ ambiental, detección de daños y estimación de pérdidas humanas.
 # Software de vuelo (PC)
 cd cansat_seg_poc
 pip install -r requirements.txt
-python -m pytest tests -q                     # 190 tests
+python -m pytest tests -q                     # ~400 tests
 python mission_pipeline.py --folder tiles --frames 3 --no-detect --no-damage
 
 # Estación terrena

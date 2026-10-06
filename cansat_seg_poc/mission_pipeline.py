@@ -960,6 +960,7 @@ def main(argv=None):
 
     guardar_frames = True
     guardar_vis = True
+    vbat_bajo_avisado = False
 
     # ── Sensores ────────────────────────────────────────────────────────
     bmp = None
@@ -1112,6 +1113,7 @@ def main(argv=None):
                 else:
                     bmp_fail_streak = 0
             evento_vuelo: str | None = None
+            vbat_v: float | None = None
             if reading is None and bmp is None and args.uart_state:
                 # Sin barómetro en la Pi: usar la última lectura del ESP32 que
                 # dejó el listener (incluye humedad del BME280 del DPD).
@@ -1120,6 +1122,14 @@ def main(argv=None):
                     # U3: evento de vuelo (despegue/aterrizaje) del MPU6050 de
                     # la Heltec, vía las líneas debug que parsea el listener.
                     evento_vuelo = us.get("evento")
+                    # Batería de vuelo (la Heltec la reporta por debug): al
+                    # JSONL + aviso único si está baja.
+                    vbat_v = us.get("vbat_v")
+                    if (vbat_v is not None and vbat_v < 3.3
+                            and not vbat_bajo_avisado):
+                        vbat_bajo_avisado = True
+                        print(f"  [WARN] BATERÍA BAJA: {vbat_v:.2f} V "
+                              f"(< 3.3 V): revisar antes del vuelo")
                     p_u, temp_u = us["p_hPa"], us["temp_C"]
                     if us["lat"] or us["lon"]:
                         lat_f, lon_f = us["lat"], us["lon"]
@@ -1397,6 +1407,8 @@ def main(argv=None):
                 "pi_temp_c": (round(temp_pi, 1) if temp_pi is not None else None),
                 # U3: último evento de vuelo visto por el listener (o None).
                 "evento_vuelo": evento_vuelo,
+                # Batería de vuelo de la Heltec (None si no la reporta).
+                "vbat_v": vbat_v,
                 "hum_pct": (round(hum, 1) if hum is not None else None),
                 "terrain": {n: round(v, 1)
                             for n, v in zip(CLASS_NAMES, pcts, strict=False)},

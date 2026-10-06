@@ -22,7 +22,7 @@ CANSAT/
 ├── cansat_seg_poc/                  # VUELO + POST-VUELO + IA (Python/torch/ONNX)
 │   ├── cansat/                      # paquete compartido (21 módulos)
 │   ├── tools/                       # herramientas (stress suite, consulta, evals…)
-│   ├── tests/                       # 32 archivos de test (374 tests)
+│   ├── tests/                       # 36 archivos de test (~400 tests)
 │   ├── docs/                        # decisiones.yaml, reporte, protocolos, evidencia
 │   ├── dataset/ · datasets/         # datos (no versionados)
 │   ├── outputs/ · runs/ · weights/  # modelos y resultados (parcialmente versionados)
@@ -197,7 +197,7 @@ deterministas sobre máscaras y telemetría.
 
 ### 2.9 Tests y CI
 
-- **374 tests locales**: métricas, protocolo, índices, casualties,
+- **~400 tests locales**: métricas, protocolo, índices, casualties,
   conformal, sampler, CRF, nodata, xbd, summary (incluye confianza limitada),
   onnxio (mapeo por nombre y backends), imx500 (parser SSD), masks, consultas,
   corrupt (incluye `sombras`/`vibracion`), stress suite, post_flight, helpers

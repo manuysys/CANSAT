@@ -31,7 +31,7 @@ Vuelo → Detalle → Post-vuelo → Informe → Jurado, con la Pi en vivo como 
 | 6 | 4:30–5:30 | **Consulta Terrestre** (en Vuelo/Sampling) | Probar un chip: "¿cuántas personas hay a menos de 200 m de una vía?" → motor simbólico, sin inventar. |
 | 7 | 5:30–6:30 | **Jurado** | Portada + frames críticos. "Honestidad: LOEO 0.33, el tipo es pista contextual; la señal fuerte es daño/severidad." |
 | 8 | 6:30–8:30 | **Pi en vivo** (opcional) | Mostrar la Pi capturando (terminal o vista en vivo) y la telemetría con BME280 real; correr `demo_pi.ps1 -Frames 6` y mostrar el resultado en la estación. Alternativa **pull en vivo**: con `pi/servidor_vivo.py` corriendo en la Pi, `python tools/vivo_pi.py` sincroniza el vuelo cada 2 s y la web se actualiza sola. **Beat estrella (30 s)**: `python -m cansat.imx500_seg --model /home/pi/modelos/network_compacto.rpk --clases love` → NUESTRO modelo segmentando en el NPU en vivo (imprime la cobertura por clase a ~7 fps, sin CPU). |
-| 9 | 8:30–9:30 | Cierre | "Métricas medidas, límites declarados: hardware validado en placa (tiny ~3 s/frame, NPU ~3 fps, UART 40/40)." |
+| 9 | 8:30–9:30 | Cierre | "Métricas medidas, límites declarados: hardware validado en placa (tiny ~3 s/frame, YOLO11n 6.8 fps y **nuestro `.rpk` 16.6 fps** en el NPU, UART con soak 597/597)." |
 
 ## Teclas útiles (atajos de la estación)
 

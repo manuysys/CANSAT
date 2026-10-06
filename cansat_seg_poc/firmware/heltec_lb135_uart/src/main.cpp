@@ -433,7 +433,8 @@ void loop() {
   lon = LON_BASE + (DERIVA_LON_M_S * t_s) / (111320.0f * 0.82f);
 #endif
 #if VBAT_MODO
-  if (pkt % 30 == 0) {
+  // Cada 10 s (no 30): el pre-vuelo escucha ~12 s y así siempre la captura.
+  if (pkt % 10 == 0) {
     vbat_v = vbat_leer(vbat_ctrl_high);
     Serial.print("# VBAT ");
     Serial.print(vbat_v, 2);
