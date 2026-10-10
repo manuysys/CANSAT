@@ -1,0 +1,84 @@
+{
+  "prueba": "GPS ATGM336H en la Heltec de vuelo: fix real vs perfil simulado",
+  "generado": "2026-10-09 15:35:26",
+  "puerto": "COM4",
+  "baud": 115200,
+  "ventana_s": 121.1,
+  "raw": "outputs/gps_capture_1hz_raw.txt",
+  "nota": "post-fix del delay compensado (2026-10-09): verifica lazo ~1 Hz con LoRa TX y fix GPS real intacto; banco en PC (COM4), GPS en arranque tibio (solo se reinicia la MCU)",
+  "hardware": "Heltec WiFi LoRa 32 V3 (vuelo): ATGM336H por UART2 RX=GPIO6 TX=GPIO5 @9600 8N1",
+  "umbral_real_m": 1000.0,
+  "mediciones": {
+    "lineas": 173,
+    "paquetes": 121,
+    "checksum_mal": 0,
+    "basura": 0,
+    "debug_otras": 48,
+    "debug_gps": 4,
+    "debug_fix1": 4,
+    "debug_lineas": [
+      {
+        "t_rel_s": 12.859,
+        "fix": 1,
+        "n": 5925,
+        "lat": -34.63888,
+        "lon": -58.59201
+      },
+      {
+        "t_rel_s": 42.859,
+        "fix": 1,
+        "n": 5955,
+        "lat": -34.63889,
+        "lon": -58.59201
+      },
+      {
+        "t_rel_s": 72.859,
+        "fix": 1,
+        "n": 5985,
+        "lat": -34.6389,
+        "lon": -58.59203
+      },
+      {
+        "t_rel_s": 102.859,
+        "fix": 1,
+        "n": 6015,
+        "lat": -34.63888,
+        "lon": -58.59203
+      }
+    ],
+    "pkt_min": 5988,
+    "pkt_max": 6108,
+    "perdidos_por_contador": 0,
+    "periodo_mediano_s": 1.0,
+    "paquetes_reales": 121,
+    "paquetes_simulados": 0,
+    "fix_pct": 100.0,
+    "primer_pkt_fix": 5988,
+    "ttff_s": null,
+    "ttff_nota": "la placa no arrancó de cero al abrir el puerto (primer pkt=5988): TTFF no medible en esta corrida",
+    "dist_sim_mediana_m": 21702.5,
+    "dist_sim_min_m": 21679.0,
+    "dist_sim_max_m": 21727.0,
+    "lat_media": -34.63889,
+    "lon_media": -58.59202,
+    "lat_min": -34.6389,
+    "lat_max": -34.63888,
+    "lon_min": -58.59203,
+    "lon_max": -58.59201,
+    "dispersion_m": 1.4,
+    "velocidad_mediana_m_s": 0.0,
+    "deriva_n_m_s": 0.002,
+    "deriva_e_m_s": -0.018,
+    "deriva_rms_m": 0.9,
+    "sim_deriva_n_m_s": 0.6,
+    "sim_deriva_e_m_s": 0.4
+  },
+  "conclusion": {
+    "veredicto": "real",
+    "criterios": [
+      "121/121 paquetes a >1000 m del perfil simulado (dist mediana 21702.5 m)",
+      "debug del firmware con fix=1 en 4 línea(s)",
+      "deriva medida N=0.002 m/s / E=-0.018 m/s vs simulada 0.6/0.4"
+    ]
+  }
+}

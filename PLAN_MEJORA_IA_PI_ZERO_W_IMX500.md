@@ -297,7 +297,7 @@ Fuente: `La Base - DPD CANSAT 2026.pdf` (Equipo 135, E.E.S.T. N.º 4 El Palomar)
 
 ## V8.5. Tests de componente del DPD que el software no cubre (procedimiento, no código)
 
-- BME280 vs estación meteorológica calibrada; GPS TTFF + precisión posición/altitud (ATGM336H); LoRa a distancia real **con CanSat cerrado** (la carcasa afecta alcance); cámara con distinta luz/movimiento; almacenamiento prolongado (integridad + sincronía imagen↔metadatos); consumo total con batería definitiva (el pipeline mide `ms_total`, no mA → medir en banco con USB-tester).
+- BME280 vs estación meteorológica calibrada; GPS TTFF + precisión posición/altitud (ATGM336H) — ✅ TTFF tibio 2.28 s y dispersión 3.8 m medidos (2026-10-09, `docs/benchmarks/gps_fix_120s.json`), falta altitud y arranque en frío; LoRa a distancia real **con CanSat cerrado** (la carcasa afecta alcance); cámara con distinta luz/movimiento; almacenamiento prolongado (integridad + sincronía imagen↔metadatos); consumo total con batería definitiva (el pipeline mide `ms_total`, no mA → medir en banco con USB-tester).
 - La IA no debe codificarlos: debe dejar procedimientos + bitácora. `EstacionTerrena/CHECKLIST-SIMULACRO.md` (12 pruebas integridad 1-8 + 4 variantes) es el lugar; su tabla de corridas está vacía (`:59-61`) → llenar en campaña. Roles DPD (Juan Manuel y Alan = estación terrena) ya coinciden con el repo.
 
 ## V8.6. Post-recuperación: falta la herramienta SD→PC (gap pequeño)

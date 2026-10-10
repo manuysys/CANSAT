@@ -231,16 +231,42 @@ decisiones:
       exige el radio (la Heltec es computadora de vuelo + radio) y hasta ahora
       el contrato sólo viajaba por UART cableado. `LORA_MODO` por env de
       PlatformIO: **1 = TX de VUELO** (`heltec_wifi_lora_32_V3`: emite la MISMA
-      línea LB135 a 1 Hz por LoRa además del UART), **2 = RX de ESTACIÓN**
+      línea LB135 por LoRa además del UART; la cadencia medida con radio es
+      ~0.5 Hz, ver hallazgo abajo), **2 = RX de ESTACIÓN**
       (`heltec_lora_rx`: recibe y re-emite por USB al PC; el listener y la
       estación leen el mismo protocolo, sin cambios). SX1262: NSS=8, DIO1=14,
       RST=12, BUSY=13; 915 MHz (AU915), SF9, BW125, sync 0x12, 14 dBm;
-      RadioLib 7.1.2. VALIDADO: los 3 envs compilan y el TX flasheado arranca
-      OK (`# LoRa: TX @ 915.0 MHz ... OK`) transmitiendo sin error (contador
-      tx); el enlace RF end-to-end queda PENDIENTE de la segunda Heltec (el RX
-      se flashea con `-e heltec_lora_rx`). El listener parsea la calidad de
-      enlace del RX (`# LORA rx=… rssi=… snr=…`) y la guarda en `uart_state`
-      (`lora_rssi`/`lora_snr`/`lora_n`; test nuevo en test_protocol).
+      RadioLib 7.8.1 (declarada `^7.1.2`; resuelta 7.8.1 en `.pio/libdeps`).
+      VALIDADO end-to-end por RF (2026-10-08): TX de vuelo ->
+      RX de estación en banco (~10 cm, antenas IPEX): ventana de 60 s con
+      **35/35 paquetes, 0 % de pérdida, RSSI medio −29.5 dBm** (min −30.0 /
+      max −28.0) y **SNR medio 11.1 dB** (min 10.75 / max 11.25). El listener
+      parsea la calidad de enlace del RX (`# LORA rx=… rssi=… snr=…`) y la
+      guarda en `uart_state` (`lora_rssi`/`lora_snr`/`lora_n`; test en
+      test_protocol). Evidencia: docs/benchmarks/lora_rf_aire.json (esa captura
+      ya traía fix GPS real; el campo se corrigió el 2026-10-09). HALLAZGO
+      MEDIDO (2026-10-09): con `LORA_MODO=1` el lazo caía a **~0.5 Hz**
+      (60 paquetes en 121 s, periodo mediano 2.016 s) porque `transmit()`
+      bloquea ~0.7 s y el `delay(1000)` fijo se sumaba; sin radio el soak había
+      dado ~1 Hz. **CORREGIDO Y RE-MEDIDO (2026-10-09)**: el delay ahora
+      descuenta el ciclo (`delay(1000 − ciclo)` en main.cpp; de paso se arregló
+      el env `esp32s3_ch340`, que no declaraba las libs de los sensores y no
+      compilaba). Captura de 120 s con radio activa: **121/121 paquetes,
+      periodo mediano 1.0 s**. Evidencia: docs/benchmarks/gps_fix_1hz.json.
+      **BUG DE CHECKSUM DEL RX MEDIDO Y CORREGIDO (2026-10-09)**: la RX llamaba
+      `lora.receive(str, 500)` creyendo que 500 era el timeout, pero en RadioLib
+      es `len`: la String quedaba con basura de heap después del payload
+      ("...*2C\\x80 \\xd6\\xce?:") y **TODOS los checksums llegaban mal al PC
+      (120/120)** aunque el payload fuera exacto byte a byte. Además `timeout=500
+      ms` es más corto que el aire del paquete (~0.7 s medido) → la RX no recibía
+      NADA (0/120). Fix: `lora.receive(str, 0, 0)` (len auto + timeout auto
+      ~2.5 s). Evidencia del bug: docs/benchmarks/lora_rf_1hz_bug_checksum.json.
+      **RE-VALIDADO POR AIRE (2026-10-09, post-fix)**: TX→RX 120 s con el lazo a
+      **1 Hz: 120/120 paquetes en el rango común, 0 pérdidas, checksums 0/0,
+      RSSI medio −19.9 dBm y SNR medio 11.2 dB**, gaps p95 1.03 s. Evidencia:
+      docs/benchmarks/lora_rf_1hz.json (herramienta `tools/lora_check.py`).
+      PENDIENTE: prueba de distancia real (100 m–1 km) y con el CanSat cerrado
+      (la carcasa afecta el alcance).
 
   - id: gps-real-firmware
     estado: vigente
@@ -249,10 +275,21 @@ decisiones:
       (RX=GPIO6, TX=GPIO5 @9600) con parser NMEA RMC propio. Con fix fresco
       (<5 s) el contrato v2 lleva lat/lon **REALES** (georreferenciación del
       DPD); sin fix cae al perfil simulado DECLARADO (comportamiento anterior).
-      Se imprime `# GPS fix=0/1 n=…` cada 30 paquetes. VALIDADO: compila en los
-      3 envs y el boot de la Heltec muestra el UART2 listo con fix=0 (el módulo
-      no está conectado todavía) → sigue declarando simulado. Prueba con
-      hardware pendiente de conectar el GPS.
+      Se imprime `# GPS fix=0/1 n=…` cada 30 paquetes. **VALIDADO EN HARDWARE
+      (2026-10-09)**: captura de 120 s en la placa de vuelo (COM4, firmware de
+      vuelo con LoRa TX): **59/60 paquetes con posición REAL** (el único
+      simulado es pkt=0, antes de enganchar), **TTFF 2.28 s** desde pkt=0
+      (arranque tibio: al abrir el puerto se reinicia la MCU, el GPS no pierde
+      energía), posición media **−34.63882, −58.59206** estable (dispersión
+      3.8 m en 120 s; deriva medida 0.008/−0.047 m/s vs 0.6/0.4 del perfil;
+      19.7 km de la trayectoria simulada) y 0/60 checksum malos. Evidencia:
+      docs/benchmarks/gps_fix_120s.json + crudo outputs/gps_capture_raw.txt;
+      herramienta `tools/gps_check.py` (criterio explícito real vs simulado).
+      NOTA MEDIDA: con el lazo a 2 s (antes del fix del delay) el contador NMEA
+      `n` crecía ~0.6/s (75 en 120 s) porque `gps_leer()` corría una vez por
+      lazo y se descartaban sentencias; con el lazo corregido a 1 Hz crece ~1/s
+      (n +30 cada 30 paquetes en gps_fix_1hz.json): el GPS vuelve a leerse a
+      1 Hz. PENDIENTE: TTFF en arranque frío (sin efemérides) y a cielo abierto.
 
   - id: rpk-propio-tiny
     estado: vigente
@@ -936,7 +973,9 @@ limitaciones:
       reconocible y el NPU detecta personas (12/12 frames en el ensayo). Para
       el vuelo (luz de día) re-ajustar con la vista en vivo o rpicam-still
       --shutter 4000.
-      La conversión de NUESTROS modelos a .rpk sigue pendiente (Edge-MDT/Linux).
+      La conversión de NUESTROS modelos a .rpk quedó **HECHA (2026-10-05)**:
+      ver la decisión `rpk-propio-tiny` (tiny de terreno en el NPU, variante
+      compacta 7.4-16.6 fps).
       Evidencia: docs/benchmarks/pi_zero_w_imx500.json y docs/evidencia/
       11_pi_imx500.png (frame con caja) + 11b_pi_imx500_foto.png.
 
@@ -1014,22 +1053,20 @@ limitaciones:
 
 proximos_pasos:
   - |
-    Convertir NUESTROS modelos (terreno tiny, flood, fuego) a .rpk con el
-    converter Sony (MCT → imxconv-pt → imx500-package): requiere Linux; se
-    intenta vía Docker Desktop/WSL2 en la PC de desarrollo.
-    pi/convertir_modelos.sh NO fue probado (lo admite en un comentario): pegar
-    la salida de --help y ajustar la sintaxis.
+    Campo/hardware: prueba de LoRa a distancia real (100 m-1 km) con el CanSat
+    cerrado (herramienta lista: `tools/lora_check.py --solo-rx`); TTFF del GPS
+    en arranque frío y a cielo abierto; batería real de vuelo (validar la
+    lectura VBAT contra multímetro y estimar autonomía); medir el consumo de la
+    Pi (no tiene sensor propio: USB-tester o multímetro en serie / INA219).
+  - |
+    Demo: resolver la red del lugar (hotspot con IP fija, cargando el perfil
+    WiFi en la Pi; o demo grabada + video de respaldo).
   - |
     Re-medir INT8 (QDQ estático) del tiny en la placa con cv2.dnn y decidir
     FP32 vs INT8 con número medido (validate_int8_mission.py). Actualizar
     modelo_vuelo.nota_precision y la decisión `int8`.
   - |
-    A/B correcto de augmentación UAV del daño (mismo init/receta ± aug, escala
-    suave 0.7-0.9, schedule largo, lr de fine-tune separado): resultado en
-    docs/benchmarks/aug_uav_dano_ab.json.
-  - |
-    V11 diferido post-presentación (detalle en PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md):
-    MoE de daño (condicionado a que el perfil rápido no alcance en la Pi),
-    UDA LoveDA→RescueNet, difusión/LoRA para clases raras, capas Sentinel Hub
-    opcionales con red, continual learning con replay (requiere 3-5 vuelos
-    reales anotados).
+    V11 opcional post-presentación (detalle en PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md):
+    difusión/LoRA para clases raras, capas Sentinel Hub con red y continual
+    learning con replay (requiere 3-5 vuelos reales anotados). MoE y UDA ya
+    cerrados (MoE integrado al post-vuelo, UDA rechazada con evidencia).

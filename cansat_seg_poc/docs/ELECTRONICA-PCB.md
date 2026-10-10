@@ -201,11 +201,14 @@ cambios. Firmware con `LORA_MODO` por env de PlatformIO:
 | `heltec_lora_rx` | RX (2) | estación: LoRa → USB |
 | `esp8266_ch340` | 0 (sin radio) | banco/pruebas |
 
-SX1262 (RadioLib): NSS=8, DIO1=14, RST=12, BUSY=13; **915 MHz (AU915), SF9,
-BW125, sync 0x12, 14 dBm**. El RX imprime `# LORA rx=… rssi=… snr=…` y el
+SX1262 (RadioLib 7.8.1): NSS=8, DIO1=14, RST=12, BUSY=13; **915 MHz (AU915),
+SF9, BW125, sync 0x12, 14 dBm**. El RX imprime `# LORA rx=… rssi=… snr=…` y el
 listener lo guarda en `uart_state.json` (`lora_rssi`/`lora_snr`). Estado:
-compila en los 3 envs y el TX arranca OK en la placa; el enlace RF end-to-end
-queda pendiente de flashear la segunda Heltec con `-e heltec_lora_rx`.
+los 4 envs compilan y el enlace RF end-to-end está **VALIDADO (2026-10-09)**:
+**120/120 paquetes a 1 Hz, 0 % de pérdida, checksums 0/0, RSSI medio
+−19.9 dBm y SNR medio 11.2 dB** (banco, ~10 cm) — ver decisión `lora-enlace`
+y `docs/benchmarks/lora_rf_1hz.json`. Herramienta de banco/campo:
+`tools/lora_check.py` (con `--solo-rx` para la prueba a distancia).
 
 ## 4. Checklist de diseño de la PCB
 

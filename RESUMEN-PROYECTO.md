@@ -415,8 +415,8 @@ deterministas sobre máscaras y telemetría.
    **AI Camera/IMX500**: ✅ validada a fondo (2026-10-04): cámara OK; detector
    de vuelo **YOLO11n** (~6.8 fps sin CPU, mAP 0.374 vs 0.218 del SSD; 3/3
    personas en la cadena real); segmentación DeepLabV3+ a ~1.1 fps; pose
-   descartada con evidencia. 🟡 Pendiente: conversión de nuestros modelos a
-   `.rpk` (Edge-MDT/Linux; se intenta vía Docker/WSL2).
+   descartada con evidencia. ✅ **Conversión de nuestros modelos a `.rpk`
+   HECHA (2026-10-05)**: el tiny de terreno corre en el NPU (ver §6.3).
    **UART real**: ✅ **cerrado**: Heltec V3 + BME280 + MPU6050 (21/21 en PC),
    ESP8266/CH340 (25/25), **GPIO15 en la Pi 40/40** y **soak de 10 min:
    597/597 paquetes, 0 pérdidas** (`soak_uart.json`); eventos de vuelo
@@ -425,22 +425,33 @@ deterministas sobre máscaras y telemetría.
    **Operación**: ✅ salud de la Pi (`pi_health.json`, 40-42 °C sin
    throttling), autostart systemd (`pi/cansat-vuelo.service`) y pull en vivo
    Pi→estación (`pi/servidor_vivo.py` + `tools/vivo_pi.py`) validados.
-   **LoRa (2026-10-05)**: enlace implementado en el firmware — TX de vuelo y RX
-   de estación (SX1262 915 MHz, RadioLib); TX flasheado y OK, el enlace RF
-   end-to-end queda pendiente de la segunda Heltec (`-e heltec_lora_rx`).
-   **GPS (2026-10-05)**: soporte del ATGM336H en el firmware (UART2/NMEA);
-   con fix usa lat/lon reales y sin fix declara el perfil simulado.
+   **LoRa (validado por aire 2026-10-09)**: enlace TX vuelo → RX estación
+   (SX1262 915 MHz, RadioLib) **a 1 Hz: 120/120 paquetes, 0 % de pérdida,
+   checksums 0/0, RSSI −19.9 dBm y SNR 11.2 dB** en banco (~10 cm). En el
+   camino se corrigieron dos bugs del firmware: el lazo caía a ~0.5 Hz (delay
+   compensado) y la RX agregaba basura de heap tras el payload (todos los
+   checksums "fallaban"). **GPS (validado 2026-10-09)**: ATGM336H por
+   UART2/NMEA con **fix REAL** (59/60 paquetes, TTFF 2.28 s tibio, dispersión
+   3.8 m y 19.7 km del perfil simulado); sin fix sigue declarando el perfil
+   simulado. Evidencia: `lora_rf_1hz.json`, `lora_rf_1hz_bug_checksum.json`,
+   `gps_fix_120s.json` y `gps_fix_1hz.json`.
+   **Soak de vuelo 1 Hz (2026-10-09)**: 100 frames en 9.7 min (5.0 s/frame),
+   35.8-41.2 °C sin throttling y UART **579/579 a 1.0 s, 0 pérdidas, 100 % con
+   GPS real** (`soak_vuelo_1hz.json`).
 3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: ✅ **HECHA (2026-10-05)**
    — cadena Docker/WSL2 con `edge-mdt[pt]` de PyPI (público, sin registro); el
    tiny de terreno corre en el NPU (`network.rpk`: memoria 4.28/8 MB = 54 %,
-   KPI 4.5 ms, CPU libre). Pendiente: salida más chica para subir el end-to-end
-   (0.4-1.2 fps) e integrarlo como opción del pipeline.
+   KPI 4.5 ms, CPU libre). La variante **compacta** ya subió el end-to-end a
+   7.4-16.6 fps; queda como opción/tooling del pipeline (el NPU hace una red
+   por vez y la detección de personas manda).
 4. **INT8**: re-medición QDQ estático en la placa con `cv2.dnn` (2026-10-04)
    para decidir FP32 vs INT8 con número medido.
 5. Checklist de simulacro: ✅ **firmado** (Juan Manuel Iglesias, 2026-10-03,
    variantes 1-4 + guion de 12 pasos en vivo).
-6. **A/B de augmentación UAV (daño)**: en curso (2026-10-04, mismo init/receta
-   ± aug con escala suave; resultado en `docs/benchmarks/aug_uav_dano_ab.json`).
+6. **A/B de augmentación UAV (daño)**: ✅ **cerrado (NO adoptado)**: el aug
+   cuesta el limpio −4.1 pts; pero el brazo base de la misma receta dio el
+   modelo **ep6 adoptado** (0.780 UAV / 0.414 xBD). Evidencia:
+   `docs/benchmarks/aug_uav_dano_ab.json`.
 
 ---
 

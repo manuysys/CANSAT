@@ -18,7 +18,8 @@ para que el armado físico no introduzca fallas nuevas.
 - [ ] Heltec WiFi LoRa 32 V3 #1 (vuelo) + antena IPEX conectada.
 - [ ] Heltec WiFi LoRa 32 V3 #2 (estación) — por USB a la notebook.
 - [ ] BME280 (I2C 0x76/0x77) + MPU6050 (I2C 0x68).
-- [ ] GPS ATGM336H (opcional por firmware; hoy simulado y declarado).
+- [ ] GPS ATGM336H (fix REAL validado 2026-10-09: 59/60 paquetes, TTFF 2.28 s,
+      dispersión 3.8 m; evidencia `docs/benchmarks/gps_fix_120s.json`).
 - [ ] Batería 18650 (con protección) + módulo XY-J02 + step-up 5V.
 - [ ] Dupont cortos o PCB; destornillador, multímetro, estaño si va soldado.
 - [ ] Notebook con el repo + `tools/vivo_pi.py` (para la prueba en vivo).

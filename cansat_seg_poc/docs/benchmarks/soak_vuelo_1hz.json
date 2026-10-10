@@ -1,0 +1,61 @@
+{
+  "generado": "2026-10-09",
+  "prueba": "SOAK del vuelo completo en la placa con el firmware de 1 Hz (delay compensado) y GPS real",
+  "comando": "FRAMES=100 bash pi/run_flight.sh (tiny@224 + YOLO11n NPU + UART Heltec GPIO15)",
+  "resultado": {
+    "frames": 100,
+    "duracion_wall_s": 580.0,
+    "duracion_wall_min": 9.7,
+    "s_por_frame": 5.8,
+    "ms_total_mediana": 5016.1,
+    "ms_seg_mediana": 3345.4,
+    "ms_total_max": 18885.9,
+    "ms_total_max_nota": "cam_000: warmup de la primera inferencia (carga de modelos/camara); el resto <=7.7 s",
+    "salud_pi": {
+      "temp_c_min": 35.8,
+      "temp_c_max": 41.2,
+      "temp_c_prom": 40.0,
+      "throttled": false
+    },
+    "nitidez": {
+      "min": 15.2,
+      "mediana": 20.0,
+      "max": 20.6
+    },
+    "veredictos": {
+      "ZONA SALUDABLE": 100
+    },
+    "gps_frames": {
+      "con_fix": 100,
+      "de": 100,
+      "lat_primera": -34.63884,
+      "lat_ultima": -34.63885,
+      "lon_primera": -58.59206,
+      "lon_ultima": -58.59202
+    },
+    "uart": {
+      "paquetes": 579,
+      "pkt_min": 1276,
+      "pkt_max": 1854,
+      "huecos_por_contador": 0,
+      "perdidos_por_contador": 0,
+      "reinicios_del_contador": 0,
+      "periodo_mediano_s": 1.0,
+      "checksum_mal": 0,
+      "con_fix_gps": 579,
+      "fix_pct": 100.0,
+      "fix_nota": "todos los paquetes con posicion GPS real"
+    },
+    "cierre": "vuelo terminado OK (100 frames)"
+  },
+  "comparacion_soak_previo": {
+    "soak_vuelo.json_2026_10_06": {
+      "frames": 250,
+      "duracion_min": 22.0,
+      "s_por_frame": 5.2,
+      "temp_c_max": 44.4
+    },
+    "nota": "Mismo lazo (captura + NPU + UART + escritura); esta corrida usa el firmware con delay compensado (1 Hz) y el GPS ya enganchado."
+  },
+  "nota": "Soak de estabilidad de 10 min con la cadena de vuelo real: cámara IMX500 + tiny@224 + YOLO11n NPU + telemetría real de la Heltec por GPIO15. La escena es de banco (superficie clara): los veredictos son de contenido, no de vuelo."
+}

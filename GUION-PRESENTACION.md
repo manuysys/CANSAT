@@ -58,8 +58,10 @@ CSV · `P` presentación automática · `Esc` cerrar. (Ver pie de la app.)
   (conversión MCT + Sony en Docker; **memoria 4.28→1.84 MB de 8**, variante
   compacta **7-17 fps**, CPU 100 % libre). El NPU corre una red por vez: el
   vuelo mantiene YOLO (detección) + terreno en CPU.
-- **LoRa implementado en el firmware** (TX vuelo / RX estación, 915 MHz) y
-  **GPS real** (ATGM336H, NMEA con fallback simulado declarado).
+- **LoRa validado por aire a 1 Hz**: 120/120 paquetes, **0 % de pérdida**,
+  checksums 0/0, RSSI −19.9 dBm, SNR 11.2 dB (banco a ~10 cm; prueba a
+  distancia pendiente). **GPS real validado**: 59/60 paquetes, **TTFF 2.28 s**,
+  dispersión **3.8 m** (ATGM336H por UART2/NMEA).
 - Modelo de daño **ep6**: 0.780 UAV / 0.414 xBD (antes 0.735 / 0.096);
   **MoE** de daño integrado al post-vuelo (gate 0.513 vs 0.490 del mejor fijo).
 - **gray-world** en el preprocesamiento: **+2.05 pts** de mIoU del modelo de

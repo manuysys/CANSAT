@@ -95,7 +95,8 @@ cámara**.
 
 Además, conectamos el sistema con los sensores reales —**presión, temperatura,
 movimiento y GPS**— y con la radio LoRa. Hicimos una prueba continua de **diez
-minutos**, y durante esa prueba **no perdimos ningún dato**."
+minutos por cable, sin perder ningún dato**, y después validamos el enlace
+**por radio** y el **fix real del GPS** con sus propias pruebas."
 
 ---
 

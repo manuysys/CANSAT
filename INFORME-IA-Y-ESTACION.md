@@ -29,10 +29,10 @@
 | Calibración por clase | ❌ experimentada y rechazada con evidencia (ECE 0.131 vs 0.123 global; rompe el ranking de incendio) |
 | Tipo rebalanceado | ❌ LOEO 0.317 vs 0.330 baseline (banda ±0.04): redistribuye aciertos sin subir la media; el cuello es dominio, no desbalance |
 | Augmentación UAV (daño) | ❌ experimentada y rechazada con evidencia (limpio 0.374 → 0.265; `sombras`/`vibracion` quedan como corrupciones de la suite) |
-| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; ✅ **GPIO15 en la Pi: 40/40** y **soak 10 min: 597/597, 0 pérdidas**; ✅ eventos de vuelo por MPU6050 validados. ✅ **LoRa TX/RX implementado** (2026-10-05, SX1262 915 MHz; TX flasheado y OK; RX listo para la 2ª Heltec) y ✅ **GPS real en firmware** (ATGM336H UART2/NMEA con fallback simulado declarado) |
+| UART real (contrato v2) | ✅ placa de vuelo **Heltec V3 + BME280 + MPU6050**: scan I2C OK, p/t/hum reales, 21/21 paquetes; ✅ **GPIO15 en la Pi: 40/40** y **soak 10 min: 597/597, 0 pérdidas**; ✅ eventos de vuelo por MPU6050 validados. ✅ **LoRa validado por RF** (2026-10-08: 35/35 paquetes, 0 % de pérdida, RSSI −29.5 dBm, SNR 11.1 dB en banco) y ✅ **GPS real validado en hardware** (2026-10-09: 59/60 paquetes reales, TTFF 2.28 s tibio, dispersión 3.8 m; fallback simulado declarado) |
 | **Pi Zero W v1 (medido 2026-09-25)** | ✅ tiny@224 **~3.0 s/frame** (1.77 s segmentación) · v2@224 **243 s/frame** → el vuelo por CPU usa tiny; daño/flood/fuego/severidad post-vuelo en la PC |
 | Operación de la Pi | ✅ **salud** (`pi_health.json`: 40-42 °C, sin throttling) · ✅ **autostart systemd** validado · ✅ **pull en vivo** Pi→estación por HTTP (sin tocar el frontend) |
-| Verificación | ✅ **386 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
+| Verificación | ✅ **422 tests**, ruff, compileall, auditoría IMX500 de los 6 ONNX de vuelo |
 
 ---
 
@@ -301,7 +301,7 @@ pérdidas_estimadas  = afectadas × fracción_de_colapso × letalidad
   incertidumbre pura.
 - El **área** sale de la huella en tierra por frame (`ground_area_m2`, FOV real
   de la cámara) y la **fracción dañada** del consenso.
-- ✅ El colapso es **medido** por `cansat_severity.onnx` (IoU 0.575 sobre
+- ✅ El colapso es **medido** por `cansat_severity.onnx` (IoU 0.633 sobre
   edificios); si el modelo falta, cae al supuesto 0.3 y la telemetría lo
   declara (`colapso_fuente`).
 ---
@@ -486,7 +486,7 @@ npm run smoke
 | Stress del modelo de VUELO (tiny) | ✅ medido (2026-10-04): limpio 42.5 %; lluvia 30.0 (+9.8 vs v2), niebla 16.2, subexp 34.7 (−10.2 vs v2), escala 43.8; `docs/benchmarks/stress_suite_tiny.json` | — |
 | Destilación B5→tiny | ✅ cerrada como descartada (0.4331 vs 0.4395, mismo protocolo); `docs/benchmarks/distill_tiny.json` | — |
 | Tiny de flood/fuego | ✅ evaluado y descartado: el presupuesto de vuelo ya lo toma el terreno; el post-vuelo PC corre los especialistas completos | — |
-| Severidad → colapso medido en casualties | ✅ hecho (0.575 IoU de colapso) | más épocas opcionales |
+| Severidad → colapso medido en casualties | ✅ hecho (0.633 IoU de colapso) | más épocas opcionales |
 | Densidad poblacional real (WorldPop) por GPS | ✅ hecho: grilla 0.1° (15 467 celdas) + lookup por frame + **overlay en la traza GPS de la estación** (U4) | — |
 | `model_id`/`quant` en la telemetría | ✅ hecho: `model_ids` (hash de cada ONNX) + `quant: fp32` en el JSONL | — |
 | UI de la estación para bruma/calor/fuego | ✅ hecho (detalle por frame + panel de muestreo) | — |
@@ -501,7 +501,7 @@ npm run smoke
 | Augmentación UAV (daño) | ✅ **A/B correcto cerrado: NO adoptada** (2026-10-05): cuesta el limpio −4.1 pts (0.4418 vs 0.4829 del base) y casi todos los estresores; sólo gana motion_blur +3.6 | `docs/benchmarks/aug_uav_dano_ab.json` |
 | Modelo de daño ep6 (del brazo base del A/B) | ✅ **ADOPTADO** (2026-10-05, decisión `damage-v3-bal-ep6`): 0.780 UAV / 0.414 xBD (antes 0.735 / 0.096); umbral 10.2 % mantenido (curva F1 plana, FPR 42.8 % vs 55.9 % del óptimo); defaults actualizados | `docs/benchmarks/aug_uav_dano_ab.json` + `MODELS.yaml` §dano_two_stage |
 | Balance de blancos gray-world | ✅ **ADOPTADO** (2026-10-05): +2.05 pts de mIoU en el val completo del modelo de VUELO (0.4400→0.4605; agua +6.4) y +0.54 en el v2; proxy UAV +1.2; costo nulo. La variante z-score rechazada (−12 pts en la fuente). `--color-norm` activo en el vuelo | `docs/benchmarks/color_norm.json` |
-| LoRa + GPS en el firmware | ✅ Implementados (2026-10-05): TX/RX LoRa SX1262 915 MHz (TX flasheado OK; enlace RF pendiente de la 2ª Heltec) y GPS ATGM336H por UART2/NMEA con fallback simulado declarado | `ELECTRONICA-PCB.md` §3.6 + decisiones `lora-enlace`/`gps-real-firmware` |
+| LoRa + GPS en el firmware | ✅ **Validados en hardware (2026-10-08/09)**: enlace RF **re-validado a 1 Hz: 120/120 paquetes por aire, 0 % de pérdida, checksums 0/0, RSSI medio −19.9 dBm, SNR 11.2 dB** (`lora_rf_1hz.json`; de paso se corrigió un bug de checksum/basura del RX, `lora_rf_1hz_bug_checksum.json`) y GPS con fix REAL 59/60 paquetes, TTFF 2.28 s, dispersión 3.8 m (`gps_fix_120s.json`, `tools/gps_check.py`). Lazo a 1.0 s/paquete (`gps_fix_1hz.json`). Pendiente: RF a distancia real y con el CanSat cerrado | `ELECTRONICA-PCB.md` §3.6 + decisiones `lora-enlace`/`gps-real-firmware` |
 | MoE de daño (V11 4.2) | ✅ **PoC + integrada** (2026-10-05): con los expertos de producción (xBD + ep6) el gate da 0.5128 vs 0.4904 del mejor fijo (+2.2 pts; oráculo 0.5194; acierto 82.7 %); `cansat/moe.py` + `post_flight.py` eligen experto por frame y el resumen agrega `moe_dano` (desactivable con `--no-moe`) | `docs/benchmarks/moe_damage_ep6.json` + `moe_damage.json` |
 | UDA LoveDA→RescueNet (V11 4.3) | ✅ PoC positiva (+7.3 pts en el proxy UAV) pero ⛔ **adopción rechazada** (2026-10-05): en el val completo la fuente cae −2.8 pts (0.440→0.412) y en stress −2.1 limpio; sólo mejora niebla/sobreexp. El vuelo sigue con el tiny base | `docs/benchmarks/uda_terrain.json` |
 | Difusión/LoRA clases raras (V11 4.4) | ⏸️ **No factible en la ventana** (2026-10-04): `diffusers`/`peft` sin instalar + modelo base (~2.5-4 GB) + LoRA/FID y A/B (1-2 días de GPU). Plan concreto en `PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md` §V11 | — |
@@ -517,3 +517,11 @@ nuestro tiny de terreno corre en el NPU (`network.rpk`; memoria 4.28/8 MB,
 KPI 4.5 ms; CPU libre). Evidencia: `cansat_seg_poc/docs/benchmarks/
 pi_zero_w_sframe.json`, `pi_zero_w_imx500.json`, `soak_uart.json`,
 `eventos_vuelo_mpu.json`, `rpk_propio_tiny.json`.
+**LoRa RF y GPS: validados (2026-10-08/09)** — enlace por aire a 1 Hz
+120/120, 0 pérdidas, checksums 0/0, RSSI −19.9 dBm / SNR 11.2 dB y GPS con
+fix real (59/60 paquetes, TTFF 2.28 s, dispersión 3.8 m). Evidencia:
+`lora_rf_1hz.json`, `lora_rf_1hz_bug_checksum.json`, `gps_fix_120s.json`.
+**SOAK de vuelo con el firmware de 1 Hz (2026-10-09)**: 100 frames en 9.7 min
+(5.0 s/frame de mediana; cam_000 18.9 s de warmup), 35.8-41.2 °C sin
+throttling y **UART 579/579 paquetes a 1.0 s, 0 pérdidas, 0 checksums malos y
+100 % con posición real** (`soak_vuelo_1hz.json`).

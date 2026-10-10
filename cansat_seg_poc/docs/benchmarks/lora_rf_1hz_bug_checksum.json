@@ -1,0 +1,50 @@
+{
+  "prueba": "enlace LoRa RF end-to-end (TX vuelo -> RX estacion)",
+  "generado": "2026-10-09 16:43:29",
+  "tx": "COM4 (Heltec V3 vuelo, firmware LORA_MODO=1)",
+  "rx": "COM5 (Heltec V3 estacion, LORA_MODO=2)",
+  "config_radio": "915.0 MHz SF9 BW125 sync 0x12 14 dBm",
+  "distancia": "banco: placas contiguas (~10 cm), antenas IPEX conectadas",
+  "ventana_s": 121.0,
+  "raw_tx": "outputs\\lora_tx_raw.txt",
+  "raw_rx": "outputs\\lora_rx_raw.txt",
+  "nota": "banco: placas contiguas (~10 cm), antenas IPEX; lazo a 1 Hz (delay compensado); TX tambien conectada a la Pi por GPIO15",
+  "mediciones": {
+    "tx_paquetes": 120,
+    "tx_pkt_min": 190,
+    "tx_pkt_max": 309,
+    "tx_periodo_mediano_s": 1.0,
+    "ultimo_tx_n": 301,
+    "rx_paquetes": 120,
+    "rx_pkt_min": 190,
+    "rx_pkt_max": 309,
+    "rx_ultimo_rx_n": 301,
+    "emitidos_en_rango": 120,
+    "recibidos": 120,
+    "perdidos": 0,
+    "perdida_pct": 0.0,
+    "racha_max_faltantes": 0,
+    "faltantes_muestra": [],
+    "rssi_dbm": {
+      "min": -30.0,
+      "mean": -23.08,
+      "max": -20.0
+    },
+    "snr_db": {
+      "min": 10.5,
+      "mean": 10.88,
+      "max": 11.25
+    },
+    "gap_rx_p95_s": 1.03,
+    "gap_rx_max_s": 1.05,
+    "checksum_mal_tx": 0,
+    "checksum_mal_rx": 120
+  },
+  "conclusion": {
+    "veredicto": "ok",
+    "criterios": [
+      "120/120 paquetes en el rango común, 0 pérdidas",
+      "RSSI medio -23.08 dBm y SNR medio 10.88 dB"
+    ]
+  }
+}

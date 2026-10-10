@@ -339,7 +339,14 @@ void loop() {
     return;
   }
   String str;
-  int st = lora.receive(str, 500);
+  // ⚠ La firma es receive(str, len, timeout): el len va en el SEGUNDO argumento.
+  // Con receive(str, 500) RadioLib lo tomaba como longitud y la String quedaba
+  // con basura de heap después del payload (medido 2026-10-09: "...*2C\x80 \xd6\xce?:")
+  // → TODOS los checksums llegaban mal al PC aunque el payload fuera exacto.
+  // Y timeout=500 ms es MÁS CORTO que el aire del paquete (~0.7 s medido): la
+  // RX lo perdía siempre (0/120). Con 0 RadioLib lo calcula del peor caso
+  // (~2.5 s a SF9) y la recepción queda continua.
+  int st = lora.receive(str, 0, 0);
   if (st == RADIOLIB_ERR_NONE) {
     lora_rx_n++;
     Serial.println(str);                 // el PC lo lee como al emisor cableado
@@ -356,6 +363,10 @@ void loop() {
     Serial.println(st);
   }
 #else
+  // Cadencia objetivo: 1 paquete/s. Abajo se descuenta lo que tardó el lazo
+  // (con LoRa TX `transmit()` bloquea ~0.7 s y un delay fijo de 1 s bajaba el
+  // lazo a ~0.5 Hz: medido 2.016 s/paquete el 2026-10-09).
+  uint32_t t_loop_ms = millis();
   float t_s = (float)pkt;  // 1 Hz
   float alt, p, temp, hum;
 
@@ -495,6 +506,9 @@ void loop() {
   }
 
   pkt++;
-  delay(1000);
+  // Delay compensado: sólo duerme lo que falta para el segundo; si el lazo ya
+  // tardó ≥1 s (p. ej. transmit lento), no agrega espera.
+  uint32_t ciclo_ms = millis() - t_loop_ms;
+  delay(ciclo_ms < 1000 ? 1000 - ciclo_ms : 0);
 #endif  // LORA_MODO != 2
 }

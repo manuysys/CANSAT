@@ -1,0 +1,36 @@
+{
+  "prueba": "enlace LoRa RF end-to-end (TX vuelo -> RX estacion)",
+  "fecha": "2026-10-08 23:06:02",
+  "tx": "Heltec WiFi LoRa 32 V3 (heltec_wifi_lora_32_V3, LORA_MODO=1)",
+  "rx": "Heltec WiFi LoRa 32 V3 (heltec_lora_rx, LORA_MODO=2) por USB-C a la PC",
+  "config_radio": "915.0 MHz SF9 BW125 sync 0x12 14 dBm",
+  "distancia": "banco: placas contiguas (~10 cm), antenas IPEX conectadas",
+  "ventana_s": 60,
+  "pkt_min": 105,
+  "pkt_max": 139,
+  "recibidos": 35,
+  "esperados": 35,
+  "perdidos": 0,
+  "perdida_pct": 0.0,
+  "rssi_dbm": {
+    "min": -30.0,
+    "mean": -29.5,
+    "max": -28.0
+  },
+  "snr_db": {
+    "min": 10.75,
+    "mean": 11.1,
+    "max": 11.25
+  },
+  "lat_rango": [
+    -34.6389,
+    -34.63865
+  ],
+  "lon_rango": [
+    -58.59213,
+    -58.59169
+  ],
+  "gps_fix": "si: lat/lon reales y estables (NO siguen el perfil simulado, que arranca en -34.60372/-58.38159 y deriva 0.6/0.4 m/s; estas coords estan a ~19.7 km de esa linea)",
+  "gps_cross_check": "la posicion de esta captura coincide a <15 m con el fix real medido el 2026-10-09 en docs/benchmarks/gps_fix_120s.json (-34.63882, -58.59206)",
+  "notas": "La RX se reinicia al abrir el puerto serie (auto-reset del CP2102); los 7 s iniciales se descartan. Primer paquete pkt=105. NOTA 2026-10-09: el campo gps_fix decia 'no' por error de analisis; sus propias coordenadas ya eran reales (ver gps_cross_check). Capturada con la RX previa al fix de checksum del 2026-10-09: el payload por aire era exacto byte a byte pero el flag de checksum del lado PC no era confiable; ver lora_rf_1hz_bug_checksum.json (bug) y lora_rf_1hz.json (post-fix)."
+}

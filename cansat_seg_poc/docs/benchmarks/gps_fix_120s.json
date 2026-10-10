@@ -1,0 +1,78 @@
+{
+  "prueba": "GPS ATGM336H en la Heltec de vuelo: fix real vs perfil simulado",
+  "generado": "2026-10-09 07:51:05",
+  "puerto": null,
+  "baud": 115200,
+  "ventana_s": 120.6,
+  "raw": "outputs/gps_capture_raw.txt",
+  "nota": "banco de pruebas en PC (COM4), firmware de vuelo con LoRa TX activo (LORA_MODO=1); antena del GPS en el modulo; TTFF de arranque tibio: al abrir el puerto se reinicia la MCU (log de boot en t=0.06 s) pero el GPS no pierde energia",
+  "hardware": "Heltec WiFi LoRa 32 V3 (vuelo): ATGM336H por UART2 RX=GPIO6 TX=GPIO5 @9600 8N1",
+  "umbral_real_m": 1000.0,
+  "mediciones": {
+    "lineas": 97,
+    "paquetes": 60,
+    "checksum_mal": 0,
+    "basura": 0,
+    "debug_otras": 34,
+    "debug_gps": 3,
+    "debug_fix1": 2,
+    "debug_lineas": [
+      {
+        "t_rel_s": 0.594,
+        "fix": 0,
+        "n": 0,
+        "lat": null,
+        "lon": null
+      },
+      {
+        "t_rel_s": 60.922,
+        "fix": 1,
+        "n": 36,
+        "lat": -34.63882,
+        "lon": -58.59206
+      },
+      {
+        "t_rel_s": 120.594,
+        "fix": 1,
+        "n": 75,
+        "lat": -34.63881,
+        "lon": -58.59208
+      }
+    ],
+    "pkt_min": 0,
+    "pkt_max": 59,
+    "perdidos_por_contador": 0,
+    "periodo_mediano_s": 2.016,
+    "paquetes_reales": 59,
+    "paquetes_simulados": 1,
+    "fix_pct": 98.33,
+    "primer_pkt_fix": 1,
+    "ttff_s": 2.28,
+    "ttff_nota": null,
+    "dist_sim_mediana_m": 19680.75,
+    "dist_sim_min_m": 0.0,
+    "dist_sim_max_m": 19690.4,
+    "lat_media": -34.63882,
+    "lon_media": -58.59206,
+    "lat_min": -34.63885,
+    "lat_max": -34.63881,
+    "lon_min": -58.59208,
+    "lon_max": -58.59204,
+    "dispersion_m": 3.8,
+    "velocidad_mediana_m_s": 0.0,
+    "deriva_n_m_s": 0.008,
+    "deriva_e_m_s": -0.047,
+    "deriva_rms_m": 1.6,
+    "sim_deriva_n_m_s": 0.6,
+    "sim_deriva_e_m_s": 0.4
+  },
+  "conclusion": {
+    "veredicto": "real (tras TTFF)",
+    "criterios": [
+      "59/60 paquetes a >1000 m del perfil simulado (dist mediana 19680.75 m)",
+      "TTFF medido: 2.28 s desde pkt=0",
+      "debug del firmware con fix=1 en 2 línea(s)",
+      "deriva medida N=0.008 m/s / E=-0.047 m/s vs simulada 0.6/0.4"
+    ]
+  }
+}
