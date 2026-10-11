@@ -1,0 +1,51 @@
+{
+  "prueba": "enlace LoRa RF end-to-end (TX vuelo -> RX estacion)",
+  "generado": "2026-10-10 22:22:13",
+  "tx": "COM4 (Heltec V3 vuelo, firmware LORA_MODO=1)",
+  "rx": "COM6 (Heltec V3 estacion, LORA_MODO=2)",
+  "config_radio": "915.0 MHz SF9 BW125 sync 0x12 14 dBm",
+  "distancia": "banco: placas contiguas (~10 cm), antenas IPEX conectadas",
+  "ventana_s": 600.6,
+  "raw_tx": "outputs\\soak_lora\\lora_tx_raw.txt",
+  "raw_rx": "outputs\\soak_lora\\lora_rx_raw.txt",
+  "nota": "soak RF de 10 min: banco ~10 cm, lazo a 1 Hz, checksums limpios; anti-suspension activo; RX en COM6",
+  "mediciones": {
+    "modo": "tx+rx",
+    "tx_paquetes": 600,
+    "tx_pkt_min": 50,
+    "tx_pkt_max": 649,
+    "tx_periodo_mediano_s": 1.0,
+    "ultimo_tx_n": 641,
+    "rx_paquetes": 601,
+    "rx_pkt_min": 49,
+    "rx_pkt_max": 649,
+    "rx_ultimo_rx_n": 611,
+    "emitidos_en_rango": 600,
+    "recibidos": 600,
+    "perdidos": 0,
+    "perdida_pct": 0.0,
+    "racha_max_faltantes": 0,
+    "faltantes_muestra": [],
+    "rssi_dbm": {
+      "min": -31.0,
+      "mean": -23.4,
+      "max": -20.0
+    },
+    "snr_db": {
+      "min": 10.25,
+      "mean": 10.94,
+      "max": 12.0
+    },
+    "gap_rx_p95_s": 1.19,
+    "gap_rx_max_s": 1.27,
+    "checksum_mal_tx": 0,
+    "checksum_mal_rx": 0
+  },
+  "conclusion": {
+    "veredicto": "ok",
+    "criterios": [
+      "600/600 paquetes en el rango común, 0 pérdidas",
+      "RSSI medio -23.40 dBm y SNR medio 10.94 dB"
+    ]
+  }
+}

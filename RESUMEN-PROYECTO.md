@@ -427,7 +427,9 @@ deterministas sobre máscaras y telemetría.
    Pi→estación (`pi/servidor_vivo.py` + `tools/vivo_pi.py`) validados.
    **LoRa (validado por aire 2026-10-09)**: enlace TX vuelo → RX estación
    (SX1262 915 MHz, RadioLib) **a 1 Hz: 120/120 paquetes, 0 % de pérdida,
-   checksums 0/0, RSSI −19.9 dBm y SNR 11.2 dB** en banco (~10 cm). En el
+   checksums 0/0, RSSI −19.9 dBm y SNR 11.2 dB** en banco (~10 cm), y **soak
+   de aire de 10 min: 600/600 a 1.0 s, 0 pérdidas, RSSI −23.4 dBm, SNR
+   10.9 dB** (`soak_lora_10min.json`). En el
    camino se corrigieron dos bugs del firmware: el lazo caía a ~0.5 Hz (delay
    compensado) y la RX agregaba basura de heap tras el payload (todos los
    checksums "fallaban"). **GPS (validado 2026-10-09)**: ATGM336H por

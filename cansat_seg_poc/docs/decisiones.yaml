@@ -265,6 +265,9 @@ decisiones:
       **1 Hz: 120/120 paquetes en el rango común, 0 pérdidas, checksums 0/0,
       RSSI medio −19.9 dBm y SNR medio 11.2 dB**, gaps p95 1.03 s. Evidencia:
       docs/benchmarks/lora_rf_1hz.json (herramienta `tools/lora_check.py`).
+      **SOAK DE AIRE DE 10 MIN (2026-10-10, post-fix)**: **600/600 paquetes a
+      1.0 s, 0 pérdidas, checksums 0/0, RSSI medio −23.4 dBm y SNR medio
+      10.94 dB** (gaps p95 1.19 s). Evidencia: docs/benchmarks/soak_lora_10min.json.
       PENDIENTE: prueba de distancia real (100 m–1 km) y con el CanSat cerrado
       (la carcasa afecta el alcance).
 
