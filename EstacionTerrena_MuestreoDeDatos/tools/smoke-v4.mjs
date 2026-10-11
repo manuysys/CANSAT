@@ -22,14 +22,46 @@ const check = (cond, msg) => { if (cond) log('OK  ', msg); else { log('FAIL', ms
 const CSV = fs.readFileSync(at('outputs', 'mission', 'telemetry.csv'), 'utf8').trim().split(/\r?\n/);
 const HEAD = CSV[0].split(',');
 const ROWS = CSV.slice(1).map(l => Object.fromEntries(l.split(',').map((v, i) => [HEAD[i], v])));
+
+/* Expectativas DERIVADAS del dataset (no constantes): el smoke debe pasar con
+   cualquier misión (12 o 28 frames, cap_* o cam_*). Antes fijaba
+   cap_0006/81.0/cap_0011 y contaba archivos crudos de las carpetas → daba
+   falsos FAIL en cuanto la demo cambiaba de tamaño o quedaban huérfanos. */
+const bucketSrcs = (bucket, suffix) => new Set(
+  (fs.existsSync(at('entrega', bucket)) ? fs.readdirSync(at('entrega', bucket)) : [])
+    .filter(n => n.endsWith(suffix)).map(n => n.slice(0, -suffix.length)));
+const enhSet = bucketSrcs('enhanced', '_edsr.jpg');
+const ensSet = bucketSrcs('ens_seg', '_b5.png');
+const hasEnh = s => enhSet.has(s);
+const hasEns = s => ensSet.has(s);
+const firstWith = pred => (ROWS.find(r => pred(r.src)) || ROWS[0]).src;
+const F0 = ROWS[0].src;
+const F1 = (ROWS[1] || ROWS[0]).src;
+const F9 = (ROWS[Math.min(9, ROWS.length - 1)] || ROWS[0]).src;
+const FENH = firstWith(hasEnh);                        // frame con _edsr
+const F2 = firstWith(s => !hasEnh(s) && !hasEns(s));   // sin tabs Ensemble/EDSR
+const GAL = firstWith(s => hasEnh(s) || hasEns(s));    // hay figura de galería
+const critRow = ROWS.reduce((a, b) => Number(b.danado_pct) > Number(a.danado_pct) ? b : a, ROWS[0]);
+const CRIT = Number(critRow.danado_pct) > 0 ? critRow.src : null;
+const CRIT_TXT = Number(critRow.danado_pct).toFixed(1);
+const OOD = (() => {
+  try {
+    const jl = fs.readFileSync(at('outputs', 'mission', 'telemetry.jsonl'), 'utf8').trim().split(/\r?\n/);
+    const f = jl.map(l => JSON.parse(l)).find(r => r.ood_flag === true);
+    return f ? f.src : null;
+  } catch { return null; }
+})();
 const EXP = {
   n: ROWS.length,
   alerts: ROWS.filter(r => +r.alert === 1).length,
   cards: ROWS.filter(r => +r.alert === 1 || ['INUNDACION SEVERA', 'INUNDACION URBANA', 'POSIBLE SISMO/VIENTO', 'POSIBLE INCENDIO/EROSION'].includes(r.diag)).length,
   high: ROWS.filter(r => r.sample_pri === 'HIGH').length,
-  enhanced: fs.readdirSync(at('entrega', 'enhanced')).length,
-  ensSeg: fs.readdirSync(at('entrega', 'ens_seg')).length,
+  // La UI muestra UNA figura por FRAME con archivo (no por archivo): el conteo
+  // esperado es la intersección con los src del CSV (ignora huérfanos).
+  enhanced: ROWS.filter(r => hasEnh(r.src)).length,
+  ensSeg: ROWS.filter(r => hasEns(r.src)).length,
 };
+log(`dataset: ${EXP.n} frames · crítico ${CRIT} (${CRIT_TXT}%) · OOD ${OOD ?? '—'} · galería ${EXP.enhanced}+${EXP.ensSeg}`);
 
 const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--jitless'] });
 
@@ -84,23 +116,27 @@ await page.waitForSelector('[data-card-src]');
 await page.waitForTimeout(500);
 check((await page.locator('.driver-popover').count()) === 0, 'tour NO reaparece tras reload');
 
-// Resumen narrativo
-const narr = await page.locator('main p').first().innerText();
-check(/cap_0006/.test(narr) && /81\.0/.test(narr), 'resumen narrativo calculado (momento crítico cap_0006)');
-await page.locator('button', { hasText: 'Ver momento crítico' }).click();
-await page.waitForTimeout(700);
-check((await page.locator('#tour-detalle h2').first().innerText()) === 'cap_0006', 'botón crítico selecciona y scrollea al detalle');
+// Resumen narrativo (crítico = máximo danado_pct del CSV)
+if (CRIT) {
+  const narr = await page.locator('main p').first().innerText();
+  check(narr.includes(CRIT) && narr.includes(CRIT_TXT), `resumen narrativo calculado (momento crítico ${CRIT} con ${CRIT_TXT}%)`);
+  await page.locator('button', { hasText: 'Ver momento crítico' }).click();
+  await page.waitForTimeout(700);
+  check((await page.locator('#tour-detalle h2').first().innerText()) === CRIT, `botón crítico selecciona y scrollea al detalle (${CRIT})`);
+} else {
+  log('sin daño en el dataset: se saltea el momento crítico');
+}
 
 // KPIs
-check((await page.locator('main').innerText()).includes('12'), 'KPI de frames presente');
+check((await page.locator('main').innerText()).includes(String(EXP.n)), `KPI de frames presente (${EXP.n})`);
 
 // Mismo detalle desde corredor / tabla / alertas / curva
-await page.click('[data-card-src="cap_0005"]');
-await waitDetailSrc(page, 'cap_0005');
+await page.click(`[data-card-src="${FENH}"]`);
+await waitDetailSrc(page, FENH);
 const imgCard = await page.locator('#tour-detalle img').first().getAttribute('src');
-check(/cap_0005_(edsr|evid)/.test(imgCard || ''), 'card del corredor → detalle cap_0005 (mejor fuente disponible)');
-await page.click('tr[data-row-src="cap_0005"]');
-await waitDetailSrc(page, 'cap_0005');
+check(new RegExp(`${FENH}_(edsr|evid)`).test(imgCard || ''), `card del corredor → detalle ${FENH} (mejor fuente disponible)`);
+await page.click(`tr[data-row-src="${FENH}"]`);
+await waitDetailSrc(page, FENH);
 check((await page.locator('#tour-detalle img').first().getAttribute('src')) === imgCard, 'fila de tabla → mismo detalle');
 await page.click('#tour-alertas li button >> nth=0');
 await page.waitForTimeout(300);
@@ -109,9 +145,9 @@ const alertSrc = alertTxt.split('\n')[1]?.split(' ')[0] ?? '';
 check((await page.locator('#tour-detalle h2').first().innerText()) === alertSrc, `alerta selecciona su frame (${alertSrc})`);
 const dots = page.locator('[data-dot-src]');
 check((await dots.count()) === EXP.n, `curva con ${EXP.n} puntos`);
-await dots.nth(9).dispatchEvent('click');  // click programático: el anillo pulsante vuelve inestable el hit-test
+await dots.nth(Math.min(9, EXP.n - 1)).dispatchEvent('click');  // click programático: el anillo pulsante vuelve inestable el hit-test
 await page.waitForTimeout(300);
-check((await page.locator('#tour-detalle h2').first().innerText()) === 'cap_0009', 'punto de la curva → detalle cap_0009');
+check((await page.locator('#tour-detalle h2').first().innerText()) === F9, `punto de la curva → detalle ${F9}`);
 
 // Extensiones DPD: panel de Muestreo y trayectoria GPS en la vista Vuelo
 check(await page.getByText('Prioridad del sampler').count() >= 1, 'panel de muestreo presente');
@@ -162,11 +198,15 @@ check(await page.locator('[data-testid="consulta-badge"]').count() >= 1,
 
 // OOD/drift: la demo tiene frames fuera de la referencia de LoveDA Val
 // (cansat/ood.py); el badge se muestra sólo cuando el proxy marca el frame.
-await page.click('[data-card-src="cap_0011"]');
-await page.waitForTimeout(500);
-check(await page.locator('[data-testid="badge-ood"]').count() >= 1,
-  'badge fuera de distribución visible en cap_0011');
-await page.click('[data-card-src="cap_0000"]');
+if (OOD) {
+  await page.click(`[data-card-src="${OOD}"]`);
+  await page.waitForTimeout(500);
+  check(await page.locator('[data-testid="badge-ood"]').count() >= 1,
+    `badge fuera de distribución visible en ${OOD}`);
+} else {
+  log('sin frames OOD en el dataset: se saltea el badge');
+}
+await page.click(`[data-card-src="${F0}"]`);
 await page.waitForTimeout(300);
 
 // Grad-CAM: botón on-demand + overlay + rutas de error (sin quemar GPU en CI:
@@ -176,12 +216,12 @@ check(await page.locator('[data-testid="gradcam-pedir"]').count() >= 1,
 await page.locator('[data-testid="gradcam-pedir"]').click();
 await page.locator('[data-testid="gradcam-overlay"]').waitFor({ timeout: 180000 }).catch(() => {});
 check(await page.locator('[data-testid="gradcam-overlay"]').count() >= 1,
-  'overlay Grad-CAM generado y visible en cap_0000');
+  `overlay Grad-CAM generado y visible en ${F0}`);
 const rGcamMal = await page.evaluate(async () =>
   (await fetch('/api/gradcam?src=noexiste&modelo=dano2')).json());
 check(rGcamMal.ok === false, 'gradcam de frame inexistente da error claro');
-const rGcamMod = await page.evaluate(async () =>
-  (await fetch('/api/gradcam?src=cap_0000&modelo=zzz')).json());
+const gcamUrl = `/api/gradcam?src=${F0}&modelo=zzz`;
+const rGcamMod = await page.evaluate(async (u) => (await fetch(u)).json(), gcamUrl);
 check(rGcamMod.ok === false && (rGcamMod.modelos || []).includes('dano2'),
   'gradcam de modelo desconocido lista los válidos');
 
@@ -209,16 +249,16 @@ check(rSummary.summary?.confianza_limitada?.umbrales?.haze_pct === 45
   `summary trae confianza_limitada con umbrales declarados (${rSummary.summary?.confianza_limitada?.n_frames ?? '?'} frames)`);
 
 // Tabs de imagen degradadas
-await page.click('[data-card-src="cap_0000"]');
-await waitDetailSrc(page, 'cap_0000');
-check((await page.locator('#tour-detalle [role="tab"]').count()) === 4, 'cap_0000: 4 tabs de imagen');
-await page.click('[data-card-src="cap_0001"]');
+await page.click(`[data-card-src="${FENH}"]`);
+await waitDetailSrc(page, FENH);
+check((await page.locator('#tour-detalle [role="tab"]').count()) === 4, `${FENH}: 4 tabs de imagen`);
+await page.click(`[data-card-src="${F2}"]`);
 await page.waitForTimeout(300);
 const tabs1 = await page.locator('#tour-detalle [role="tab"]').allInnerTexts();
-check(!tabs1.includes('Ensemble') && !tabs1.includes('EDSR'), 'cap_0001: sin tabs Ensemble/EDSR (archivos inexistentes)');
-check(tabs1.length === 2, `cap_0001: 2 tabs (${tabs1.join(', ')})`);
-await page.click('[data-card-src="cap_0000"]');
-await waitDetailSrc(page, 'cap_0000');
+check(!tabs1.includes('Ensemble') && !tabs1.includes('EDSR'), `${F2}: sin tabs Ensemble/EDSR (archivos inexistentes)`);
+check(tabs1.length === 2, `${F2}: 2 tabs (${tabs1.join(', ')})`);
+await page.click(`[data-card-src="${FENH}"]`);
+await waitDetailSrc(page, FENH);
 await page.locator('#tour-detalle [role="tab"]').filter({ hasText: 'EDSR' }).click();
 await page.waitForTimeout(900);
 check((await page.locator('#tour-detalle img').first().getAttribute('src') || '').includes('_edsr'), 'tab EDSR cambia la imagen');
@@ -227,14 +267,14 @@ check((await page.locator('#tour-detalle img').first().getAttribute('src') || ''
 await page.keyboard.press('ArrowDown');
 await page.waitForTimeout(250);
 const selAfterDown = await page.locator('#tour-detalle h2').first().innerText();
-check(selAfterDown === 'cap_0001', `↑↓ navegan (cap_0000 → ${selAfterDown})`);
+check(selAfterDown === F1, `↑↓ navegan (${F0} → ${selAfterDown})`);
 await page.keyboard.press('a');
 await waitRows(page, EXP.cards);
 check((await page.locator('tr[data-row-src]').count()) === EXP.cards, `A → solo alertas (${EXP.cards} filas)`);
 await page.keyboard.press('a');
 await waitRows(page, EXP.n);
 await page.keyboard.press('/');
-await page.type('#busca-src', '0009');
+await page.type('#busca-src', F9);
 await waitRows(page, 1);
 check((await page.locator('tr[data-row-src]').count()) === 1, 'búsqueda por src → 1 fila');
 await page.keyboard.press('Escape');
@@ -263,9 +303,9 @@ check(await page.getByText('Pérdidas (est.)').count() >= 1, 'KPI de pérdidas e
 const galFigures = await page.locator('figure').count();
 check(galFigures === EXP.enhanced + EXP.ensSeg, `galerías con ${EXP.enhanced + EXP.ensSeg} thumbs`);
 await page.screenshot({ path: SHOTS + '/v4_post.png' });
-await page.locator('figure', { hasText: 'cap_0002' }).first().click();
+await page.locator('figure', { hasText: GAL }).first().click();
 await page.waitForTimeout(600);
-check((await page.locator('#tour-detalle h2').first().innerText()) === 'cap_0002', 'thumb de galería abre el detalle');
+check((await page.locator('#tour-detalle h2').first().innerText()) === GAL, 'thumb de galería abre el detalle');
 
 await page.getByRole('tab', { name: 'Informe', exact: true }).click();
 await page.waitForTimeout(600);

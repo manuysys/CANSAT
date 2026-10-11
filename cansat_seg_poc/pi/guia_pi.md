@@ -157,8 +157,10 @@ Si imprime detecciones, el pipeline la usa con:
 python mission_pipeline.py --camera --det-backend imx500 --frames 5 --no-damage
 ```
 
-⚠ Ese modo está implementado contra la API oficial de picamera2 pero **no fue
-validado en hardware todavía**: es lo primero a probar en la Pi.
+✅ **Validado en hardware (2026-10-03/04)**: la detección de personas corre en el
+NPU (YOLO11n ~6.8 fps, mAP 0.374; 3/3 frames con 1 persona en la cadena real) y
+el pipeline la registra con `--det-backend imx500` (evidencia:
+`docs/benchmarks/pi_zero_w_imx500.json`).
 
 ## 7. Vuelo
 
@@ -271,12 +273,12 @@ python3 picamera2/examples/imx500/imx500_object_detection_demo.py \
 ```
 
 Para usar **nuestros** modelos en la NPU hay que convertirlos en la PC con
-Sony Edge-MDT (MCT → `imxconv-pt` → `imx500-package` → `.rpk`). Requiere PC
-Linux con ≥4 GB RAM y Python 3.11; la segmentación semántica no es un camino
-soportado por Ultralytics, así que es un proyecto aparte
-(ver `docs/DATASETS-Y-TECNICAS.md` §3.3). El flood specialist re-entrenado ya
-**pasa la auditoría** `audit_imx500.py` (opset 17, autocontenido, 1 entrada):
-es el primer candidato a probar en el NPU.
+Sony Edge-MDT (MCT → `imxconv-pt` → `imx500-package` → `.rpk`). ✅ **HECHO
+(2026-10-05)**: la cadena corre en Docker Desktop/WSL2 (sin PC Linux aparte) y
+el **tiny de terreno ya corre en el NPU** (`network.rpk` y variante compacta a
+7.4-16.6 fps; ver §9 y `docs/CONVERSION-IMX500.md`). El flood specialist pasó la
+auditoría `audit_imx500.py`, pero no se convirtió: el NPU hace una red por vez y
+la detección de personas manda.
 
 ### Detector recomendado: YOLO11n en el NPU (mAP 0.374 vs 0.218 del SSD)
 

@@ -76,8 +76,9 @@ decisiones:
       En la Pi Zero v1 (ARMv6) no hay ultralytics/torch: la detección de
       personas va por el NPU del AI Camera (IMX500, --det-backend imx500) o se
       apaga (--no-detect). En PC/post-vuelo sigue YOLOv8s@1280. El modo IMX500
-      está implementado contra la API oficial de picamera2 y PENDIENTE de
-      validación en hardware.
+      quedó **VALIDADO en hardware (2026-10-03/04)**: cámara detectada y
+      detección real con el NPU (YOLO11n ~6.8 fps; ver `detector-yolo11n-npu`
+      e `imx500-hardware`).
 
   - id: siames
     estado: vigente
@@ -95,7 +96,8 @@ decisiones:
       prepare_floodnet.py remapeaba con un `shift` heurístico que desplazaba
       TODAS las clases: "flood" era Building-NON-flooded y "agua normal" era
       Tree. Corregido contra el class_mapping.csv oficial (flood = clases 1 y
-      3; agua = 5) y el especialista fue re-entrenado (IoU flood 0.483). Es el
+      3; agua = 5) y el especialista fue re-entrenado (IoU flood 0.483 a 320 px
+      / 0.489 a 224 px, el de vuelo). Es el
       primer modelo del repo que pasa la auditoría IMX500.
 
   - id: opset
@@ -105,9 +107,11 @@ decisiones:
   - id: contrato-telemetria
     estado: vigente
     texto: |
-      El CSV de telemetría creció de 23 a 29 columnas con las extensiones del
-      DPD, SIEMPRE al final para no romper consumidores viejos (DictReader):
-        lat, lon, hum_pct, area_m2, personas_afectadas, perdidas_est.
+      El CSV de telemetría creció de 23 a **35 columnas** (2026-10-10) con las
+      extensiones del DPD, SIEMPRE al final para no romper consumidores viejos
+      (DictReader): lat, lon, hum_pct, area_m2, personas_afectadas, perdidas_est,
+      fire_pct, smoke_pct, haze_pct, humidex, stress_idx y colapso_pct
+      (`mission_pipeline.py::CSV_COLUMNS` es la fuente).
       La humedad cierra el gap del BME280 (el DPD la mide y no viajaba);
       protocol.py la lleva como campo 23 opcional del paquete v2.
       La estación (web_server.CSV_COLUMNS + types.ts Frame) las conoce y
@@ -135,8 +139,9 @@ decisiones:
       el caso del CanSat (a 250 m, 1 persona ≈ 6 px). Los IDs de clase se
       resuelven desde model.names en runtime (presets COCO/VisDrone).
       En la Pi Zero v1 la detección va por el NPU del AI Camera
-      (--det-backend imx500, SSD COCO on-sensor): misma limitación de personas
-      chicas, PENDIENTE de medir en la placa.
+      (--det-backend imx500): **YOLO11n on-sensor validado (2026-10-04)**, mAP
+      0.374 vs 0.218 del SSD; ver `detector-yolo11n-npu`. Falta la medición a
+      la GSD del descenso (persona ≈6 px a 250 m).
 
   - id: aug-uav-ab
     estado: descartada
@@ -337,7 +342,7 @@ decisiones:
       §4/§5.
 
   - id: uda-terreno-poc
-    estado: vigente
+    estado: descartada
     texto: |
       UDA LoveDA→RescueNet PARA EL TERRENO (V11 4.3): PoC POSITIVA. Baseline de
       self-training (`tools/uda_terrain.py`): el teacher v2@224 pseudo-etiqueta
@@ -385,9 +390,10 @@ decisiones:
       Resultados estables en dos semillas: seed 42 (200 tiles) compuerta 0.4717
       vs mejor fijo 0.4270 (+4.5 pts; oráculo 0.4792); seed 7 (300 tiles)
       0.4124 vs 0.3881 (+2.4 pts; oráculo 0.4171). Captura ~85-95% de la
-      brecha contra el oráculo. INTEGRACIÓN al consenso post-vuelo pendiente
-      (hoy es por reglas, `cansat/indices.py::diagnose`); en la Pi no aplica
-      (el daño corre post-vuelo). Evidencia: docs/benchmarks/moe_damage.json.
+      brecha contra el oráculo. **INTEGRADA al consenso post-vuelo (2026-10-05)**
+      con los expertos de producción: 0.5128 vs 0.4904 del mejor fijo (+2.2;
+      ver `moe-dano-integrado`); en la Pi no aplica (el daño corre post-vuelo).
+      Evidencia: docs/benchmarks/moe_damage.json.
 
   - id: int8
     estado: descartada
@@ -609,7 +615,7 @@ limitaciones:
       misma corrida: 0.330 (ver `mil-tipo-desastre`).
 
   - id: tipo-balanceado
-    estado: vigente
+    estado: descartada
     texto: |
       Rebalanceo del clasificador de tipo (train_disaster_type.py --loss
       balanceada/focal, pesos inversos topados en 5.0): LOEO 0.317 vs 0.330
@@ -624,7 +630,7 @@ limitaciones:
       docs/benchmarks/tipo_balanceado.json.
 
   - id: tipo-one-vs-rest
-    estado: vigente
+    estado: descartada
     texto: |
       Experimento pedido por el equipo: "¿un binario por tipo de desastre
       generaliza mejor que el multiclase de 7 clases?". Protocolo justo
@@ -639,7 +645,7 @@ limitaciones:
       señales del evento. Evidencia: docs/benchmarks/tipo_one_vs_rest.json.
 
   - id: calibracion-por-clase
-    estado: vigente
+    estado: descartada
     texto: |
       Extensión con una T por clase (q_i ∝ p_i^(1/T_i), tools/calibrate_per_class.py,
       mismo split por eventos). NO se adopta: ECE de evaluación 0.131 vs 0.123
@@ -723,6 +729,7 @@ limitaciones:
       vuelo (no versionado).
 
   - id: pseudo-labels-descartado
+    estado: descartada
     texto: |
       Regenerar pseudo-labels y re-destilar NO se persigue. Evidencia: la
       destilación (KD) ya empató con el modelo de vuelo (0.5196 vs 0.5219 mIoU)
@@ -755,7 +762,7 @@ limitaciones:
       re-entrenar antes de confiar en el siamés.
 
   - id: aug-uav-dano
-    estado: vigente
+    estado: descartada
     texto: |
       Augmentación UAV para el daño de vuelo: ops nuevas `sombras` (parches
       poligonales oscurecidos) y `vibracion` (±3 px + ±0.4°, geométrica con
@@ -947,8 +954,10 @@ limitaciones:
       escritorio (la imagen era Desktop): `systemctl set-default
       multi-user.target` + lightdm disabled (reversible). `dist_pi` viaja con
       tiles de prueba y `tools/bench_models.py`. Medición de la placa en
-      docs/benchmarks/pi_zero_w_sframe.json. PENDIENTE: AI Camera (IMX500) y
-      UART real (el S3 está disponible; la Heltec no).
+      docs/benchmarks/pi_zero_w_sframe.json. ✅ **AI Camera (IMX500) y UART real
+      validados después (2026-10-03/04)**: ver `imx500-hardware`,
+      `detector-yolo11n-npu` y `soak-uart-10min`; el firmware de vuelo corre en
+      la Heltec V3 con sensores reales (ver `uart-heltec`).
 
   - id: imx500-hardware
     estado: vigente
@@ -1065,9 +1074,11 @@ proximos_pasos:
     Demo: resolver la red del lugar (hotspot con IP fija, cargando el perfil
     WiFi en la Pi; o demo grabada + video de respaldo).
   - |
-    Re-medir INT8 (QDQ estático) del tiny en la placa con cv2.dnn y decidir
-    FP32 vs INT8 con número medido (validate_int8_mission.py). Actualizar
-    modelo_vuelo.nota_precision y la decisión `int8`.
+    Experimentos de IA (GPU + Docker disponibles): convertir a .rpk el YOLO11n
+    VisDrone propio (ONNX ya entrenado) y medirlo en la placa; flood con
+    Sen1Floods11/WorldFloods (hoy 0.489, gate 0.50); tipo de desastre (fusionar
+    con el especialista de fuego); hard negatives LEVIR-CD+ para el siamés.
+    Todo con protocolo A/B y evidencia en docs/benchmarks/.
   - |
     V11 opcional post-presentación (detalle en PLAN_MEJORA_IA_PI_ZERO_W_IMX500.md):
     difusión/LoRA para clases raras, capas Sentinel Hub con red y continual

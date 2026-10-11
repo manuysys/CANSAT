@@ -12,15 +12,16 @@ datasets para mejorar los desastres (tornados/huracanes, terremotos)"*.
 |---|---|---|
 | Terreno (DeepLabV3+ MV2, 5 clases) | **mIoU 52.19 %** (Val completo) | fuerte para edge; margen de mejora acotado |
 | Daño principal (3 clases, xBD) | IoU "dañado" **0.104** en desastres no vistos (0.132 en train) | el número viejo (0.32) tenía fuga |
-| Daño two-stage | **0.025** con desastres no vistos; 0.436 con edificios GT | F2: el de vuelo es el adaptado a UAV (RescueNet val 0.735) |
+| Daño two-stage | **0.025** con desastres no vistos; 0.436 con edificios GT | F2: hoy vuela el **ep6** (0.780 RescueNet val / 0.414 xBD held-out; ver «F2 — RescueNet» y `decisiones.yaml`) |
 | Siamés (re-entrenado) | DAÑADO* **0.601**; 1.23 % de daño falso con pre==post | desactivado por defecto |
 | Flood specialist (re-entrenado) | IoU flood **0.483** a 320 px → **0.489** a 224 px (F3, el de vuelo) | remapeo corregido |
-| Personas | sin métrica todavía | el SSD del IMX500 y YOLO existen; falta medir |
+| Personas | **medidas (2026-09-17/10-04)**: VisDrone 254 vs 42 del COCO; YOLO11n en el NPU mAP 0.374 (~6.8 fps) | falta la validación a GSD de descenso (persona ≈6 px a 250 m) |
 
-**Conclusión**: el eslabón débil no es el terreno (52 % es competitivo), son los
-modelos de daño y la estimación de personas. Ahí van las mejoras. Estado tras
-F2/F3 (2026-09-18): daño adaptado al dominio de vuelo (UAV) con IoU 0.735 en
-RescueNet val y flood a 224 px con IoU 0.489.
+**Conclusión (actualizada 2026-10-10)**: el terreno quedó en 52 % (v2) / 44 % (tiny
+de vuelo) y los dos eslabones débiles del plan original se cubrieron: daño con el
+**ep6 adoptado** (0.780 UAV / 0.414 xBD) y personas **medidas** (VisDrone + YOLO11n
+en el NPU). Lo que queda no es re-entrenar más: es **validación de campo** (GSD de
+descenso, TTFF frío, RF a distancia) y el `.rpk` propio del detector.
 
 ## 2. Datasets recomendados (además de los actuales)
 
@@ -131,8 +132,8 @@ por frame + densidad del predio**. Para acercarlo al estado del arte:
 | Día | Tarea | Estado |
 |---|---|---|
 | 1–2 | Split por desastre en los 4 scripts + re-entrenar daño con la loss de RescueNet; medir con `eval_sliding --split val` | ✅ **hecho**: helper `cansat/xbd.py`, split aplicado en `train_damage{,v2,v3}` y `train_siamese_damage`, loss `--loss rescue` implementada y en entrenamiento |
-| 3 | Regenerar pseudo-labels con flood/terreno corregidos; re-correr destilado | ⏸️ pendiente (la línea v3/v4 quedó en `legacy/`, así que es opcional) |
-| 4 | Validar IMX500 en la Pi + medir s/frame y detecciones de personas | ⏸️ bloqueado: falta la microSD/AI Camera en mano |
+| 3 | Regenerar pseudo-labels con flood/terreno corregidos; re-correr destilado | ❌ **rechazado con evidencia** (2026-10-04/05): el KD B5→tiny no mejora (0.4331 vs 0.4395) y los pseudo-labels quedaron descartados (`decisiones.yaml`); la línea v3/v4 quedó en `legacy/` |
+| 4 | Validar IMX500 en la Pi + medir s/frame y detecciones de personas | ✅ **hecho (2026-10-03/04)**: cámara validada, YOLO11n ~6.8 fps (mAP 0.374), SSD persona 77 %, s/frame medido (`docs/benchmarks/pi_zero_w_imx500.json`) |
 | 5 | Calibrar `--damage-threshold` y `--uncert-max` con el JSONL del simulacro | ✅ herramienta creada: `tools/calibrate_thresholds.py` (usa xBD val con split honesto o frames propios con `--folder/--labels`); falta correrla con frames del predio |
 | 6–7 | (Opcional) BRIGHT subconjunto óptico para protocolo cross-event | ❌ **descartado 2026-09-18**: verificado que BRIGHT es pre-óptico + post-SAR; no aplica al modelo óptico de vuelo. RescueNet (UAV óptico) pasa a ser el dataset nuevo de daño |
 | 6–7 (bis) | **F2 con RescueNet** (UAV óptico): tiles + remapeo + entrenamiento mezclado | ✅ **hecho 2026-09-18**: `prepare_rescuenet.py` (17 560 tiles train + 2 093 val a 640², remapeo a other/intacto/dañado), `train_damage_v3.py --extra-manifest/--xbd-repeat`, 3 modelos medidos (ver «F2 — RescueNet») |

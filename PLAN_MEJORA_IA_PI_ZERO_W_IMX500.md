@@ -1,7 +1,38 @@
 # Plan ENORME de mejora IA — CanSat LB135 para Pi Zero W ARMv6 + IMX500
 *Solo lectura, cero cambios. Integra lo que dejó la otra IA en cansat_seg_poc/docs/ + auditoría dura + búsqueda 2026-09-18.*
 
-## 0. Punto de partida medido (no opiniones)
+> ## ⚠ ESTADO REAL (2026-10-10) — leer antes que nada
+> Este documento es el **plan histórico** de la campaña de mejora. Varias secciones
+> de abajo quedaron desactualizadas: ante cualquier contradicción vale
+> `cansat_seg_poc/docs/decisiones.yaml` (fuente de decisiones), `MODELS.yaml`
+> (artefactos y métricas) y `INFORME-IA-Y-ESTACION.md`. Resumen del estado:
+>
+> - **T0 higiene: HECHO.** ONNX re-exportados inline; `export_b5_640.py` eliminado;
+>   `dist_pi` regenerado el 2026-10-10 con el ep6 y el pipeline actual (399 MB);
+>   basura borrada. Licencias: xBD declarada; FloodNet/EDSR/KATE-PD siguen "verificar".
+> - **T1 terreno: cerrado en lo esencial.** Vuela el tiny LR-ASPP MV3-S@224
+>   (0.4397, +gray-world 0.4605; ~3 s/frame en la placa). El criterio mIoU≥0.48 NO
+>   se alcanzó (declarado). STDC/PP-LiteSeg/FastSCNN/BiSeNetV2 nunca se ejecutaron.
+>   KD y pseudo-labels: RECHAZADOS con evidencia.
+> - **T2 daño: adoptado el ep6** (2026-10-05): **0.780 RescueNet / 0.414 xBD**
+>   (antes 0.735/0.096). Split por desastre, loss rescue y RescueNet: HECHOS.
+>   BRIGHT: rechazado (post es SAR). Siamés: existe pero desactivado por defecto.
+>   Hard negatives LEVIR / SAM2 / BIT-ChangeFormer: no ejecutados.
+> - **T3 nuevos desastres:** fuego/humo HECHO (0.791/0.774); flood 0.489 (gate 0.50
+>   no alcanzado); taxonomía de viento parcial; campo `severidad` en summary: pendiente.
+> - **T4 personas:** YOLO11n en el NPU validado (mAP 0.374 vs 0.218 del SSD, ~6.8 fps,
+>   3/3 en cadena real). El `.rpk` propio de YOLO11n VisDrone (ONNX listo) no se
+>   convirtió aún (la cadena Docker/WSL2 ya está verificada). GSD de descenso: pendiente.
+> - **T5 pipeline:** modo de vuelo final HECHO; refactor en módulos y auth HMAC: no;
+>   recalibración del sampler con frames reales: pendiente de campo.
+> - **T6 estación:** contrato v3 parcial (fuego/humo/colapso sí; `severidad` en
+>   summary y `model_id/quant` en CSV, pendientes). Smoke reparado el 2026-10-10
+>   (era dependiente de la demo de 12 frames).
+> - **V11:** MoE de daño INTEGRADO al post-vuelo (0.5128 vs 0.4904 fijo); UDA
+>   RECHAZADA con evidencia; difusión/LoRA y continual learning siguen pendientes
+>   (el segundo, bloqueado por vuelos reales anotados).
+
+## 0. Punto de partida medido (no opiniones) — HISTÓRICO (2026-09-18)
 
 | Modelo actual | Métrica honesta | Fuente |
 |---|---|---|
@@ -12,7 +43,12 @@
 | Flood specialist | IoU flood **0.483** | `MODELS.yaml:175` |
 | Personas | **NO MEDIDO** | `MODELS.yaml:198` |
 
-La otra IA ya dejó en `docs/DATASETS-Y-TECNICAS.md:20` la conclusión correcta: el terreno está bien, el eslabón débil es daño + personas. Este plan la extiende con constraint final que vos fijaste: **Zero W v1 ARMv6 512MB + IMX500**. Eso cambia todo.
+> **Actualización 2026-10-10** (mismos modelos, hoy): daño two-stage adoptado
+> **0.780 UAV / 0.414 xBD** (`damage-v3-bal-ep6`); flood **0.489** a 224 px;
+> personas **medidas**: VisDrone 254 vs 42 del COCO y YOLO11n en el NPU mAP 0.374.
+> El eslabón débil del plan (daño+personas) quedó cubierto; lo que falta es
+> validación de campo (GSD de descenso, TTFF frío, RF a distancia) y el `.rpk`
+> propio del detector.
 
 ## 1. Constraints duros que mandan el diseño
 

@@ -33,14 +33,15 @@ Write-Host "  destino  : $Dist"
 # Por defecto van los de VUELO: terreno a 224 px (mitad de cómputo que 320) y
 # flood a 224. Con -Todos se agregan el terreno de 320, el tiny (NPU) y los
 # modelos de daño/siamés (sólo útiles si la placa mide bien; ver guia_pi.md §6).
-# El two-stage de vuelo es el adaptado a UAV con RescueNet (F2 2026-09-18).
+# El two-stage es el ep6 adoptado (2026-10-05: 0.780 UAV / 0.414 xBD), no el
+# bal de 1 época que quedó como alternativa.
 $Modelos = @("cansat_seg_terrain_v2_224.onnx", "cansat_flood_specialist_224.onnx")
 if ($Todos) {
     $Modelos += @(
         "cansat_seg_terrain_v2.onnx",
         "cansat_seg_terrain_tiny_224.onnx",
         "cansat_damage3_mobilenetv2.onnx",
-        "cansat_damage_v3_bal.onnx",
+        "cansat_damage_v3_bal_ep6.onnx",
         "cansat_fire_smoke.onnx",
         "cansat_severity.onnx",
         "cansat_siamese_damage.onnx"

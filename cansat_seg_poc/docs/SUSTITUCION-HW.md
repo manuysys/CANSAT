@@ -42,7 +42,7 @@ estación terrena.
 
 | Función | Cómo se cubre | Evidencia |
 |---|---|---|
-| Segmentación del terreno (5 clases) | `cansat_seg_terrain_v2.onnx` vía `cv2.dnn` en la Pi | mIoU **0.5219** (Val completo, 1669 imgs) |
+| Segmentación del terreno (5 clases) | En vuelo: `cansat_seg_terrain_tiny_224.onnx` por CPU (`cv2.dnn`). El v2@320 (mIoU 0.5219) NO vuela: tarda ~243 s/frame en la v1; queda para post-vuelo | tiny mIoU **0.4397** (+gray-world **0.4605**); v2 0.5219 en Val completo |
 | Detección de personas/vehículos | NPU IMX500 (`--det-backend imx500`) o VisDrone en post-vuelo | VisDrone: **254 personas** vs 42 del COCO en imagen aérea |
 | Mejora de imágenes con IA | EDSR x2 en post-vuelo (offline, ya validado) | `enhance_image.py` + `entrega/enhanced/` |
 | Telemetría imagen ↔ sensores | UART LB135 v2 con altitud/presión/temperatura/**GPS** | `uart_listener.py` + `mission_pipeline --uart-state` |
@@ -51,13 +51,13 @@ estación terrena.
 
 ## 4. Lo que falta demostrar (medición en la placa)
 
-Pendiente de la llegada de la microSD/AI Camera:
+Ya medido (2026-09-25/10-04, ver `docs/benchmarks/`): **s/frame** en la Zero W v1
+(tiny ~3 s/frame total; v2@224 ~243 s → no vuela), cámara IMX500 y NPU validados
+(YOLO11n ~6.8 fps, mAP 0.374; SSD persona 77 %) y soak de vuelo de 10 min sin
+throttling. Queda pendiente:
 
-- [ ] **Segundos por frame** en la Zero W v1 con el modelo de terreno a 320 px
-      (`time python mission_pipeline.py --folder tiles --frames 3 --no-detect --no-damage`).
-      Estimación: 5–15 s/frame; la misión tolera 1 frame cada 5–10 s.
-- [ ] **Detecciones del IMX500** a la GSD del descenso
-      (7.7 cm/px a 250 m → una persona ≈ 6 px): `python -m cansat.imx500 --seconds 10`.
+- [ ] **Detecciones del IMX500 a la GSD del descenso**
+      (7.7 cm/px a 250 m → una persona ≈ 6 px): probar con objeto a distancia real.
 - [ ] **Consumo real** del conjunto con batería definitiva (medir mA en banco).
 
 Si la Zero W v1 no alcanza el ritmo necesario, el plan B es **volar con la
