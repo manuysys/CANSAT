@@ -32,9 +32,12 @@ para que el armado físico no introduzca fallas nuevas.
       PCB, agregarlo antes de volar).
 - [ ] Polyfuse/protección de polaridad si se alimenta por el pin 5V del GPIO.
 - [ ] No usar a la vez la carga USB del XY-J02 y la alimentación por J2.
-- [ ] Autonomía estimada: 18650 de 3.4 Ah → varias horas con el perfil de vuelo
-      (Pi ~250 mA + Heltec RX + sensores ~50 mA).
-- [ ] Medir el consumo REAL en banco durante 5 min de vuelo simulado.
+- [x] **Consumo REAL medido en banco (2026-10-11)**: Pi idle 0.13 A ·
+      cámara+NPU 0.27-0.28 A (pico 0.31) · soak 0.33 A de pico · Heltec TX
+      0.21 A transmitiendo. Conjunto ~0.43 A a 5 V (~2.15 W) → autonomía
+      estimada ~5 h con 18650 3.4 Ah (`docs/benchmarks/consumo_banco.json`).
+- [ ] Validar esa autonomía con la **batería real + step-up** (pendiente:
+      cuando llegue la 18650, comparar VBAT del firmware contra multímetro).
 
 ## 2. Mecánica y montaje
 

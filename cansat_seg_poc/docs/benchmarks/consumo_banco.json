@@ -1,0 +1,46 @@
+{
+  "prueba": "CONSUMO EN BANCO del sistema de vuelo (sin bateria): Pi Zero W v1 + Heltec TX",
+  "generado": "2026-10-11",
+  "metodo": {
+    "fuente": "Fuente regulable a 5.0 V con display de V/A (resolucion 0.01 A) y limite de corriente ~2 A",
+    "multimetro": "Multimetro en serie (A=, rango 10 A) para aislar la rama de la Heltec cuando la Pi tambien estaba en la fuente",
+    "pi": "Alimentada por GPIO 5V (pin 2/4) + GND (pin 6), micro-USB desconectado: mismo camino que en vuelo (sin polyfuse)",
+    "heltec": "Alimentada por J2 pin 2 (5V) + pin 1 (GND), USB desconectado, con BME280 + MPU6050 + GPS + antena conectados (firmware de vuelo LORA_MODO=1, TX a 1 Hz)",
+    "caveat": "Display con resolucion de 0.01 A y lecturas manuales del operador; la bateria real y el step-up no estaban disponibles (la autonomia es ESTIMADA, declarada)"
+  },
+  "mediciones_a_5v": {
+    "pi_arranque_pico_a": 0.20,
+    "pi_idle_a": {"base": 0.13, "picos": [0.16, 0.17]},
+    "pi_camara_npu_a": {"pico": 0.31, "sostenido": [0.27, 0.28]},
+    "pi_soak_vuelo_30f_a": {"pico": 0.33, "sostenido": [0.27, 0.28]},
+    "heltec_tx_a": {"reposo": [0.12, 0.13], "transmitiendo": 0.21,
+                    "promedio_aprox": 0.15}
+  },
+  "potencia_w_a_5v": {
+    "pi_idle": 0.65,
+    "pi_camara_npu_sostenido": 1.4,
+    "pi_soak_pico": 1.65,
+    "heltec_tx_pico": 1.05,
+    "vuelo_activo_total_aprox": 2.15
+  },
+  "salud_en_el_soak": {
+    "frames": 30,
+    "duracion_s": 209,
+    "temp_c": [37.9, 40.6],
+    "throttled": false,
+    "nota": "El perfil mas pesado (camara + NPU + escritura a SD) corrio sin undervoltage ni throttling con la fuente de banco"
+  },
+  "autonomia_estimada": {
+    "supuestos": {
+      "bateria": "18650 3.4 Ah x 3.7 V = 12.6 Wh nominales (aun sin comprar)",
+      "eficiencia_stepup": 0.85,
+      "energia_util_wh": 10.7
+    },
+    "vuelo_activo": {"corriente_5v_a": 0.43, "horas": 5.0,
+                     "detalle": "Pi soak 0.28 A + Heltec TX promedio ~0.15 A"},
+    "standby": {"corriente_5v_a": 0.26, "horas": 8.2,
+                "detalle": "Pi idle 0.13 A + Heltec reposo 0.13 A"},
+    "nota": "Estimacion con eficiencia declarada; el vuelo dura minutos, asi que sobra margen. VALIDAR con la 18650 real + step-up (pendiente)."
+  },
+  "conclusion": "La Pi es el consumidor dominante y la camara+NPU el estado mas pesado (0.28 A sostenidos, 1.4 W a 5 V). El conjunto en vuelo activo ronda 0.43 A a 5 V (~2.15 W): con una 18650 de 3.4 Ah la autonomia estimada es ~5 h de perfil de vuelo, muy por encima de la mision."
+}

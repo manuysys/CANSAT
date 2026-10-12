@@ -526,3 +526,7 @@ fix real (59/60 paquetes, TTFF 2.28 s, dispersión 3.8 m). Evidencia:
 (5.0 s/frame de mediana; cam_000 18.9 s de warmup), 35.8-41.2 °C sin
 throttling y **UART 579/579 paquetes a 1.0 s, 0 pérdidas, 0 checksums malos y
 100 % con posición real** (`soak_vuelo_1hz.json`).
+**CONSUMO MEDIDO EN BANCO (2026-10-11)**: Pi idle **0.13 A**, cámara+NPU
+**0.27-0.28 A** sostenido (pico 0.31), soak **0.33 A** de pico, Heltec TX
+**0.21 A** transmitiendo / 0.12-0.13 en reposo → conjunto ~**0.43 A a 5 V
+(~2.15 W)** y autonomía estimada ~5 h con 18650 3.4 Ah (`consumo_banco.json`).

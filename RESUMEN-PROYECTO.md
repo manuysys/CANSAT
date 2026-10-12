@@ -440,6 +440,10 @@ deterministas sobre máscaras y telemetría.
    **Soak de vuelo 1 Hz (2026-10-09)**: 100 frames en 9.7 min (5.0 s/frame),
    35.8-41.2 °C sin throttling y UART **579/579 a 1.0 s, 0 pérdidas, 100 % con
    GPS real** (`soak_vuelo_1hz.json`).
+   **Consumo en banco (2026-10-11)**: Pi idle 0.13 A, cámara+NPU 0.27-0.28 A,
+   soak 0.33 A de pico y Heltec TX 0.21 A transmitiendo → conjunto ~0.43 A a
+   5 V (~2.15 W); autonomía estimada ~5 h con 18650 3.4 Ah
+   (`consumo_banco.json`).
 3. **Conversión Edge-MDT (.rpk)** de nuestros modelos: ✅ **HECHA (2026-10-05)**
    — cadena Docker/WSL2 con `edge-mdt[pt]` de PyPI (público, sin registro); el
    tiny de terreno corre en el NPU (`network.rpk`: memoria 4.28/8 MB = 54 %,

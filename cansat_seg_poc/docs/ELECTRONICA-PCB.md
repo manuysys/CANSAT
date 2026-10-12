@@ -50,18 +50,23 @@ BATERÍA Li-ion 18650 (3.7V)
                 └──► 3V3 (J2 pin 3/4) → BME280 + MPU6050 + GPS (ver §3.4)
 ```
 
-**Presupuesto orientativo** (medir en banco, no confiar en la hoja de datos):
+**Consumo MEDIDO en banco (2026-10-11)** — fuente a 5.0 V con display de 0.01 A,
+Pi por GPIO 5V y Heltec por J2 con sensores + GPS (evidencia:
+`docs/benchmarks/consumo_banco.json`). Reemplaza la estimación anterior:
 
-| Consumidor | Típico | Pico |
-|---|---|---|
-| Pi Zero W v1 (idle, sin cámara) | ~150 mA | — |
-| Pi Zero W + cámara + WiFi activo | ~250 mA | **~400-500 mA** (arranque) |
-| Heltec V3 (RX) | ~30-50 mA | — |
-| Heltec V3 (TX LoRa 21 dBm) | — | ~120 mA |
-| BME280 + GPS + IMU | ~50 mA | ~80 mA (GPS fix) |
+| Consumidor | Medido a 5 V |
+|---|---|
+| Pi Zero W v1 idle (WiFi) | **0.13 A** (picos de 0.16-0.17) |
+| Pi arranque | **0.20 A** de pico |
+| Pi + cámara + NPU | **0.27-0.28 A** sostenido · **0.31 A** pico |
+| Pi + soak de vuelo (30 frames) | ídem sostenido · **0.33 A** pico |
+| Heltec V3 TX + BME280/MPU/GPS (LoRa 14 dBm, 1 Hz) | **0.12-0.13 A** en reposo · **0.21 A** transmitiendo |
+| **Conjunto en vuelo activo** | **~0.43 A (~2.15 W)** |
 
-Con el step-up (≈85-90 % eficiente) el riel de 5V debería bancar **1 A con
-margen**. Un 18650 de 3.4 Ah da varias horas de operación.
+Con esos números el riel de 5V (1 A con margen) queda holgado: el peor caso
+simultáneo medido es ~0.54 A. Autonomía **estimada** con un 18650 de 3.4 Ah
+(η 0.85 declarado): **~5 h de perfil de vuelo / ~8 h en standby** — a validar
+con la batería real y el step-up.
 
 **Cuidados de diseño:**
 - El pico de la Pi al arrancar es lo que hace caer el riel → poné **al menos

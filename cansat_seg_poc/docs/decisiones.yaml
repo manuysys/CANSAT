@@ -196,6 +196,24 @@ decisiones:
       conectada pendiente. Nota de la comunidad: durante el TX LoRa la lectura
       se deprime → se lee fuera de la ventana de transmisión.
 
+  - id: consumo-banco
+    estado: vigente
+    texto: |
+      CONSUMO MEDIDO EN BANCO (2026-10-11): con una fuente regulable a 5.0 V
+      (display de 0.01 A) y la Pi alimentada por GPIO 5V (mismo camino que en
+      vuelo, sin polyfuse) + la Heltec por J2 con sensores y GPS:
+      · Pi idle **0.13 A** (picos 0.16-0.17) · arranque **0.20 A** de pico;
+      · Pi + cámara + NPU **0.27-0.28 A** sostenido (**0.31 A** pico) y en el
+        soak de vuelo de 30 frames **0.33 A** de pico, con 37.9-40.6 °C y
+        `throttled=0x0` (la fuente de banco bancó el perfil pesado);
+      · Heltec TX + BME/MPU/GPS (LoRa 14 dBm, 1 Hz): **0.12-0.13 A** en reposo,
+        **0.21 A** transmitiendo (~0.15 A promedio del ciclo).
+      Conjunto en vuelo activo ≈ **0.43 A a 5 V (~2.15 W)**; el peor caso
+      simultáneo medido es ~0.54 A, holgado para el riel de 1 A. Autonomía
+      ESTIMADA con 18650 de 3.4 Ah (η 0.85 declarado): ~5 h de vuelo / ~8 h en
+      standby — a validar con la batería real y el step-up. Evidencia:
+      docs/benchmarks/consumo_banco.json.
+
   - id: severidad-crasar-solo
     estado: descartada
     texto: |
@@ -1068,8 +1086,7 @@ proximos_pasos:
     Campo/hardware: prueba de LoRa a distancia real (100 m-1 km) con el CanSat
     cerrado (herramienta lista: `tools/lora_check.py --solo-rx`); TTFF del GPS
     en arranque frío y a cielo abierto; batería real de vuelo (validar la
-    lectura VBAT contra multímetro y estimar autonomía); medir el consumo de la
-    Pi (no tiene sensor propio: USB-tester o multímetro en serie / INA219).
+    lectura VBAT contra multímetro y la autonomía estimada de `consumo-banco`).
   - |
     Demo: resolver la red del lugar (hotspot con IP fija, cargando el perfil
     WiFi en la Pi; o demo grabada + video de respaldo).
