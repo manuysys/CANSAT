@@ -342,6 +342,11 @@ vuelo:
       prepare_floodnet.py: "flood" era Building-NON-flooded y "agua normal" era
       Tree). Con el remapeo oficial (flood = {Building-flooded, Road-flooded},
       agua = {Water}) es el primer modelo del repo que PASÓ la auditoría IMX500.
+      A/B CON SEN1FLOODS11 (2026-10-13, decisión `flood-sen1-mix`): la mezcla
+      FloodNet+Sen1 (570 pares) baja a 0.463 en FloodNet val (no se adopta)
+      pero generaliza al dominio S2 (Sen1 val 0.13→0.32). El de producción
+      sigue siendo este. Artefactos del experimento: outputs/flood_mix_12ep.*
+      y outputs/flood_ab_30ep.pth (30 épocas: 0.4742, tampoco supera).
 
   fuego_humo:
     # F3 (2026-09-18): extensión — el DPD no la exige, pero suma alerta temprana.

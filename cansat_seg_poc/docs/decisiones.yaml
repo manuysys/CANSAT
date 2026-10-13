@@ -100,6 +100,24 @@ decisiones:
       / 0.489 a 224 px, el de vuelo). Es el
       primer modelo del repo que pasa la auditoría IMX500.
 
+  - id: flood-sen1-mix
+    estado: descartada
+    texto: |
+      FLOOD CON DATOS NUEVOS (2026-10-13): NO se adopta la mezcla con
+      Sen1Floods11. Se preparó el subset etiquetado a mano de Sen1Floods11 v1.1
+      (252 train / 89 val; RGB B4/B3/B2 con estiramiento 2-98 %; el agua del
+      evento se mapea a flood y el no-data a other, DECLARADO porque el dataset
+      no distingue inundación de agua permanente) con `prepare_sen1floods11.py`,
+      y se entrenó la MISMA receta del especialista de vuelo (12 épocas, 224 px,
+      semilla 42) sobre 570 pares (FloodNet + Sen1). Resultado en FloodNet val:
+      **0.463 vs 0.489 del de producción** (−2.6 pts; no alcanza el gate 0.50).
+      La variante de 30 épocas tampoco supera (best 0.4742). HALLAZGO: la mezcla
+      SÍ generaliza al dominio satelital S2 (Sen1 val **0.13 → 0.32**, +19 pts),
+      así que queda como variante generalista si se usara la capa satelital. El
+      modelo de producción NO se toca. Herramientas nuevas: `prepare_sen1floods11.py`
+      y `train_flood_specialist.py --extra-train/--eval-extra`. Evidencia:
+      docs/benchmarks/flood_sen1floods11.json.
+
   - id: opset
     estado: vigente
     texto: "Opset 17, entrada fija [1,3,320,320], salida 'logits'."

@@ -1,0 +1,27 @@
+{
+  "prueba": "Flood con datos nuevos: mezcla FloodNet + Sen1Floods11 (A/B con la misma receta)",
+  "generado": "2026-10-13",
+  "dataset_nuevo": {
+    "nombre": "Sen1Floods11 v1.1 (subset etiquetado a mano: S2 L1C 13 bandas + LabelHand)",
+    "origen": "HuggingFace blumenstiel/Sen1Floods11 (tarball 1.77 GB; CC-BY-4.0 segun el mirror)",
+    "preparacion": "prepare_sen1floods11.py: RGB B4/B3/B2 con estiramiento percentil 2-98 a PNG 8-bit; labels QC (-1/0/1) -> 0/1/0 (agua del evento -> flood, no-data -> other); splits OFICIALES",
+    "chips": {"train": 252, "val": 89},
+    "frecuencias_px": {"train": [0.9175, 0.0825, 0.0], "val": [0.9041, 0.0959, 0.0]},
+    "caveat": "Sen1Floods11 NO distingue inundacion de agua permanente: el agua se mapea a flood (declarado). Es Sentinel-2 satelital (~10 m/px), dominio distinto a FloodNet (UAV)."
+  },
+  "protocolo": "Misma receta y semilla (42) que el especialista de produccion: DeepLabV3+ MV2, 224 px, 12 epocas, mejor por IoU de flood en FloodNet val. La mezcla usa 570 pares (318 FloodNet + 252 Sen1) y pesos de clase del train mezclado.",
+  "resultados": {
+    "produccion_floodnet_12ep": {"floodnet_val": 0.489, "sen1_val": 0.13},
+    "baseline_floodnet_30ep": {"floodnet_val": 0.4742,
+      "nota": "corrida detenida tras ~60 min de CPU sin superar el de 12 epocas; el best quedo en la metadata del checkpoint (outputs/flood_ab_30ep.pth)"},
+    "mix_floodnet_sen1_12ep": {"floodnet_val": 0.463, "sen1_val": 0.32, "train_pares": 570}
+  },
+  "conclusion": "RECHAZADO para vuelo: la mezcla cuesta 2.6 pts en el dominio de mision (0.489 -> 0.463) y no alcanza el gate 0.50; mas epocas tampoco (0.4742). HALLAZGO: la mezcla SI mejora la generalizacion al dominio satelital S2 (Sen1 val 0.13 -> 0.32, +19 pts), asi que queda como variante generalista si algun dia se usa la capa satelital. El modelo de produccion NO se toca.",
+  "artefactos": {
+    "produccion": "outputs/best_flood_specialist_224.pth + outputs/cansat_flood_specialist_224.onnx (sin cambios)",
+    "mix": "outputs/flood_mix_12ep.pth + outputs/flood_mix_12ep.onnx",
+    "baseline": "outputs/flood_ab_30ep.pth",
+    "preparador": "prepare_sen1floods11.py",
+    "trainer": "train_flood_specialist.py --extra-train / --eval-extra"
+  }
+}

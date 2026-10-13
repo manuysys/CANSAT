@@ -40,11 +40,17 @@ ROOT = Path("dataset/floodnet_remapped")
 
 
 class FloodDS(Dataset):
-    def __init__(self, split, size=320, aug=False):
+    def __init__(self, split, size=320, aug=False, extra: Path | None = None):
         self.size, self.aug = size, aug
-        ib, mb = ROOT / split / "images", ROOT / split / "masks"
-        self.pairs = [(ip, mb / ip.name) for ip in sorted(ib.glob("*.png"))
-                      if (mb / ip.name).exists()]
+        # `extra`: raíz adicional (p. ej. sen1floods11_remapped) para mezclar
+        # dominios en TRAIN sin duplicar datos en disco.
+        roots = [ROOT] + ([extra] if extra else [])
+        self.pairs = []
+        for root in roots:
+            ib, mb = root / split / "images", root / split / "masks"
+            if ib.is_dir():
+                self.pairs += [(ip, mb / ip.name) for ip in sorted(ib.glob("*.png"))
+                               if (mb / ip.name).exists()]
 
     def __len__(self):
         return len(self.pairs)
@@ -92,6 +98,22 @@ def compute_weights(ds, n=3, clip=(0.3, 3.0)):
     return torch.tensor(w, dtype=torch.float32), freq
 
 
+def evaluar(model, dl, device, n=3) -> list[float]:
+    """IoU por clase sobre un DataLoader (sin grad)."""
+    cm = np.zeros((n, n), dtype=np.int64)
+    model.eval()
+    with torch.no_grad():
+        for x, y in dl:
+            pred = model(x.to(device)).argmax(1).cpu().numpy()
+            cm += conf_matrix(pred, y.numpy(), n)
+    ious = []
+    for i in range(n):
+        inter = cm[i, i]
+        union = cm[i, :].sum() + cm[:, i].sum() - inter
+        ious.append(inter / union if union else 0.0)
+    return ious
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=12)
@@ -101,10 +123,16 @@ def main():
     ap.add_argument("--onnx-out", default="outputs/cansat_flood_specialist.onnx")
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--extra-train", default=None,
+                    help="raíz extra (p. ej. dataset/sen1floods11_remapped) "
+                         "para MEZCLAR en train")
+    ap.add_argument("--eval-extra", default=None,
+                    help="raíz extra cuya val se evalúa al final (dominio nuevo)")
     args = ap.parse_args()
 
     set_seed(args.seed)
-    train_ds = FloodDS("train", size=args.size, aug=True)
+    extra = Path(args.extra_train) if args.extra_train else None
+    train_ds = FloodDS("train", size=args.size, aug=True, extra=extra)
     val_ds = FloodDS("val", size=args.size)
     print(f"Pares: train {len(train_ds)} / val {len(val_ds)} · {args.size}px")
     if not train_ds:
@@ -138,16 +166,7 @@ def main():
             if bi % 30 == 0:
                 print(f"    batch {bi}/{len(train_dl)} loss {loss.item():.4f}")
         model.eval()
-        cm = np.zeros((3, 3), dtype=np.int64)
-        with torch.no_grad():
-            for x, y in val_dl:
-                pred = model(x.to(device)).argmax(1).cpu().numpy()
-                cm += conf_matrix(pred, y.numpy())
-        ious = []
-        for i in range(3):
-            inter = cm[i, i]
-            union = cm[i, :].sum() + cm[:, i].sum() - inter
-            ious.append(inter / union if union else 0.0)
+        ious = evaluar(model, val_dl, device)
         print(f"  epoch {ep + 1}: other={ious[0]:.2f} FLOOD={ious[1]:.2f} "
               f"agua={ious[2]:.2f}")
         if ious[1] > best:
@@ -157,7 +176,8 @@ def main():
                       class_names=["other", "flood", "agua_normal"],
                       iou_per_class=[round(x, 4) for x in ious],
                       iou_flood=round(ious[1], 4),
-                      dataset="floodnet_remapped (remapeo corregido)",
+                      dataset=("floodnet_remapped + " + extra.name
+                               if extra else "floodnet_remapped (remapeo corregido)"),
                       script="train_flood_specialist.py",
                       epochs=args.epochs, seed=args.seed)
             print("  → guardado")
@@ -169,6 +189,14 @@ def main():
     from cansat.checkpoints import load_model_state
     model.load_state_dict(load_model_state(args.out, strict=True))
     model.eval().cpu()
+    if args.eval_extra:
+        # Dominio nuevo (p. ej. Sen1Floods11 val): IoU de flood del BEST.
+        extra_ds = FloodDS("val", size=args.size,
+                           extra=Path(args.eval_extra))
+        extra_dl = DataLoader(extra_ds, batch_size=args.batch)
+        ious_x = evaluar(model, extra_dl, torch.device("cpu"))
+        print(f"[EXTRA] {Path(args.eval_extra).name} val: other={ious_x[0]:.2f} "
+              f"FLOOD={ious_x[1]:.2f} agua={ious_x[2]:.2f}")
     torch.onnx.export(model, torch.randn(1, 3, args.size, args.size),
                       args.onnx_out,
                       input_names=["input"], output_names=["logits"],

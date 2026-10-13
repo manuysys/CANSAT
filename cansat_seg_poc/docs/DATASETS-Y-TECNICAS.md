@@ -33,7 +33,7 @@ descenso, TTFF frío, RF a distancia) y el `.rpk` propio del detector.
 | **VisDrone** (ya usado) | Personas/vehículos desde dron | challenge | Fine-tune del detector; ya hay scripts (`visdrone_finetune.py`) |
 | **HERIDAL / SARD** | Búsqueda y rescate: personas en escenas aéreas | investigación | Sólo si se quiere apuntar a "personas perdidas"; GSD de CanSat (≈8 cm/px) es mejor que la de esos sets |
 | **WorldPop / GHSL / HRSL** | Grids de población (hab/km²) | abierta | Insumo directo de `cansat/casualties.py`: reemplaza la densidad fija por el valor del predio |
-| **Sen1Floods11 / WorldFloods** | Inundaciones con Sentinel-1/2 | abierta | Alternativa a FloodNet con etiquetas íntegras (FloodNet tiene clases solapadas) |
+| **Sen1Floods11 / WorldFloods** | Inundaciones con Sentinel-1/2 | abierta | ✅ **PROBADO (2026-10-13)**: Sen1Floods11 v1.1 (subset etiquetado, 252/89 chips) preparado con `prepare_sen1floods11.py` y A/B con la receta de vuelo: la mezcla **NO se adopta** (FloodNet val 0.463 vs 0.489) pero generaliza al dominio S2 (**Sen1 val 0.13 → 0.32**). WorldFloods no se descargó (v2 pesado). Ver `decisiones.yaml` `flood-sen1-mix` y `docs/benchmarks/flood_sen1floods11.json` |
 | **LEVIR-CD+ / WHU-CD** | Change detection edilicio | abierta | Pre-entrenamiento del siamés con pares reales sin desastre (aprende "cambio cero") |
 
 ## 3. Técnicas de entrenamiento recomendadas (ordenadas por retorno)
