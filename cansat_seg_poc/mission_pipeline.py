@@ -828,12 +828,15 @@ def main(argv=None):
                 else set(VISDRONE_VEHICLES if vis else COCO_VEHICLES))
         yolo = load_yolo(args.det_model, pids, vids)
     elif det_backend == "imx500":
-        # El NPU usa índices COCO-91 (person=1), no COCO-80 (person=0).
+        # Preset por nombre del .rpk: los oficiales (yolo11n_pp, SSD) son
+        # COCO-80 (persona=0); nuestro .rpk de VisDrone usa sus clases (0-8,
+        # mismas constantes del módulo que usa el backend YOLO en PC).
         from cansat.imx500 import SSD_PERSON, SSD_VEHICLES
+        vis = "visdrone" in Path(args.imx500_model).name.lower()
         pids = ({int(v) for v in args.det_person.split(",")} if args.det_person
-                else set(SSD_PERSON))
+                else set(VISDRONE_PERSON if vis else SSD_PERSON))
         vids = ({int(v) for v in args.det_vehicles.split(",")} if args.det_vehicles
-                else set(SSD_VEHICLES))
+                else set(VISDRONE_VEHICLES if vis else SSD_VEHICLES))
         if not args.camera:
             print("  [ERROR] --det-backend imx500 requiere --camera (el NPU vive "
                   "en el AI Camera).")
@@ -1000,7 +1003,8 @@ def main(argv=None):
             from cansat.imx500 import Imx500Camera
 
             cam = Imx500Camera(args.imx500_model, shutter_us=args.shutter,
-                               gain=args.gain)
+                               gain=args.gain, person_ids=frozenset(pids),
+                               veh_ids=frozenset(vids))
             cam.start()
             print(f"  [IMX500] detección on-sensor: {Path(args.imx500_model).name}")
         else:

@@ -1029,6 +1029,27 @@ limitaciones:
       docs/benchmarks/pi_zero_w_imx500.json (bloque yolo11n_npu); guía en
       pi/guia_pi.md §9.
 
+  - id: rpk-yolo11n-visdrone
+    estado: vigente
+    texto: |
+      .rpk PROPIO DEL DETECTOR (2026-10-12): el YOLO11n VisDrone propio
+      (`yolo11n_visdrone_v2`, mAP50-95 0.164) se convirtió a .rpk con la cadena
+      Ultralytics `format=imx` (MCT PTQ 2.4.1 + NMS horneado conf 0.35 +
+      imxconv-pt 3.18.2) en Docker/WSL2 y se empaquetó en la Pi. Memoria del
+      NPU **7.12/8 MB (90 %, entra)**; en la placa corre a **~6.5 fps** (el
+      oficial ~8.3 fps en la misma corrida). A/B de banco sobre la imagen aérea
+      de prueba capturada por la cámara: **nuestro modelo detecta en 72/130
+      frames (13 personas, 563 vehículos, máx 19 cajas) y el COCO oficial en
+      0/166**. PITFALLS medidos: el pin `edge-mdt-cl<1.1.0` de Ultralytics exige
+      MCT 2.4.1 (con 2.5.1 el import falla por `MulticlassNMSOBB`); MCT pico
+      ~26 GB de RAM (el default de WSL2 lo mataba por OOM en silencio: subir
+      `.wslconfig` a 28 GB); el demo con `--out` debe precargar cv2. Preset de
+      clases por nombre del archivo (visdrone → 0/1 personas, 2-8 vehículos) en
+      `cansat/imx500.py` + `mission_pipeline.py`, con tests. ESTADO: candidato
+      medido; el vuelo mantiene el oficial hasta validar a la GSD del descenso.
+      Evidencia: docs/benchmarks/rpk_yolo11n_visdrone.json +
+      docs/evidencia/15_rpk_visdrone_npu.png.
+
   - id: seg-npu-deeplabv3plus
     estado: vigente
     texto: |

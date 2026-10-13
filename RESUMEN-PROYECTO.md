@@ -417,6 +417,10 @@ deterministas sobre máscaras y telemetría.
    personas en la cadena real); segmentación DeepLabV3+ a ~1.1 fps; pose
    descartada con evidencia. ✅ **Conversión de nuestros modelos a `.rpk`
    HECHA (2026-10-05)**: el tiny de terreno corre en el NPU (ver §6.3).
+   ✅ **Detector propio a `.rpk` (2026-10-12)**: el YOLO11n VisDrone corre en
+   el NPU (7.12/8 MB, ~6.5 fps) y en el A/B de banco detecta 72/130 frames vs
+   **0/166 del COCO oficial**; falta la validación a GSD para cambiar el
+   default (`rpk_yolo11n_visdrone.json`).
    **UART real**: ✅ **cerrado**: Heltec V3 + BME280 + MPU6050 (21/21 en PC),
    ESP8266/CH340 (25/25), **GPIO15 en la Pi 40/40** y **soak de 10 min:
    597/597 paquetes, 0 pérdidas** (`soak_uart.json`); eventos de vuelo

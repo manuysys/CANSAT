@@ -13,6 +13,8 @@ from cansat.imx500 import (
     COCO_VEHICLES,
     SSD_PERSON,
     SSD_VEHICLES,
+    VISDRONE_PERSON,
+    VISDRONE_VEHICLES,
     Deteccion,
     contar,
     parse_ssd_output,
@@ -143,3 +145,25 @@ def test_parsea_lista_vacia_o_corta_no_explota():
     assert parse_ssd_outputs(None) == []
     assert parse_ssd_outputs([np.zeros((1, 4)), np.zeros((1,))]) == []   # <3 tensores
     assert parse_ssd_outputs([np.zeros((0, 4)), np.zeros((0,)), np.zeros((0,))]) == []
+
+
+def test_visdrone_presets():
+    """Nuestro .rpk de VisDrone sale con clases VisDrone, no COCO."""
+    assert frozenset({0, 1}) == VISDRONE_PERSON
+    assert frozenset({2, 3, 4, 5, 6, 7, 8}) == VISDRONE_VEHICLES
+
+
+def test_camara_infiere_preset_por_nombre():
+    """El nombre del .rpk elige las clases: visdrone → VisDrone; si no, COCO."""
+    from cansat.imx500 import Imx500Camera
+
+    cam = Imx500Camera("yolo11n_visdrone.rpk")
+    assert cam.person_ids == VISDRONE_PERSON and cam.veh_ids == VISDRONE_VEHICLES
+    cam_oficial = Imx500Camera("yolo11n_pp.rpk")
+    assert cam_oficial.person_ids == SSD_PERSON
+    assert cam_oficial.veh_ids == SSD_VEHICLES
+    # Los argumentos explícitos ganan sobre el preset.
+    cam_exp = Imx500Camera("yolo11n_visdrone.rpk", person_ids=frozenset({7}),
+                           veh_ids=frozenset({8}))
+    assert cam_exp.person_ids == frozenset({7})
+    assert cam_exp.veh_ids == frozenset({8})

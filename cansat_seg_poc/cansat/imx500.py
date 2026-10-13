@@ -49,6 +49,11 @@ COCO_VEHICLES: frozenset[int] = frozenset({1, 2, 3, 5, 7})   # bicycle, car, mot
 # El SSD preempaquetado del IMX500 usa COCO-80 (persona = 0), NO COCO-91.
 SSD_PERSON: frozenset[int] = COCO_PERSON
 SSD_VEHICLES: frozenset[int] = COCO_VEHICLES
+# Clases VisDrone (las del fine-tune propio `yolo11n_visdrone_v2`): persona =
+# pedestrian(0) + people(1); vehículos = bicycle..motor (2-8). El .rpk propio
+# del experimento (2026-10-12) sale con estos índices, no COCO.
+VISDRONE_PERSON: frozenset[int] = frozenset({0, 1})
+VISDRONE_VEHICLES: frozenset[int] = frozenset({2, 3, 4, 5, 6, 7, 8})
 
 #: Umbral de score para los YOLO del NPU. Medido en la placa (2026-10-04) con
 #: yolo11n en luz baja: la persona da 0.32-0.44 (los YOLO calibran scores más
@@ -247,12 +252,19 @@ class Imx500Camera:
     """
 
     def __init__(self, model: str, width: int = 640, height: int = 480,
-                 fps: int = 10, person_ids: frozenset[int] = SSD_PERSON,
-                 veh_ids: frozenset[int] = SSD_VEHICLES,
+                 fps: int = 10, person_ids: frozenset[int] | None = None,
+                 veh_ids: frozenset[int] | None = None,
                  shutter_us: int | None = None, gain: float | None = None):
         self.model = str(model)
         self.width, self.height, self.fps = width, height, fps
-        self.person_ids, self.veh_ids = person_ids, veh_ids
+        # Preset por nombre: nuestro .rpk de VisDrone sale con clases VisDrone;
+        # los .rpk oficiales (yolo11n_pp / SSD) son COCO-80. Los argumentos
+        # explícitos siempre ganan.
+        visdrone = "visdrone" in Path(self.model).name.lower()
+        self.person_ids = (person_ids if person_ids is not None
+                           else (VISDRONE_PERSON if visdrone else SSD_PERSON))
+        self.veh_ids = (veh_ids if veh_ids is not None
+                        else (VISDRONE_VEHICLES if visdrone else SSD_VEHICLES))
         self.shutter_us, self.gain = shutter_us, gain
         # Formato de salida del .rpk: los YOLO pp traen 4 tensores con cajas en
         # píxeles del input; el SSD trae 3 con cajas normalizadas [y0,x0,y1,x1].
@@ -373,24 +385,32 @@ def _demo(argv=None) -> int:
     ap.add_argument("--out", default=None, help="guardar un frame anotado")
     args = ap.parse_args(argv)
 
+    if args.out:
+        # ⚠ Precarga: el primer `import cv2` en la Pi Zero tarda ~20 s; si se
+        # importa dentro del loop (al guardar el frame 1) se come la ventana
+        # completa de captura. Mismo hallazgo que en `imx500_seg`.
+        import cv2
+
     cam = Imx500Camera(args.model)
     cam.start()
     print(f"[IMX500] modelo {args.model} — capturando {args.seconds:.0f} s...")
     t0 = time.time()
     n = 0
+    mejor_cajas = 0
     try:
         while time.time() - t0 < args.seconds:
             bgr, per, veh, cajas = cam.capture()
             n += 1
             print(f"  frame {n}: {per} persona(s), {veh} vehículo(s), "
                   f"{len(cajas)} caja(s)")
-            if args.out and n == 1:
-                import cv2
-
+            if args.out and len(cajas) > mejor_cajas:
+                # Evidencia: guardar el frame con MÁS detecciones (el primero
+                # suele caer durante el warm-up, sin metadata todavía).
+                mejor_cajas = len(cajas)
                 for (x1, y1, x2, y2, _c) in cajas:
                     cv2.rectangle(bgr, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.imwrite(args.out, bgr)
-                print(f"  frame anotado → {args.out}")
+                print(f"  frame anotado ({len(cajas)} cajas) → {args.out}")
     finally:
         cam.close()
     print(f"[OK] {n} frames capturados.")

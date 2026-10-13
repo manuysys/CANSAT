@@ -1,0 +1,46 @@
+{
+  "prueba": "Conversion del YOLO11n VisDrone propio a .rpk y validacion en el NPU (A/B vs el oficial COCO)",
+  "generado": "2026-10-12",
+  "modelo_fp32": "models/yolo11n_visdrone_v2.pt (mAP50-95 0.164 / mAP50 0.295 en VisDrone val)",
+  "cadena": {
+    "host": "Docker Desktop/WSL2 (contenedor cansat-mdt)",
+    "export": "Ultralytics 8.4.175 format=imx (MCT PTQ + NMS horneado: conf=0.35, iou=0.45, max_det=300)",
+    "mct": "model-compression-toolkit 2.4.1 + edge-mdt-cl 1.0.0 (pin de Ultralytics)",
+    "converter": "imxconv-pt 3.18.2 (edge-mdt[pt] 1.3.0)",
+    "packager": "imx500-package en la Pi (apt imx500-tools)",
+    "artefactos": {
+      "packerOut_zip_mb": 2.21,
+      "network_rpk_bytes": 3197768,
+      "model_imx_onnx_mb": 10.33,
+      "labels": ["pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "motor", "others"]
+    }
+  },
+  "memoria_npu": {
+    "usada_mb": 7.12,
+    "disponible_mb": 8.0,
+    "utilizacion_pct": 90,
+    "fit_in_chip": true,
+    "runtime_mb": 4.48,
+    "modelo_mb": 2.64
+  },
+  "rendimiento_placa": {
+    "nuestro_visdrone": {"frames": 130, "ventana_s": 20, "fps": 6.5},
+    "oficial_coco": {"frames": 166, "ventana_s": 20, "fps": 8.3},
+    "nota": "Misma corrida, misma escena y mismos controles de camara (640x480, shutter 8000/gain 16 via demo)."
+  },
+  "a_b_detecciones": {
+    "escena": "dataset/pruebas/PERSONAS_AUTOS.png a pantalla completa, capturada por la camara (misma escena para ambos modelos)",
+    "nuestro_visdrone": {"frames": 130, "con_detecciones": 72, "total_personas": 13, "total_vehiculos": 563, "max_cajas": 19},
+    "oficial_coco": {"frames": 166, "con_detecciones": 0, "total_personas": 0, "total_vehiculos": 0, "max_cajas": 0},
+    "caveat": "A/B de BANCO con una foto aerea en el monitor (dominio distinto al vuelo); falta la validacion a la GSD del descenso antes de cambiar el default."
+  },
+  "evidencia_visual": "docs/evidencia/15_rpk_visdrone_npu.png (frame con 19 cajas)",
+  "hallazgos": [
+    "El pin edge-mdt-cl<1.1.0 de Ultralytics exige MCT 2.4.1: con 2.5.1 el import de MCT falla (MulticlassNMSOBB no existe en edge-mdt-cl 1.0.0).",
+    "MCT alcanzo ~26 GB de RAM en el pico: el default de WSL2 (~15.3 GB) lo mataba por OOM en silencio. Se subio .wslconfig a 28 GB + swap 16 GB.",
+    "El demo con --out importaba cv2 DENTRO del loop (~20 s en la Zero) y se comia la ventana de captura: ahora se precarga antes (mismo hallazgo que imx500_seg).",
+    "Preset de clases por nombre del .rpk (visdrone -> personas 0/1, vehiculos 2-8) en cansat/imx500.py y mission_pipeline.py, con tests."
+  ],
+  "conclusion": "El .rpk propio del YOLO11n VisDrone ENTRA en el NPU (90 % de la memoria) y corre a ~6.5 fps sin CPU. En el A/B de banco detecta objetos aereos que el COCO oficial no ve (72/130 frames vs 0/166). Queda como detector candidato medido: falta validar a la GSD del descenso antes de cambiar el default de vuelo.",
+  "licencia": "AGPL-3.0 (Ultralytics): el .rpk y el ONNX derivado no se versionan; se declara."
+}

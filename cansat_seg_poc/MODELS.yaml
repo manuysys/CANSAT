@@ -534,6 +534,24 @@ vuelo:
         Evidencia: docs/benchmarks/pi_zero_w_imx500.json (bloque yolo11n_npu) y
         pi/guia_pi.md §9.
 
+    npu_imx500_yolo11n_visdrone:
+      archivo: "~/cansat_seg_poc/models_rpk/yolo11n_visdrone.rpk (NO versionado)"
+      origen: "conversión propia (Ultralytics format=imx en Docker/WSL2) del fine-tune VisDrone v2"
+      tamano_bytes: 3197768
+      licencia: "AGPL-3.0 (Ultralytics): se declara; el .rpk no va al repo"
+      estado: "candidato validado en banco (2026-10-12); el default de vuelo sigue siendo el oficial hasta la validación a GSD"
+      metricas:
+        memoria_npu: "7.12/8 MB (90 %) — entra"
+        fps_placa: "~6.5 (el oficial ~8.3 en la misma corrida)"
+        ab_banco: "72/130 frames con detecciones (13 personas, 563 vehículos, máx 19 cajas) vs 0/166 del COCO oficial, misma escena"
+      notas: |
+        Decisión `rpk-yolo11n-visdrone`. Cadena exacta y pitfalls en
+        docs/CONVERSION-IMX500.md §3c. Preset de clases por nombre del archivo
+        (visdrone → 0/1 personas, 2-8 vehículos) en cansat/imx500.py +
+        mission_pipeline.py. Evidencia:
+        docs/benchmarks/rpk_yolo11n_visdrone.json +
+        docs/evidencia/15_rpk_visdrone_npu.png.
+
 post_vuelo:
   segformer_b5:
     onnx_preferido: "outputs/cansat_seg_terrain_segformer_b5_512.onnx"

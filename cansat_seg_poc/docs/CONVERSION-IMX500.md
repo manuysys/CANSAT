@@ -105,6 +105,38 @@ bloquean). `cansat/imx500_seg.py` convierte los logits a máscara con
 TRADEOFF: el IMX500 corre UNA red por vez; el vuelo mantiene YOLO11n (NPU) +
 terreno CPU y el rpk compacto queda como opción (ver `MODELS.yaml`).
 
+### 3c. Detector propio YOLO11n VisDrone (2026-10-12)
+
+Cadena verificada para convertir un **YOLO de detección** (con NMS horneado):
+
+```bash
+# Dentro del contenedor cansat-mdt (Docker/WSL2, repo montado en /work):
+#   - Ultralytics 8.4.175 + edge-mdt[pt] 1.3.0 + model-compression-toolkit 2.4.1
+#   - el script saltea check_requirements (ver pitfalls) y corre:
+#       YOLO("yolo11n_visdrone_v2.pt").export(format="imx", data=visdrone.yaml,
+#            imgsz=640, conf=0.35, iou=0.45, max_det=300)
+#   - salida: /tmp/yolo/<modelo>_imx_model/ con model_imx.onnx + packerOut.zip
+# Empaquetar EN LA PI:
+imx500-package -i packerOut.zip -o /tmp/rpk_out   # → network.rpk (~3 MB)
+```
+
+**Pitfalls medidos (los tres cuestan horas si no se saben):**
+
+1. **Versiones**: el pin de Ultralytics `edge-mdt-cl<1.1.0` exige
+   `model-compression-toolkit==2.4.1`; con MCT 2.5.1 el import falla
+   (`cannot import name MulticlassNMSOBB from edgemdt_cl.pytorch`). Además,
+   `check_requirements` del exporter **degrada** edge-mdt-cl al correr: el
+   script de export lo parchea (`imxmod.check_requirements = lambda *a, **k: None`).
+2. **Memoria**: MCT pico **~26 GB**. El default de WSL2 (~15.3 GB) mata el
+   proceso por **OOM en silencio** (sin traceback). Subir `~/.wslconfig` a
+   `memory=28GB` + `swap=16GB` y reiniciar WSL.
+3. **cv2 en el demo**: `python -m cansat.imx500 --out` importaba cv2 dentro del
+   loop (~20 s en la Zero) y se comía la ventana de captura; ahora se precarga.
+
+**Resultado**: 7.12/8 MB del NPU (90 %, entra), ~6.5 fps y, en el A/B de banco
+sobre una imagen aérea, 72/130 frames con detecciones vs **0/166 del COCO
+oficial**. Evidencia: `docs/benchmarks/rpk_yolo11n_visdrone.json`.
+
 ## 4. Probar en la Pi (verificado 2026-10-05)
 
 ```bash

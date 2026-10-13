@@ -308,6 +308,20 @@ python mission_pipeline.py --camera --frames 5 --no-damage \
     --det-backend imx500 --imx500-model ~/cansat_seg_poc/models_rpk/yolo11n_pp.rpk
 ```
 
+**Detector PROPIO (VisDrone, 2026-10-12)**: `models_rpk/yolo11n_visdrone.rpk`
+(10 clases, 7.12/8 MB del NPU, ~6.5 fps). El preset de clases se elige solo por
+el nombre del archivo (visdrone → personas 0/1, vehículos 2-8). En el A/B de
+banco detecta objetos aéreos que el COCO oficial no ve (72/130 frames vs 0/166):
+
+```bash
+python -m cansat.imx500 --model ~/cansat_seg_poc/models_rpk/yolo11n_visdrone.rpk --seconds 10
+python mission_pipeline.py --camera --frames 5 --no-damage \
+    --det-backend imx500 --imx500-model ~/cansat_seg_poc/models_rpk/yolo11n_visdrone.rpk
+```
+
+Candidato a detector de vuelo: falta validar a la GSD del descenso antes de
+cambiar el default (`docs/benchmarks/rpk_yolo11n_visdrone.json`).
+
 ### Segmentación con NUESTRO modelo en el NPU (rpk propio, 2026-10-05)
 
 El tiny de terreno está convertido a `.rpk` y **corre en el NPU**. Hay dos
