@@ -195,15 +195,19 @@ def _entrenar_fold(train, test, args, device, epochs=6):
     reales: collections.Counter = collections.Counter()
     filas_probs: list[tuple[int, list[float]]] = []  # (y, probs de las 7 clases)
     with torch.no_grad():
-        for x, y in te_dl:
+        for bi, (x, y) in enumerate(te_dl):
             pr = torch.softmax(model(x.to(device)), dim=1).cpu()
             p = pr.argmax(1)
             correct += int((p == y).sum())
             total += len(y)
-            for pi, yi, probs in zip(p.tolist(), y.tolist(), pr.tolist(), strict=True):
+            base = bi * te_dl.batch_size
+            for i, (pi, yi, probs) in enumerate(zip(p.tolist(), y.tolist(),
+                                                    pr.tolist(), strict=True)):
                 preds[CLASES[pi]] += 1
                 reales[CLASES[yi]] += 1
-                filas_probs.append((yi, probs))
+                # La ruta viaja para poder cruzar el tile con OTROS modelos
+                # (p. ej. el especialista de fuego) en la misma evaluación.
+                filas_probs.append((yi, probs, test[base + i][0]))
     return correct / max(1, total), preds, reales, filas_probs
 
 
@@ -224,8 +228,8 @@ def loeo(args) -> int:
     print(f"LOEO: {len(eventos)} eventos, {len(filas)} muestras")
     idx_fuego = CLASES.index("incendio")
     res: list[dict] = []
-    filas_csv: list[tuple[str, int, float]] = []
-    filas_todas: list[tuple[str, int, list[float]]] = []
+    filas_csv: list[tuple[str, int, float, str]] = []
+    filas_todas: list[tuple[str, int, list[float], str]] = []
     for ev in eventos:
         test = [(p, c) for p, c, e in filas if e == ev]
         train = [(p, c) for p, c, e in filas if e != ev]
@@ -233,10 +237,10 @@ def loeo(args) -> int:
             print(f"[skip] {ev}: test {len(test)} / train {len(train)}")
             continue
         acc, preds, reales, probs = _entrenar_fold(train, test, args, device)
-        for yi, vector in probs:
+        for yi, vector, ruta in probs:
             p_fuego = vector[idx_fuego]
-            filas_csv.append((ev, 1 if CLASES[yi] == "incendio" else 0, p_fuego))
-            filas_todas.append((ev, yi, vector))
+            filas_csv.append((ev, 1 if CLASES[yi] == "incendio" else 0, p_fuego, ruta))
+            filas_todas.append((ev, yi, vector, ruta))
         dom = max(reales, key=reales.get)
         pmay = max(preds, key=preds.get)
         res.append({"evento": ev, "n_test": len(test), "acc": round(acc, 4),
@@ -260,18 +264,20 @@ def loeo(args) -> int:
             with Path(args.guardar_probs).open("w", newline="",
                                                encoding="utf-8") as fh:
                 wcsv = _csv.writer(fh)
-                wcsv.writerow(["evento", "es_incendio", "p_incendio"])
-                for ev, es, pf in filas_csv:
-                    wcsv.writerow([ev, es, f"{pf:.6f}"])
+                wcsv.writerow(["evento", "es_incendio", "p_incendio", "path"])
+                for ev, es, pf, ruta in filas_csv:
+                    wcsv.writerow([ev, es, f"{pf:.6f}", ruta])
             print(f"[OK] {args.guardar_probs} ({len(filas_csv)} tiles)")
         if args.probs_todas and filas_todas:
             import csv as _csv
             with Path(args.probs_todas).open("w", newline="",
                                              encoding="utf-8") as fh:
                 wcsv = _csv.writer(fh)
-                wcsv.writerow(["evento", "y"] + [f"p_{c}" for c in CLASES])
-                for ev, yi, vector in filas_todas:
-                    wcsv.writerow([ev, yi] + [f"{v:.6f}" for v in vector])
+                wcsv.writerow(["evento", "y"] + [f"p_{c}" for c in CLASES]
+                              + ["path"])
+                for ev, yi, vector, ruta in filas_todas:
+                    wcsv.writerow([ev, yi] + [f"{v:.6f}" for v in vector]
+                                  + [ruta])
             print(f"[OK] {args.probs_todas} ({len(filas_todas)} tiles)")
     return 0
 

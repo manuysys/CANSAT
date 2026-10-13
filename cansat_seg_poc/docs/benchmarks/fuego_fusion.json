@@ -1,0 +1,35 @@
+{
+  "n_tiles": 1010,
+  "n_positivos_incendio": 247,
+  "n_negativos": 763,
+  "eventos_fuego": [
+    "xbd:pinery-bushfire",
+    "xbd:portugal-wildfire",
+    "xbd:socal-fire",
+    "xbd:woolsey-fire"
+  ],
+  "recall_a_fpr_5pct": {
+    "tipo_p_incendio": {
+      "umbral": 0.997955,
+      "recall": 0.2672,
+      "fpr": 0.0511
+    },
+    "especialista_fire_pct": {
+      "umbral": 0.028577,
+      "recall": 0.0,
+      "fpr": 0.0511
+    },
+    "fusion": {
+      "w": 0.25,
+      "umbral": 0.249665,
+      "recall": 0.2672,
+      "fpr": 0.0511
+    }
+  },
+  "auc": {
+    "tipo_p_incendio": 0.7776,
+    "especialista_fire_pct": 0.4672,
+    "fusion": 0.7635
+  },
+  "nota": "A/B de POLÍTICAS sobre los mismos tiles held-out del LOEO (max 300/clase). El w de la fusión se elige en el mismo set: optimismo declarado. El especialista corrió sobre los tiles del clasificador de tipo, que NO son su dominio de val (FLAME), así que su número es de generalización."
+}

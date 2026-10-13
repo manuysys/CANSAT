@@ -459,6 +459,14 @@ vuelo:
                         (mismo recall/FPR, solo τ 0.998 → 0.690). JSON:
                         docs/benchmarks/calibracion_tipo.json"
       loeo_eventos: "24 (leave-one-event-out, 6 épocas por fold, 5 121 tiles)"
+      fusion_con_fuego_ab: "2026-10-13: NO aporta. Sobre los tiles held-out del
+                            LOEO (1 010 tiles, 247 de incendio), el especialista
+                            de fuego da AUC 0.467 (~azar) porque su dominio es
+                            fuego/humo ACTIVO en UAV y estos son tiles de daño
+                            post-incendio satelital; la fusión (mejor w=0.25)
+                            empata el recall del tipo solo (0.267 @ FPR 5%).
+                            Decisión `fuego-fusion-tipo`; evidencia
+                            docs/benchmarks/fuego_fusion.json."
       caveat: "⚠ El acc_val es con split ALEATORIO (fuga de evento); la métrica
                honesta es LOEO: 0.3681 ponderada, subió de 0.248 al sumar xBD
                Tier 3 (+3 tornados, +volcán, +Nepal/Sunda, +3 incendios).

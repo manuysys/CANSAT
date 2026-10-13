@@ -118,6 +118,23 @@ decisiones:
       y `train_flood_specialist.py --extra-train/--eval-extra`. Evidencia:
       docs/benchmarks/flood_sen1floods11.json.
 
+  - id: fuego-fusion-tipo
+    estado: descartada
+    texto: |
+      FUSIÓN TIPO + ESPECIALISTA DE FUEGO PARA CONFIRMAR INCENDIO (2026-10-13):
+      NO se adopta. Se corrió un LOEO acotado (13 eventos, max 300/clase, 1 010
+      tiles held-out con 247 de incendio) guardando la RUTA por tile
+      (`train_disaster_type.py --probs-todas` ahora la incluye) y se corrió el
+      especialista `cansat_fire_smoke.onnx` sobre los MISMOS tiles. A igual
+      presupuesto de FPR (≤5 %): tipo p_incendio **recall 0.267** (consistente
+      con el 0.291 canónico), especialista **recall 0.000 / AUC 0.467** (~azar)
+      y fusión (mejor w=0.25) **0.267**, sin mejora (AUC 0.764 vs 0.778 del
+      tipo). CAUSA DECLARADA: el especialista detecta fuego/humo ACTIVO en
+      imágenes UAV (su val FLAME 0.791); los tiles del benchmark son daño
+      post-incendio satelital sin llama. Son señales complementarias, no
+      fusionables en esa dirección. La política fire_only_v1 (tipo) queda como
+      está. Evidencia: docs/benchmarks/fuego_fusion.json.
+
   - id: opset
     estado: vigente
     texto: "Opset 17, entrada fija [1,3,320,320], salida 'logits'."
