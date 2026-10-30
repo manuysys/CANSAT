@@ -13,6 +13,7 @@
 > | [`docs/decisiones.yaml`](docs/decisiones.yaml) | Decisiones de diseño (fuente del informe) |
 > | [`docs/reporte_pruebas.md`](docs/reporte_pruebas.md) | Informe generado con números medidos |
 > | [`docs/CONVERSION-IMX500.md`](docs/CONVERSION-IMX500.md) | Conversión a `.rpk` (F4, PC Linux con Edge-MDT) |
+> | [`docs/PI-USB-NCM.md`](docs/PI-USB-NCM.md) | Red por USB (NCM) para usar la Pi sin WiFi: servicio, IP 192.168.7.2 y pasos en Windows/Linux |
 > | [`pi/guia_pi.md`](pi/guia_pi.md) | Puesta a punto de la Raspberry + AI Camera |
 >
 > **Modelo de vuelo (terreno)**: `outputs/cansat_seg_terrain_v2_224.onnx`
