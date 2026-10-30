@@ -31,7 +31,8 @@ CONTRATO v2 (el que hay que usar de acá en adelante)
 
     $LB135,2,<pkt>,<t_s>,<alt_m>,<p_hPa>,<temp_C>,<veg>,<bui>,<wat>,<bare>,
            <oth>,<dom>,<usi>,<gvi>,<vcode>,<personas>,<vehiculos>,<alert>,
-           [<danado_pct>],[<lat>],[<lon>],[<hum_pct>]
+           [<danado_pct>],[<lat>],[<lon>],[<hum_pct>],
+           [<gx>],[<gy>],[<gz>]
 
     · ``$`` inicial y ``*hh`` de checksum opcionales al parsear; el emisor los pone.
     · campo 2 = versión del protocolo. Un receptor viejo que no lo entienda
@@ -40,14 +41,15 @@ CONTRATO v2 (el que hay que usar de acá en adelante)
       detectar pérdida de paquetes por radio, que es justo lo que importa).
     · ``gvi`` = el índice de verdor que antes se llamaba ``ndvi`` (ver
       ``cansat/indices.py``). El nombre de campo en el CSV sigue siendo ``ndvi``.
-    · campos 20-23 (opcionales): ``danado_pct`` (% máximo de daño del
-      consenso), ``lat`` y ``lon`` (posición GPS, 5 decimales ≈ 1 m) y
-      ``hum_pct`` (humedad relativa del BME280; 0 = sin dato). Se agregan AL
-      FINAL a propósito: un receptor viejo los ignora, y el parser tolera
-      paquetes de 19 a 23 campos. La posición viene del GPS de la ESP32
-      (ATGM336H) y es la que permite georreferenciar cada frame (requisito del
-      DPD: "hora, posición, altitud, presión, temperatura"); la humedad cierra
-      la trazabilidad del BME280 del DPD, que la mide y no viajaba.
+    · campos 20-26 opcionales: ``danado_pct`` (% máximo de daño del
+      consenso), ``lat`` y ``lon`` (posición GPS, 5 decimales ≈ 1 m),
+      ``hum_pct`` (humedad relativa del BME280; 0 = sin dato),
+      ``gx, gy, gz`` (giroscopio en °/s), y ``euler`` opcional (``roll,pitch,yaw``)
+      si el emisor lo incluye. Se agregan AL FINAL a propósito: un receptor viejo
+      los ignora, y el parser tolera paquetes de 19 a 26 campos. La posición
+      viene del GPS de la ESP32 (ATGM336H) y es la que permite georreferenciar cada
+      frame (requisito del DPD: "hora, posición, altitud, presión, temperatura"); la
+      humedad cierra la trazabilidad del BME280 del DPD, que la mide y no viajaba.
 
 Longitud máxima del paquete: 160 bytes. A 115200 8N1 son ~14 ms por paquete,
 cómodo para 1 Hz con margen (antes eran 120 bytes con 19 campos).
@@ -98,11 +100,26 @@ class Packet:
     lat: float = 0.0        # grados; 0/0 = sin fix GPS
     lon: float = 0.0
     hum_pct: float = 0.0    # humedad relativa (BME280); 0 = sin dato
+    # Campos opcionales de sensores inerciales (v2 extendido):
+    gx: float = 0.0         # giroscopio eje X  (°/s)
+    gy: float = 0.0         # giroscopio eje Y  (°/s)
+    gz: float = 0.0         # giroscopio eje Z  (°/s)
+    euler: dict[str, float | None] | None = None
     version: int = VERSION
     # Metadatos que NO viajan por radio; los agrega el receptor.
     rx_wall: str | None = None
     raw: str | None = None
     checksum_ok: bool | None = None
+
+    def euler_str(self) -> str | None:
+        """Serializa euler como 'roll,pitch,yaw' para el protocolo."""
+        if self.euler is None:
+            return None
+        parts: list[str] = []
+        for key in ("roll", "pitch", "yaw"):
+            v = self.euler.get(key)
+            parts.append(f"{v if v is not None else 0:.1f}")
+        return ",".join(parts)
 
     def terrain(self) -> list[float]:
         return [self.veg, self.bui, self.wat, self.bare, self.oth]
@@ -145,31 +162,49 @@ def verify(line: str) -> tuple[str, bool | None]:
 #  Emisión
 # ══════════════════════════════════════════════════════════════════════ #
 def format_packet(p: Packet, with_checksum: bool = True, version: int | None = None) -> str:
-    """Serializa a la línea v2 (con ``$`` y checksum)."""
+    """Serializa a la línea v2 extendida (con ``$`` y checksum).
+    
+    El paquete siempre tiene 26 campos posicionales (19-25 son opcionales pero
+    SIEMPRE presentes): danado_pct, lat, lon, hum_pct, gx, gy, gz.
+    El campo 26 (euler) es opcional: se incluye solo si ``p.euler`` tiene los
+    3 ángulos (roll, pitch, yaw).
+    
+    Esto garantiza que el parser de receptores pueda leer desde posiciones fijas
+    sin desalinearse, incluso si algún opcional es 0.
+    """
     v = VERSION if version is None else version
-    body = ",".join(
-        [
-            PREFIX,
-            str(v),
-            str(int(p.pkt)),
-            f"{p.t_s:07.1f}",
-            f"{p.alt_m:06.1f}",
-            f"{p.p_hPa:06.1f}",
-            f"{p.temp_C:05.1f}",
-            *(f"{x:5.1f}" for x in p.terrain()),
-            str(int(p.dom)),
-            f"{p.usi:6.2f}",
-            f"{p.gvi:+6.3f}",
-            str(int(p.vcode)),
-            str(int(p.personas)),
-            str(int(p.vehiculos)),
-            str(int(p.alert)),
-            f"{p.danado_pct:5.1f}",
-            f"{p.lat:.5f}",
-            f"{p.lon:.5f}",
-            f"{p.hum_pct:4.1f}",
-        ]
-    )
+    parts: list[str] = [
+        PREFIX,
+        str(v),
+        str(int(p.pkt)),
+        f"{p.t_s:07.1f}",
+        f"{p.alt_m:06.1f}",
+        f"{p.p_hPa:06.1f}",
+        f"{p.temp_C:05.1f}",
+        *(f"{x:5.1f}" for x in p.terrain()),
+        str(int(p.dom)),
+        f"{p.usi:6.2f}",
+        f"{p.gvi:+6.3f}",
+        str(int(p.vcode)),
+        str(int(p.personas)),
+        str(int(p.vehiculos)),
+        str(int(p.alert)),
+    ]
+    # Campos posicionales fijos 19-25 (siempre incluidos, incluso si 0):
+    # danado_pct, lat, lon, hum_pct, gx, gy, gz
+    parts.append(f"{p.danado_pct:5.1f}")
+    parts.append(f"{p.lat:.5f}")
+    parts.append(f"{p.lon:.5f}")
+    parts.append(f"{p.hum_pct:4.1f}")
+    parts.append(f"{p.gx:+.2f}")
+    parts.append(f"{p.gy:+.2f}")
+    parts.append(f"{p.gz:+.2f}")
+    # Euler opcional (campo 26): solo si tiene los 3 ángulos válidos
+    euler_s = p.euler_str()
+    if euler_s:
+        parts.append(euler_s)
+
+    body = ",".join(parts)
     if with_checksum:
         return f"${body}*{checksum(body)}"
     return f"${body}"
@@ -249,40 +284,107 @@ def parse(line: str) -> Packet | None:
     try:
         n = len(parts)
 
-        # ── v2: LB135,2,pkt,t,alt,p,temp,5×terrain,dom,usi,gvi,vcode,per,veh,alert
+        # ── v2 extendido: LB135,2,pkt,t,alt,p,temp,5×terrain,dom,usi,gvi,vcode,
+        #    per,veh,alert, danado_pct, lat, lon, hum_pct, gx, gy, gz [+euler]
+        #    Los primeros 19 campos (0-18) son fijos. Los campos 19-25 son
+        #    opcionales pero SIEMPRE presentes en el formato del firmware
+        #    (aunque tengan valor 0). El campo 26 (euler) es opcional.
+        #    Forward-compat: si hay +26 campos pero versión != VERSION,
+        #    es un paquete extendido desconocido → rechazar para no desalinear.
+        if n > 26 and parts[1] != str(VERSION):
+            return None
         if n >= 19 and parts[1] == str(VERSION):
             if not _numeric_ok(parts, (3, 4, 5, 6), minimo=3):
                 return None
+            # Campos fijos (índices 0-18)
+            pkt_i = _i(parts[2])
+            t_s_f = _f(parts[3])
+            alt_m_f = _f(parts[4])
+            p_hPa_f = _f(parts[5])
+            temp_C_f = _f(parts[6])
+            veg_f = _f(parts[7])
+            bui_f = _f(parts[8])
+            wat_f = _f(parts[9])
+            bare_f = _f(parts[10])
+            oth_f = _f(parts[11])
+            dom_i = _i(parts[12], -1)
+            usi_f = _f(parts[13])
+            gvi_f = _f(parts[14])
+            vcode_i = _i(parts[15])
+            personas_i = _i(parts[16])
+            vehiculos_i = _i(parts[17])
+            alert_i = _i(parts[18])
+
+            # Opcionales posicionales (19-25): siempre presentes en v2 extendido
+            danado_f = _f(parts[19]) if n > 19 else 0.0
+            lat_f = _f(parts[20]) if n > 20 else 0.0
+            lon_f = _f(parts[21]) if n > 21 else 0.0
+            hum_f = _f(parts[22]) if n > 22 else 0.0
+            gx_f = _f(parts[23]) if n > 23 else 0.0
+            gy_f = _f(parts[24]) if n > 24 else 0.0
+            gz_f = _f(parts[25]) if n > 25 else 0.0
+
+            # euler: puede venir en dos formatos:
+            #   A) n >= 29 => el euler se expandió en 3 campos: parts[26], [27], [28]
+            #   B) 26 < n < 29 => parts[26] es "roll,pitch,yaw" compacto
+            euler_out: dict[str, float | None] | None = None
+            if n >= 29:
+                # euler expandido: roll, pitch, yaw en partes 26, 27, 28
+                try:
+                    euler_out = {
+                        "roll": _f(parts[26]) if n > 26 else None,
+                        "pitch": _f(parts[27]) if n > 27 else None,
+                        "yaw": _f(parts[28]) if n > 28 else None,
+                    }
+                except (ValueError, TypeError):
+                    pass
+            elif n == 27 and "," in parts[26]:
+                # euler compacto: "roll,pitch,yaw"
+                try:
+                    ev = parts[26].split(",")
+                    if len(ev) == 3:
+                        euler_out = {
+                            "roll": _f(ev[0]),
+                            "pitch": _f(ev[1]),
+                            "yaw": _f(ev[2]),
+                        }
+                except (ValueError, TypeError):
+                    pass
+
             return Packet(
                 version=VERSION,
-                pkt=_i(parts[2]),
-                t_s=_f(parts[3]),
-                alt_m=_f(parts[4]),
-                p_hPa=_f(parts[5]),
-                temp_C=_f(parts[6]),
-                veg=_f(parts[7]),
-                bui=_f(parts[8]),
-                wat=_f(parts[9]),
-                bare=_f(parts[10]),
-                oth=_f(parts[11]),
-                dom=_i(parts[12], -1),
-                usi=_f(parts[13]),
-                gvi=_f(parts[14]),
-                vcode=_i(parts[15]),
-                personas=_i(parts[16]),
-                vehiculos=_i(parts[17]),
-                alert=_i(parts[18]),
-                danado_pct=_f(parts[19]) if n > 19 else 0.0,
-                lat=_f(parts[20]) if n > 20 else 0.0,
-                lon=_f(parts[21]) if n > 21 else 0.0,
-                hum_pct=_f(parts[22]) if n > 22 else 0.0,
+                pkt=pkt_i,
+                t_s=t_s_f,
+                alt_m=alt_m_f,
+                p_hPa=p_hPa_f,
+                temp_C=temp_C_f,
+                veg=veg_f,
+                bui=bui_f,
+                wat=wat_f,
+                bare=bare_f,
+                oth=oth_f,
+                dom=dom_i,
+                usi=usi_f,
+                gvi=gvi_f,
+                vcode=vcode_i,
+                personas=personas_i,
+                vehiculos=vehiculos_i,
+                alert=alert_i,
+                danado_pct=danado_f,
+                lat=lat_f,
+                lon=lon_f,
+                hum_pct=hum_f,
+                gx=gx_f,
+                gy=gy_f,
+                gz=gz_f,
+                euler=euler_out,
                 checksum_ok=cs_ok,
                 raw=line.rstrip(),
             )
 
-        # Versión futura con más campos: NO interpretarla como v1 (lo que
-        # desalineaba silenciosamente todos los índices).
-        if n > 18 and parts[1] != str(VERSION):
+        # Versión diferente a v2: NO interpretarla como v1 (lo que desalineaba
+        # silenciosamente todos los índices). v2 extendido (23+ campos) SÍ pasa.
+        if n > 25 and parts[1] != str(VERSION):
             return None
 
         # ── v1: LB135,t,alt,p,temp,5×terrain,dom,usi,ndvi,vcode,per,veh,alert
@@ -499,5 +601,12 @@ def read_uart_state(path: str | Path, max_age_s: float = 10.0) -> dict | None:
         lat = lon = 0.0
     if math.isnan(hum) or not (0.0 <= hum <= 100.0):
         hum = 0.0
-    return {"p_hPa": p_hpa, "temp_C": temp, "lat": lat, "lon": lon,
-            "hum_pct": hum, "evento": evento, "evento_ms": evento_ms}
+    return {
+        "p_hPa": p_hpa, "temp_C": temp, "lat": lat, "lon": lon,
+        "hum_pct": hum, "evento": evento, "evento_ms": evento_ms,
+        # MPU6050: giroscopio (°/s) y euler integrado (grados)
+        "gx": float(data.get("gx") or 0.0),
+        "gy": float(data.get("gy") or 0.0),
+        "gz": float(data.get("gz") or 0.0),
+        "euler": data.get("euler"),
+    }

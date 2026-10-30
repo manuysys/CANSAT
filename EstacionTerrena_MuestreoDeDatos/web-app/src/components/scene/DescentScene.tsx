@@ -89,12 +89,13 @@ function useCuerdas() {
 }
 
 /* ── CanSat detallado ──────────────────────────────────────────────────── */
-function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
+function CanSat({ stowed, landed, euler }: { stowed: boolean; landed: boolean; euler: { roll: number; pitch: number; yaw: number } | null }) {
   const beacon = useRef<THREE.MeshStandardMaterial>(null)
   const chute = useRef<THREE.Group>(null)     // sway del conjunto (domo+cuerdas+cuerpo)
   const dome = useRef<THREE.Group>(null)      // domo: despliegue (scale) y colapso
   const cuerdas = useRef<THREE.Group>(null)   // opacidad de las cuerdas
   const body = useRef<THREE.Group>(null)
+  const eulerRef = useRef<{ roll: number; pitch: number; yaw: number } | null>(null)
   const segs = useCuerdas()
 
   useFrame((st, dt) => {
@@ -125,9 +126,20 @@ function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
       })
     }
     if (body.current) {
-      // Contrapeso pendular leve (los anclajes viven en el grupo del conjunto).
-      body.current.rotation.z = Math.sin(t * 0.5 + 1.2) * 0.015
-      body.current.rotation.x = Math.cos(t * 0.42 + 0.6) * 0.012
+      // Euler angles del MPU6050: se clona en eulerRef para evitar acumulación.
+      if (euler?.roll != null || euler?.pitch != null || euler?.yaw != null) {
+        eulerRef.current =
+          euler.roll != null || euler.pitch != null || euler.yaw != null
+            ? { roll: euler.roll ?? 0, pitch: euler.pitch ?? 0, yaw: euler.yaw ?? 0 }
+            : eulerRef.current
+        const e = eulerRef.current
+        body.current.rotation.set(e.pitch, e.yaw, e.roll)
+      }
+      // Clamp para estabilidad visual (umbral más amplio con datos reales)
+      const clampHi = eulerRef.current ? 1.4 : 0.5
+      body.current.rotation.x = THREE.MathUtils.clamp(body.current.rotation.x, -clampHi, clampHi)
+      body.current.rotation.y = THREE.MathUtils.clamp(body.current.rotation.y, -clampHi, clampHi)
+      body.current.rotation.z = THREE.MathUtils.clamp(body.current.rotation.z, -clampHi, clampHi)
     }
   })
 
@@ -238,9 +250,11 @@ function CanSat({ stowed, landed }: { stowed: boolean; landed: boolean }) {
 }
 
 /* ── Escena ────────────────────────────────────────────────────────────── */
-function SceneRig({ targetY, stowed, landed, sol }: { targetY: number; stowed: boolean; landed: boolean; sol: boolean }) {
+function SceneRig({ targetY, stowed, landed, sol, euler }: { targetY: number; stowed: boolean; landed: boolean; sol: boolean; euler: { roll: number; pitch: number; yaw: number } | null }) {
   const rig = useRef<THREE.Group>(null)
   const shadow = useRef<THREE.Mesh>(null)
+  const eulerRef = useRef<{ roll: number; pitch: number; yaw: number } | null>(null)
+  const isRealEuler = useRef(false)
   const terra = useTerrain()
   const stars = useStars()
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -257,8 +271,18 @@ function SceneRig({ targetY, stowed, landed, sol }: { targetY: number; stowed: b
       g.position.y = THREE.MathUtils.damp(g.position.y, targetY, 1.7, dt)
       g.position.x = reduced ? 0 : Math.sin(t * 0.32) * 0.35
       g.position.z = reduced ? 0 : Math.cos(t * 0.27) * 0.25
-      g.rotation.y += reduced ? 0 : dt * 0.22
-      g.rotation.z = reduced ? 0 : Math.sin(t * 0.5) * 0.05
+      // Integrar euler del MPU6050 como valores absolutos (no acumular).
+      if (euler?.roll != null || euler?.pitch != null || euler?.yaw != null) {
+        isRealEuler.current = true
+        eulerRef.current = { roll: euler.roll ?? 0, pitch: euler.pitch ?? 0, yaw: euler.yaw ?? 0 }
+      }
+      if (isRealEuler.current && eulerRef.current) {
+        const e = eulerRef.current
+        g.rotation.set(e.pitch, e.yaw, e.roll)
+      } else {
+        g.rotation.y += reduced ? 0 : dt * 0.22
+        g.rotation.z = reduced ? 0 : Math.sin(t * 0.5) * 0.05
+      }
     }
     if (shadow.current && g) {
       const h = THREE.MathUtils.clamp((g.position.y - 1.4) / 8.4, 0, 1)
@@ -305,7 +329,7 @@ function SceneRig({ targetY, stowed, landed, sol }: { targetY: number; stowed: b
       </mesh>
 
       <group ref={rig} position={[0, 9, 0]}>
-        <CanSat stowed={stowed} landed={landed} />
+        <CanSat stowed={stowed} landed={landed} euler={euler} />
       </group>
     </>
   )
@@ -353,6 +377,7 @@ export function DescentScene() {
   const jurado = useMission(s => s.jurado)
   const sol = useMission(s => s.sol)
   const summary = useMission(s => s.summary)
+  const p0_hPa = useMission(s => s.p0_hPa)
 
   useEffect(() => {
     const el = wrap.current
@@ -373,6 +398,41 @@ export function DescentScene() {
   // (10 m fijos) los ticks no colapsan todos en el mismo valor.
   const escalaMax = Math.max(20, Math.ceil(altMax / 10) * 10)
   const norm = Math.min(1, Math.max(0, alt / escalaMax))
+
+  /* Euler: demo oscilador suave cuando no hay gyro real del MPU6050.
+     Cuando el protocolo emita gyro_X/Y/Z, este bloque se remplazará por
+     integración angular acumulada en un useRef. */
+  const euler = useMemo(() => {
+    // Futuro: si el frame trae euler del MPU6050, úsalo directo.
+    if (focus?.euler?.roll != null) return focus.euler
+
+    const progress = focus
+      ? (focus.t_s ?? 0) / Math.max(1e-9, (frames[frames.length - 1]?.t_s) ?? 1)
+      : 0
+    const sin = Math.sin, cos = Math.cos, PI = Math.PI
+    return {
+      roll: sin(progress * PI * 3.7 + 1.2) * 0.09 + cos(progress * PI * 2.1 + 0.5) * 0.035,
+      pitch: cos(progress * PI * 2.9 + 0.8) * 0.07 + sin(progress * PI * 4.3 + 2) * 0.025,
+      yaw: sin(progress * PI * 1.5 + 2.6) * 0.11 + cos(progress * PI * 3.1 + 0.8) * 0.045,
+    }
+  }, [focus?.src, focus?.t_s, frames.length])
+
+  /* Altitud calibrada: 44330 × (1 − (p/p₀)^(1/5.2558)).
+     Usa la presión cruda del frame (p_hpa del protocolo) con el p₀
+     calibrado por el usuario en la card QNH de Sampling. */
+  const altCalibrada = (() => {
+    if (!focus || !p0_hPa) return alt
+    if (focus.p_hpa == null) return alt
+    const p = focus.p_hpa
+    if (p <= 0) return alt
+    // Evita NaN cuando p ≈ p₀ (en tierra)
+    const ratio = Math.max(0, Math.min(1, p / p0_hPa))
+    const power = 1 / 5.2558
+    return 44330 * (1 - Math.pow(ratio, power))
+  })()
+
+  // Usa la altitud calibrada para la escena 3D y la regla visual
+  const normCal = Math.min(1, Math.max(0, (altCalibrada ?? alt) / escalaMax))
 
   // ▶ Descenso: reproduce la misión sin robar el scroll de la página.
   useEffect(() => {
@@ -449,7 +509,7 @@ export function DescentScene() {
             camera={{ position: [8.4, 4.6, 11.2], fov: 42 }}
             className="!absolute !inset-0"
           >
-            <SceneRig targetY={landed ? 0.8 : 1.5 + norm * 8.2} stowed={stowed} landed={landed} sol={sol} />
+            <SceneRig targetY={landed ? 0.8 : 1.5 + normCal * 8.2} stowed={stowed} landed={landed} sol={sol} euler={euler} />
           </Canvas>
         ) : (
           <div className="absolute inset-0 p-6"><FallbackProfile /></div>
@@ -479,7 +539,15 @@ export function DescentScene() {
         <div className="pointer-events-none absolute right-4 top-4 flex flex-col items-end gap-1 font-mono">
           <span className="text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground/70">alt · vs</span>
           <span className="text-[22px] font-semibold leading-none text-[#eafff3]">
-            {num(alt, 1)}<span className="ml-0.5 text-[10px] text-muted-foreground">m</span>
+            {num(altCalibrada ?? alt, 1)}<span className="ml-0.5 text-[10px] text-muted-foreground">m</span>
+          </span>
+          <span className="text-[9px] text-muted-foreground/70">
+            p₀ {p0_hPa != null ? num(p0_hPa, 1) : '—'} hPa
+            {altCalibrada != null && Math.abs(altCalibrada - alt) > 0.5 && (
+              <span className="ml-1 text-[8.5px] text-[#ffb020]">
+                (+{num(altCalibrada - alt, 0)} m)
+              </span>
+            )}
           </span>
           <span className={`text-[12px] ${anomala ? 'text-[#ffb020]' : 'text-[#7ee8b0]'}`}>
             {vs === null ? '— m/s' : `${vs < 0 ? '▼' : '▲'} ${num(Math.abs(vs), 1)} m/s`}
@@ -489,7 +557,7 @@ export function DescentScene() {
             <motion.span
               className="absolute left-[-2.5px] size-2 rounded-full"
               style={{ background: phase.color }}
-              animate={{ top: `${(1 - norm) * 100}%` }}
+              animate={{ top: `${(1 - normCal) * 100}%` }}
               transition={{ type: 'spring', stiffness: 120, damping: 20 }}
             />
           </div>

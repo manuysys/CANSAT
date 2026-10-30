@@ -68,9 +68,8 @@ export interface Frame {
   stress_idx?: number | null
   /* Severidad: fracción de colapso medida (null = supuesto) */
   colapso_pct?: number | null
-  _idx: number
-  files?: FrameFiles
-  [extra: string]: unknown
+  /* Euler (roll/pitch/yaw en grados) del MPU6050 integrado. */
+  euler?: { roll: number | null; pitch: number | null; yaw: number | null } | null
 }
 
 /** Un frame del JSONL: campos que no están en el CSV. */
@@ -134,6 +133,9 @@ export interface MissionPayload {
   summary: Summary | null
   assets: { corridor_map: string | null }
   buckets: Record<string, boolean>
+  /* Calibración altimétrica: presión al nivel del mar (hPa) usada por
+     pressure_to_altitude(). Valor enviado por el servidor + override de UI. */
+  p0_hPa?: number | null
 }
 
 /* ── Consulta Terrestre (motor simbólico del repo de vuelo) ─────────────── */

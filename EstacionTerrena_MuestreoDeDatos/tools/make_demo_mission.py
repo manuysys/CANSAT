@@ -815,6 +815,8 @@ def main(argv=None) -> int:
             "haze_pct": haze, "humidex": hx, "stress_idx": stress,
             # Severidad: colapso medido
             "colapso_pct": colapso_pct,
+            # MPU6050: sin datos reales en demo (oscillador fallback de la UI)
+            "euler": "", "raw": "", "gx": 0.0, "gy": 0.0, "gz": 0.0,
             # internos (no van al CSV)
             "_expuestas": round(expuestas, 1),
             "_cls_res": cls_high,
@@ -878,7 +880,9 @@ def main(argv=None) -> int:
             # Estrés ambiental
             "haze_pct", "humidex", "stress_idx",
             # Severidad
-            "colapso_pct"]
+            "colapso_pct",
+            # MPU6050: euler + raw + gx/gy/gz (vacíos en demo)
+            "euler", "raw", "gx", "gy", "gz"]
     with csv_path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()

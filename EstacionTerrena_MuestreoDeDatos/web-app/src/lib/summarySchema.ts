@@ -75,5 +75,10 @@ export interface Summary {
   archivos?: SummaryArchivos
   generado?: string
   nota?: string
+  pressure_bme280?: number | null    /* presión más reciente del BME280 (hPa) */
+  /** Altitud medida por el MPU6050 (m), puede ser null si no hay data. */
+  alt_mpu6050?: number | null
+  /** Euler (roll, pitch, yaw) del MPU6050 en grados, null si no hay data. */
+  euler?: { roll?: number | null; pitch?: number | null; yaw?: number | null } | null
   [extra: string]: unknown
 }

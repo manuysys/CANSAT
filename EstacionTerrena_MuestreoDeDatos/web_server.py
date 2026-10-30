@@ -34,6 +34,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import mimetypes
 import os
 import subprocess
@@ -86,6 +87,8 @@ CSV_COLUMNS = [
     "haze_pct", "humidex", "stress_idx",
     # Severidad (2026-09-18): fracción de colapso medida (vacío = supuesto)
     "colapso_pct",
+    # MPU6050: euler (roll,pitch,yaw en grados) + gx/gy/gz (giro en °/s) + alt (m)
+    "euler", "raw", "gx", "gy", "gz", "alt_mpu6050",
 ]
 
 # Campos numéricos -> float. El resto se deja como string.
@@ -111,7 +114,7 @@ def _configure(root: Path) -> None:
     """
     global ROOT, WEB_DIR, DIST_DIR, TELEMETRY_CSV, CORRIDOR_MAP, SUMMARY_JSON
     global MISSION_DIR, ENTREGA_DIR, GRADCAM_DIR, BUCKETS, TELEMETRY_JSONL, FLIGHT_ROOT
-    global SAT_DIR
+    global SAT_DIR, P0_DIR, P0_JSON
 
     # ¿El FLIGHT_ROOT era el default relativo a la ROOT vieja? Se mide ANTES de
     # reasignar ROOT; si no, la comparación se hace contra la ROOT nueva y el
@@ -129,21 +132,6 @@ def _configure(root: Path) -> None:
     TELEMETRY_JSONL = MISSION_DIR / "telemetry.jsonl"
     CORRIDOR_MAP = ROOT / "outputs" / "corridor_map.jpg"
     SUMMARY_JSON = ENTREGA_DIR / "summary.json"
-    if era_default:
-        FLIGHT_ROOT = root.parent / "cansat_seg_poc"
-    BUCKETS = (
-        ("vis",            MISSION_DIR / "vis",       "_evid"),
-        ("high_res",       MISSION_DIR / "high_res",  ""),
-        ("full_res",       MISSION_DIR / "full_res",  ""),
-        ("thumb",          MISSION_DIR / "thumb",     ""),
-        ("ens_seg",        ENTREGA_DIR / "ens_seg",   "_b5"),
-        ("enhanced",       ENTREGA_DIR / "enhanced",  "_edsr"),
-        # Máscaras de clase por frame (Consulta Terrestre; ver entrega/masks).
-        ("masks_terreno",  ENTREGA_DIR / "masks",     "_terreno"),
-        ("masks_dano2",    ENTREGA_DIR / "masks",     "_dano2"),
-        ("masks_flood",    ENTREGA_DIR / "masks",     "_flood"),
-        ("masks_vias",     ENTREGA_DIR / "masks",     "_vias"),
-    )
 
 
 # Buckets de imágenes del pipeline. Cada entrada: (clave API, carpeta, sufijo).
@@ -169,6 +157,11 @@ BUCKETS = (
 
 _configure(ROOT)      # única fuente de verdad (ver la función más arriba)
 
+# Calibración altimétrica (presión de referencia al nivel del mar, hPa):
+# persistida en /outputs/mission/config/p0_hPa.json.
+P0_DIR = MISSION_DIR / "config"
+P0_JSON = P0_DIR / "p0_hPa.json"
+
 # Aseguramos mimetypes correctos aunque el sistema no los traiga registrados.
 mimetypes.add_type("image/jpeg", ".jpg")
 mimetypes.add_type("image/jpeg", ".jpeg")
@@ -187,6 +180,59 @@ FAVICON_SVG = (
     '<path d="M16 2v5M16 25v5M2 16h5M25 16h5" stroke="#3ddc84" stroke-width="2"/>'
     "</svg>"
 ).encode("utf-8")
+
+
+# ── Calibración altimétrica: presión de referencia al nivel del mar (hPa) ─‐
+# Persistida en /outputs/mission/config/p0_hPa.json.
+_DEFAULT_P0 = 1013.25   # atmósfera estándar
+
+def _read_p0() -> float:
+    """Lee la calibration p0_hPa del disco; default 1013.25 hPa."""
+    try:
+        with open(P0_JSON, "r") as f:
+            data = json.load(f)
+            val = float(data.get("p0_hPa", _DEFAULT_P0))
+            if math.isfinite(val):
+                return round(val, 2)
+    except Exception:
+        pass
+    return _DEFAULT_P0
+
+
+_p0_cache: float | None = None
+_p0_mtime: float = 0.0
+_p0_lock = threading.Lock()
+
+def get_p0_hPa() -> float:
+    """Devuelve p0_hPa de referencia (lectura con caché de 1 s)."""
+    global _p0_cache, _p0_mtime
+    try:
+        mtime = P0_JSON.stat().st_mtime
+    except OSError:
+        mtime = 0
+    with _p0_lock:
+        if _p0_cache is not None and mtime == _p0_mtime:
+            return _p0_cache
+        val = _read_p0()
+        _p0_cache = val
+        _p0_mtime = mtime
+        return val
+
+
+def save_p0_hPa(val: float) -> None:
+    """Persiste una nueva calibración p0_hPa en el disco."""
+    val = round(float(val), 2)
+    P0_DIR.mkdir(parents=True, exist_ok=True)
+    with _p0_lock:
+        _p0_cache = val
+        _p0_mtime = -1   # invalida caché
+    try:
+        tmp = P0_JSON.with_suffix(".tmp")
+        with open(tmp, "w") as f:
+            json.dump({"p0_hPa": val}, f)
+        tmp.replace(P0_JSON)
+    except OSError:
+        pass
 
 
 # --------------------------------------------------------------------------- #
@@ -494,6 +540,44 @@ class MissionCache:
 CACHE = MissionCache()
 
 
+def _parse_euler(raw: str) -> dict | None:
+    """Extrae euler (roll,pitch,yaw) del string ``raw`` del paquete LB135.
+    
+    El euler viaja como el último campo (si el emisor lo incluye): 
+    ...hum,gx,gy,gz,euler donde euler = "roll,pitch,yaw" (3 valores, coma interna).
+    
+    Fallback: si no hay euler pero hay 22+ campos y los últimos 3 son válidos
+    (gx,gy,gz), los devuelve como { roll: gx, pitch: gy, yaw: gz }.
+    """
+    if not raw:
+        return None
+    parts = str(raw).split(",")
+    
+    # Caso A: último campo contiene coma interna → es "roll,pitch,yaw"
+    if len(parts) >= 24:
+        last = parts[-1]
+        if "," in last and len(last.split(",")) == 3:
+            try:
+                vals = [float(v) for v in last.split(",")]
+                return {"roll": vals[0], "pitch": vals[1], "yaw": vals[2]}
+            except (ValueError, TypeError):
+                pass
+    
+    # Caso B: último campo numérico + 2 anteriores (gx,gy,gz) → los usa como euler proxy
+    if len(parts) >= 25:
+        try:
+            gx = float(parts[-3])
+            gy = float(parts[-2])
+            gz = float(parts[-1])
+            # Solo si no son todos cero (de lo contrario no hay dato gyro real)
+            if gx != 0 or gy != 0 or gz != 0:
+                return {"roll": gx, "pitch": gy, "yaw": gz}
+        except (ValueError, TypeError):
+            pass
+    
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # JSONL de telemetría: campos por frame que no están en el CSV
 # --------------------------------------------------------------------------- #
@@ -605,8 +689,114 @@ def build_mission_payload() -> dict:
     # Existencia de imágenes por frame (una sola pasada).
     for fr in frames:
         fr["files"] = files_for_frame(fr.get("src") or "")
+        # Inyectar euler en prioridad:
+        #   1. Si fr["euler"] ya es dict → lo deja tal cual
+        #   2. Si fr["euler"] es string "roll,pitch,yaw" → lo parsea a dict
+        #   3. Si tiene "gx"/"gy"/"gz" → computa el euler de esos campos
+        #   4. Fallback → intenta _parse_euler desde el raw del paquete
+        euler = fr.get("euler")
+        if euler is None or isinstance(euler, str):
+            if isinstance(euler, str) and len(euler) > 1:
+                # Primero intenta como JSON (euler del CSV viene como string JSON)
+                try:
+                    parsed = json.loads(euler)
+                    if isinstance(parsed, dict) and "roll" in parsed:
+                        fr["euler"] = parsed
+                        euler = parsed  # update for next elif
+                    elif isinstance(parsed, dict):
+                        # JSON pero no tiene "roll" — intenta como lista de valores
+                        fr["euler"] = {
+                            "roll": parsed.get("roll") if "roll" in parsed else None,
+                            "pitch": parsed.get("pitch") if "pitch" in parsed else None,
+                            "yaw": parsed.get("yaw") if "yaw" in parsed else None,
+                        }
+                except (json.JSONDecodeError, TypeError):
+                    # Fallback: split por coma (euler compacto "roll,pitch,yaw")
+                    if "," in euler:
+                        try:
+                            ev = euler.split(",")
+                            if len(ev) == 3:
+                                fr["euler"] = {
+                                    "roll": float(ev[0]),
+                                    "pitch": float(ev[1]),
+                                    "yaw": float(ev[2]),
+                                }
+                        except (ValueError, TypeError):
+                            pass
+            elif euler is not None:
+                fr["euler"] = euler
+                euler = fr["euler"]
+        if fr.get("euler") is None:
+            fx = fr.get("gx")
+            fy = fr.get("gy")
+            fz = fr.get("gz")
+            if fx is not None and fy is not None and fz is not None:
+                try:
+                    gx, gy, gz = float(fx), float(fy), float(fz)
+                    if gx != 0 or gy != 0 or gz != 0:
+                        fr["euler"] = {"roll": gx, "pitch": gy, "yaw": gz}
+                except (ValueError, TypeError):
+                    pass
+        if fr.get("euler") is None:
+            fr["euler"] = _parse_euler(fr.get("raw") or "")
 
     summary = read_summary()
+    # inyectar presión actual del BME280 (última muestra) al summary
+    latest_p = None
+    latest_t = -1.0
+    for fr in frames:
+        t = fr.get("t_s")
+        p = fr.get("p_hpa")
+        if t is not None and p is not None:
+            try:
+                if float(t) > latest_t:
+                    latest_t = float(t)
+                    latest_p = float(p)
+            except (ValueError, TypeError):
+                pass
+    if summary is not None and latest_p is not None:
+        summary["pressure_bme280"] = round(latest_p, 2)
+    
+    # inyectar altitud actual del MPU6050 (última muestra) al summary
+    latest_alt = None
+    for fr in frames:
+        a = fr.get("alt_mpu6050")
+        if a is not None:
+            try:
+                v = float(a)
+                if v > 0:  # descartar valores de demo (0.0)
+                    latest_alt = v
+            except (ValueError, TypeError):
+                pass
+    if summary is not None and latest_alt is not None:
+        summary["alt_mpu6050"] = round(latest_alt, 2)
+    
+    # inyectar euler (roll,pitch,yaw) actual del MPU6050 en summary
+    latest_euler = None
+    for fr in frames:
+        ev = fr.get("euler")
+        if ev is not None:
+            try:
+                # Puede venir como dict {"roll": ..., "pitch": ..., "yaw": ...}
+                if isinstance(ev, dict):
+                    latest_euler = ev
+                elif isinstance(ev, str) and "," in ev:
+                    parts_ev = [x.strip() for x in ev.split(",")]
+                    if len(parts_ev) == 3:
+                        latest_euler = {
+                            "roll": float(parts_ev[0]),
+                            "pitch": float(parts_ev[1]),
+                            "yaw": float(parts_ev[2]),
+                        }
+            except (ValueError, TypeError):
+                pass
+    if summary is not None and latest_euler is not None:
+        # Normalizar valores a None si son 0.0 (sin dato)
+        norm_euler = {}
+        for k in ("roll", "pitch", "yaw"):
+            v = latest_euler.get(k)
+            norm_euler[k] = v if v else None
+        summary["euler"] = norm_euler if any(norm_euler[k] for k in ("roll", "pitch", "yaw")) else None
 
     # Recuento de buckets disponibles, para que la web sepa qué secciones mostrar.
     buckets_available = {key: False for key, _d, _s in BUCKETS}
@@ -627,6 +817,7 @@ def build_mission_payload() -> dict:
             "corridor_map": _rel(CORRIDOR_MAP) if CORRIDOR_MAP.is_file() else None,
         },
         "buckets": buckets_available,
+        "p0_hPa": get_p0_hPa(),                # calibración altimétrica
         "paths": {
             "telemetry": _rel(TELEMETRY_CSV) if TELEMETRY_CSV.is_file() else None,
             "summary": _rel(SUMMARY_JSON) if SUMMARY_JSON.is_file() else None,
@@ -1159,6 +1350,10 @@ class GroundStationHandler(BaseHTTPRequestHandler):
             self._sse_events()
             return
 
+        if path == "/api/p0_hPa":
+            self._handle_p0_hpa()
+            return
+
         if path.startswith("/api/frame/"):
             src = path[len("/api/frame/"):]
             payload = build_frame_payload(src)
@@ -1200,6 +1395,53 @@ class GroundStationHandler(BaseHTTPRequestHandler):
 
         self._send_bytes(404, "<h1>404 — no encontrado</h1>".encode("utf-8"),
                          "text/html; charset=utf-8")
+
+    def _handle_p0_hpa(self) -> None:
+        """GET/POST /api/p0_hPa: lectura y escritura de calibración altimétrica."""
+        method = self.command
+        if method == "GET":
+            self._send_json({"p0_hPa": get_p0_hPa()})
+            return
+        # POST — update calibration
+        if method == "POST":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length else b""
+            try:
+                data = json.loads(body)
+            except (json.JSONDecodeError, ValueError):
+                self._send_json({"ok": False, "error": "JSON inválido"}, 400)
+                return
+            val = data.get("p0_hPa")
+            if val is None or not isinstance(val, (int, float)):
+                self._send_json({"ok": False, "error": "p0_hPa debe ser número"}, 400)
+                return
+            save_p0_hPa(float(val))
+            self._send_json({"ok": True, "p0_hPa": get_p0_hPa()})
+            return
+        # fallback
+        self.send_response(405)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"ok": False, "error": "method not allowed"}).encode())
+
+    def do_POST(self) -> None:  # noqa: N802
+        """Procesa POST para endpoints que lo requieren (p0_hPa, etc.)."""
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        if path.endswith("/") and path != "/":
+            path = path.rstrip("/")
+        # ---- API -------------------------------------------------------- #
+        if path == "/api/p0_hPa":
+            self._handle_p0_hpa()
+            return
+        if path.startswith("/api/"):
+            self._send_json({"ok": False, "error": f"endpoint desconocido: {path}"}, 404)
+            return
+        # Default: no found
+        self.send_response(404)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"<h1>404 - not found</h1>")
 
 
 # --------------------------------------------------------------------------- #

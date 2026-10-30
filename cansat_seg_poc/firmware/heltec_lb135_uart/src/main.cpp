@@ -5,7 +5,7 @@
  * formato que parsea uart_listener.py y emite mission_pipeline.py:
  *   $LB135,2,<pkt>,<t_s>,<alt_m>,<p_hPa>,<temp_C>,<veg>,<bui>,<wat>,<bare>,
  *   <oth>,<dom>,<usi>,<gvi>,<vcode>,<personas>,<vehiculos>,<alert>,
- *   <danado_pct>,<lat>,<lon>,<hum_pct>*HH
+ *   <danado_pct>,<lat>,<lon>,<hum_pct>,<gx>,<gy>,<gz>,<roll>,<pitch>,<yaw>*HH
  * (checksum XOR estilo NMEA; ver cansat/protocol.py::format_packet).
  *
  * SENSORES (2026-09-26):
@@ -453,14 +453,48 @@ void loop() {
   }
 #endif
 
-  char body[192];
+  char euler_s[32] = "0.0,0.0,0.0";  // roll,pitch,yaw default
+  
+  // Leer MPU6050 si está disponible (gyro + acelerómetro)
+  float gx_local = 0.0f, gy_local = 0.0f, gz_local = 0.0f;
+  float roll = 0.0f, pitch = 0.0f, yaw = 0.0f;
+  if (mpu_ok) {
+    sensors_event_t a, g, t;
+    mpu.getEvent(&a, &g, &t);
+    gx_local = (float)g.gyro.x;
+    gy_local = (float)g.gyro.y;
+    gz_local = (float)g.gyro.z;
+    // Euler desde acelerómetro (pitch/roll cuando hay poca aceleración lineal)
+    float amag = sqrtf(a.acceleration.x * a.acceleration.x +
+                       a.acceleration.y * a.acceleration.y +
+                       a.acceleration.z * a.acceleration.z);
+    if (fabsf(amag - 9.81f) < 2.0f) { // poca aceleración lineal
+      pitch = -asinf(a.acceleration.x / 9.81f) * 180.0f / PI;
+      roll  = atan2f(a.acceleration.y, a.acceleration.z) * 180.0f / PI;
+    }
+    // Yaw desde gyro Z: integrar velocidad angular a lo del tiempo.
+    // El loop corre ~1 Hz, así que dt ≈ 1.0s. Para precisión real se
+    // requiere medir delta_ms = millis() - last_loop_ms en cada iteración.
+    static float yaw_accum = 0.0f;
+    static uint32_t last_loop_ms = 0;
+    if (last_loop_ms) {
+      uint32_t dt_ms = millis() - last_loop_ms;
+      yaw_accum += gz_local * (dt_ms / 1000.0f); // gyro en °/s
+    }
+    last_loop_ms = millis();
+    yaw = fmodf(yaw_accum, 360.0f);
+    snprintf(euler_s, sizeof(euler_s), "%.1f,%.1f,%.1f", roll, pitch, yaw);
+  }
+
+  char body[200];
   snprintf(body, sizeof(body),
            "LB135,2,%lu,%07.1f,%06.1f,%06.1f,%05.1f,"
            "%5.1f,%5.1f,%5.1f,%5.1f,%5.1f,"
            "%d,%6.2f,%+6.3f,%d,%d,%d,%d,"
-           "%5.1f,%.5f,%.5f,%4.1f",
+           "%5.1f,%.5f,%.5f,%4.1f,%+.2f,%+.2f,%+.2f,%s",
            (unsigned long)pkt, t_s, alt, p, temp, veg, bui, wat, bare, oth,
-           dom, usi, gvi, 0, 0, 0, 0, 0.0f, lat, lon, hum);
+           dom, usi, gvi, 0, 0, 0, 0, 0.0f, lat, lon, hum,
+           gx_local, gy_local, gz_local, euler_s);
   char cs[4];
   checksum_hex(body, cs);
   Serial.print('$');

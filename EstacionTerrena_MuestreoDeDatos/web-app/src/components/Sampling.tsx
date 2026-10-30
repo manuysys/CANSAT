@@ -8,13 +8,14 @@
  * El objetivo operativo es doble: verificar que el muestreo adaptativo cubrió
  * todas las clases (y no se quedó mirando sólo el desastre) y detectar frames
  * que conviene revisar a mano (incertidumbre alta). */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { Activity, Clock, Gauge, ScanEye } from 'lucide-react'
+import { Activity, Clock, Gauge, ScanEye, Droplets } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/EmptyState'
 import { Scramble } from '@/components/Scramble'
 import { useMission } from '@/store/mission'
+import { useP0hPa } from '@/hooks/useP0hPa'
 import { num } from '@/lib/format'
 import { TERRAIN, priColor } from '@/lib/vocab'
 import type { Frame } from '@/lib/types'
@@ -39,6 +40,18 @@ export function Sampling() {
   const samples = useMission(s => s.samples)
   const resumen = useMission(s => s.samplesResumen)
   const select = useMission(s => s.select)
+
+  /* Calibración altimétrica (QNH) */
+  const { p0, push } = useP0hPa()
+  const framesCount = useMission(s => s.frames.length)
+  /** Último pressure_bme280 (hPa) leído del servidor. */
+  const current_p = useMission(s => s.summary?.pressure_bme280 ?? null)
+  /** Última altitud medida por el MPU6050 del breakout (m), si disponible. */
+  const current_alt = useMission(s => s.summary?.alt_mpu6050 ?? null)
+  /** Δ alt = alt(p0) – alt(1013.25) = 44330 × (p/1013.25)^(1/5.255) – (p/p0)^(1/5.255) */
+  const altDelta = current_p != null
+    ? 44330 * (Math.pow(current_p / 1013.25, 1 / 5.255) - Math.pow(current_p / p0, 1 / 5.255))
+    : 0
 
   const pri = useMemo(() => {
     const out: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 }
@@ -82,6 +95,7 @@ export function Sampling() {
   const hayJsonl = Object.keys(samples).length > 0
 
   return (
+    <>
     <motion.div
       className="grid gap-4 lg:grid-cols-3"
       initial={{ opacity: 0, y: 16 }}
@@ -182,6 +196,50 @@ export function Sampling() {
         </div>
       </Card>
     </motion.div>
+
+    <motion.div
+      className="grid gap-4 max-w-3xl"
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <Card className="border-border/60 bg-card/60">
+        <div className="flex items-center justify-between border-b border-border/50 px-5 py-2.5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Calibración altimétrica (QNH)
+          </h2>
+          <Droplets className="size-3.5 text-muted-foreground/60" />
+        </div>
+        <div className="flex items-center gap-6 p-4">
+          <div className="flex items-center gap-3">
+            <label htmlFor="p0-input" className="text-sm text-foreground/70 whitespace-nowrap">
+              p<sub className="text-[0.65em]">0</sub> (hPa):
+            </label>
+            <input
+              id="p0-input"
+              type="number"
+              step="0.01"
+              min={900}
+              max={1100}
+              value={p0}
+              onChange={e => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v)) push(v)
+              }}
+              className="w-28 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono tabular-nums text-right focus:border-ring focus:outline-none"
+            />
+          </div>
+          <div className="h-8 w-px bg-border/60" />
+          <div className="flex-1 text-sm text-foreground/60">
+            {current_alt != null
+              ? `Δ alt ≈ ${altDelta.toFixed(1)} m`
+              : 'Δ alt — requiere dato de altitud actual'}
+          </div>
+        </div>
+      </Card>
+    </motion.div>
+    </>
   )
 }
 

@@ -49,6 +49,9 @@ interface MissionState {
   jurado: boolean
   sol: boolean
   lastSync: number | null
+  /* Altímetro: presión al nivel del mar (hPa) para calcular altitud
+     calibrada con pressure_to_altitude(). Valor por defecto 1013.25 hPa. */
+  p0_hPa: number
 
   view: ViewId
   selected: string | null
@@ -70,6 +73,7 @@ interface MissionState {
   setOffline: () => void
   setSyncing: (b: boolean) => void
   setView: (v: ViewId) => void
+  updateP0: (val: number) => void
   select: (src: string | null, img?: ImgKey) => void
   setDetailImg: (k: ImgKey) => void
   togglePri: (p: SamplePri) => void
@@ -126,6 +130,11 @@ export const useMission = create<MissionState>((set, get) => ({
   alertsCollapsed: false,
   tableCollapsed: false,
   present: { on: false, idx: 0 },
+  /* Calibración altimétrica: presión al nivel del mar (hPa).
+     default = atmósfera estándar 1013.25; persistida en localStorage. */
+  p0_hPa: typeof localStorage !== 'undefined'
+    ? Number(localStorage.getItem('lb135-p0')) || 1013.25
+    : 1013.25,
   consulta: null,
   consultaCargando: false,
   consultaZona: [],
@@ -196,6 +205,7 @@ export const useMission = create<MissionState>((set, get) => ({
       lastSync: Date.now(),
       syncing: false,
       selected,
+      p0_hPa: p.p0_hPa != null ? p.p0_hPa : s.p0_hPa,
     })
     ev.forEach(([tipo, msg, t]) => get().pushEvento(tipo, msg, t))
     if (s.sig !== '' && freshFrames.length) {
@@ -233,6 +243,15 @@ export const useMission = create<MissionState>((set, get) => ({
   setSamples: (samples, resumen) => set({ samples, samplesResumen: resumen }),
   setSyncing: b => set({ syncing: b }),
   setView: v => set({ view: v }),
+
+  /** Actualizar presión de referencia (hPa). Persiste en localStorage. */
+  updateP0: (val: number) => {
+    const clean = isNaN(val) ? 1013.25 : val
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('lb135-p0', String(clean))
+    }
+    set({ p0_hPa: clean })
+  },
   select: (src, img) => set(st => ({
     selected: src,
     detailImg: img ?? st.detailImg,

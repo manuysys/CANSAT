@@ -43,3 +43,22 @@ export async function fetchGradcam(
 /** Ruta relativa del proyecto -> URL del proxy de imágenes del servidor. */
 export const imgURL = (rel: string | null | undefined): string | null =>
   rel ? '/img/' + String(rel).split('/').map(encodeURIComponent).join('/') : null
+
+/* ── Calibración: presión de referencia al nivel del mar (hPa) ── */
+
+export async function fetchP0hPa(): Promise<number> {
+  const res = await fetch('/api/p0_hPa', { cache: 'no-store' })
+  if (!res.ok) throw new Error(`HTTP ${res.status} leyendo p0_hPa`)
+  const body = (await res.json()) as { p0_hPa: number }
+  return body.p0_hPa
+}
+
+export async function updateP0hPa(val: number): Promise<void> {
+  const res = await fetch('/api/p0_hPa', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p0_hPa: val }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status} actualizando p0_hPa`)
+}
+

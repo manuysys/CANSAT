@@ -129,6 +129,15 @@ def main(argv=None) -> int:
                 "lora_snr": (lora_dbg or {}).get("snr"),
                 # Batería de vuelo de la Heltec (None si no la reporta).
                 "vbat_v": (vbat_dbg or {}).get("v"),
+                # MPU6050: giroscopio (°/s) y euler integrado (grados).
+                "gx": pkt.gx, "gy": pkt.gy, "gz": pkt.gz,
+                "euler": pkt.euler_str() if pkt.euler else None,
+                # alt_mpu6050: altitud del MPU6050 (m).
+                # fallback: pkt.alt_m (BME280 del ESP32) si el firmware no
+                # reporta separadamente la altitud del breakout MPU6050.
+                "alt_mpu6050": getattr(
+                    pkt, "alt_mpu6050", pkt.alt_m if pkt.alt_m else None
+                ),
             }, ensure_ascii=False), encoding="utf-8")
         except OSError:
             pass

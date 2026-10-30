@@ -33,7 +33,7 @@ echo "════════ PRE-VUELO ════════"
     && ok "rpk propio de terreno" || warn "sin el rpk propio"
 
 # ── 2. Cámara + NPU ────────────────────────────────────────────────────
-if timeout 40 rpicam-still -n -t 500 \
+if timeout 90 rpicam-still -n -t 500 \
         --post-process-file /usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json \
         -o /tmp/preflight_cam.jpg >/dev/null 2>&1 && [ -s /tmp/preflight_cam.jpg ]; then
     ok "cámara IMX500 + NPU (foto de prueba)"

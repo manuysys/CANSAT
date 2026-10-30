@@ -156,6 +156,8 @@ CSV_COLUMNS = [
     "humidex",              # calor con T y humedad del sensor (estrés térmico)
     "stress_idx",           # índice agregado 0-100 (bruma 50 % + calor 25 % + urbano 25 %)
     "colapso_pct",          # fracción de colapso MEDIDA (severidad; vacío = supuesto)
+    # MPU6050: euler integrado + gx/gy/gz (giroscopio) + alt (m) + raw del paquete
+    "euler", "raw", "gx", "gy", "gz", "alt_mpu6050",
 ]
 
 # IDs de clase COCO. Se validan contra ``model.names`` en runtime: antes estaban
@@ -750,8 +752,11 @@ def main(argv=None):
     elif args.camera:
         frames = [(f"cam_{i:03d}", None) for i in range(args.frames)]
     else:
-        print("[ERROR] Especificá --image, --folder o --camera")
-        raise SystemExit(1)
+        # Modo solo telemetría: genera frames desde uart_state sin imagen
+        if not args.uart_state:
+            print("[ERROR] Especificá --image, --folder, --camera o --uart-state")
+            raise SystemExit(1)
+        frames = [("uart", None)]
 
     cam_ok, sensor_kind = detect_hardware()
     if args.camera and not cam_ok:
@@ -1035,6 +1040,9 @@ def main(argv=None):
         for i, (name, path) in enumerate(frames):
             t = (time.time() - t0) if args.camera else i * args.interval
             t_frame = time.perf_counter()
+            # MPU6050 defaults (sin dato del listener).
+            pkt_gx, pkt_gy, pkt_gz, pkt_euler, pkt_alt = 0.0, 0.0, 0.0, None, None
+            us = {}
 
             boxes = None          # None = hay que detectar; imx500 lo llena al capturar
             if path is not None:
@@ -1137,6 +1145,13 @@ def main(argv=None):
                     p_u, temp_u = us["p_hPa"], us["temp_C"]
                     if us["lat"] or us["lon"]:
                         lat_f, lon_f = us["lat"], us["lon"]
+                    # MPU6050: gyroscope data para el CSV (para re-construir
+                    # euler si el receptor no integró).
+                    pkt_gx = us.get("gx", 0.0)
+                    pkt_gy = us.get("gy", 0.0)
+                    pkt_gz = us.get("gz", 0.0)
+                    pkt_euler = us.get("euler")
+                    pkt_alt = us.get("alt_mpu6050")  # alt Mpu6050; None si no hay
                     if p0_u is None:      # calibrar una sola vez con --p0-alt
                         p0_u = (PROTO.sea_level_pressure(p_u, args.p0_alt)
                                 if args.p0_alt is not None else 1013.25)
@@ -1492,6 +1507,14 @@ def main(argv=None):
                 "ms_total": round((time.perf_counter() - t_frame) * 1000.0, 1),
                 "sample_pri": dec["priority"], "sample_score": dec["score"],
                 "src": name,
+                # MPU6050: euler integrado + gx/gy/gz del listener (puede
+                # ser 0.0 si no hay dato). El server los lee en prioridad.
+                "gx": round(pkt_gx, 1) if us and "gx" in us else 0.0,
+                "gy": round(pkt_gy, 1) if us and "gy" in us else 0.0,
+                "gz": round(pkt_gz, 1) if us and "gz" in us else 0.0,
+                "euler": pkt_euler if pkt_euler else None,
+                # alt_mpu6050: altitud del MPU6050 (m), None si no hay dato.
+                "alt_mpu6050": us.get("alt_mpu6050") if us and "alt_mpu6050" in us else None,
             }
             # Flush por frame: si el vuelo termina con un corte de energía (lo
             # normal), el JSONL no debe perder las últimas líneas buffereadas.
@@ -1520,6 +1543,13 @@ def main(argv=None):
                 (hx if hx is not None else ""),
                 (env.get("stress_idx") if env.get("stress_idx") is not None else ""),
                 (round(colapso_pct, 1) if colapso_pct is not None else ""),
+                # MPU6050: euler (roll,pitch,yaw) + raw + gx/gy/gz del listener
+                (pkt_euler if pkt_euler else ""),
+                "",
+                (f"{pkt_gx:.1f}" if us else ""),
+                (f"{pkt_gy:.1f}" if us else ""),
+                (f"{pkt_gz:.1f}" if us else ""),
+                (f"{pkt_alt:.1f}" if us and "alt_mpu6050" in us else ""),
             ])
             csvf.flush()
 

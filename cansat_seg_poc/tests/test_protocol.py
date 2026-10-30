@@ -250,7 +250,7 @@ def test_v2_de_19_campos_sin_danado_sigue_parseando(pkt):
     """Un receptor/emisor viejo (sin el campo 20) no se desalinea."""
     body, _ = P.verify(P.format_packet(pkt, with_checksum=False))
     partes = body.split(",")
-    assert len(partes) == 23          # 19 base + daño + lat + lon + humedad
+    assert len(partes) == 26          # 19 base + daño + lat + lon + humedad
     parsed = P.parse(",".join(partes[:19]))
     assert parsed is not None
     assert parsed.danado_pct == 0.0
@@ -330,7 +330,7 @@ def test_v2_de_20_campos_sin_gps_sigue_parseando(pkt):
     """Un emisor intermedio (con daño pero sin GPS) no se desalinea."""
     body, _ = P.verify(P.format_packet(pkt, with_checksum=False))
     partes = body.split(",")
-    assert len(partes) == 23
+    assert len(partes) == 26
     parsed = P.parse(",".join(partes[:20]))
     assert parsed is not None
     assert parsed.lat == 0.0 and parsed.lon == 0.0
